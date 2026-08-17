@@ -4,6 +4,14 @@ node_modules/
 # Next.js
 .next/
 out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Testing
+coverage/
+
+# Vercel
+.vercel
 
 # Environment variables
 .env
