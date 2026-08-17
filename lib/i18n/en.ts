@@ -46,4 +46,33 @@ export const en = {
   "login.errorInvalidCredentials": "Incorrect email or password.",
   "login.errorRateLimited": "Too many attempts. Please try again in a few minutes.",
   "login.errorUnexpected": "We couldn't sign you in. Please try again.",
+  "recover.title": "Recover access",
+  "recover.description":
+    "Enter your email and we'll send you a link to reset your password.",
+  "recover.emailLabel": "Email",
+  "recover.submitButton": "Send recovery link",
+  "recover.submitButtonLoading": "Sending...",
+  "recover.successMessage":
+    "If an account exists for that email, you'll receive a link to reset your password.",
+  "recover.validationEmailRequired": "Email is required.",
+  "recover.errorRateLimited": "Too many attempts. Please try again in a few minutes.",
+  "recover.errorUnexpected": "We couldn't process your request. Please try again.",
+  "recoverUpdate.title": "Reset password",
+  "recoverUpdate.passwordLabel": "New password",
+  "recoverUpdate.confirmPasswordLabel": "Confirm password",
+  "recoverUpdate.submitButton": "Save new password",
+  "recoverUpdate.submitButtonLoading": "Saving...",
+  "recoverUpdate.successMessage": "Password updated successfully.",
+  "recoverUpdate.checkingSession": "Checking link...",
+  "recoverUpdate.invalidLink": "This recovery link is invalid or has expired.",
+  "recoverUpdate.validationPasswordRequired": "Password is required.",
+  "recoverUpdate.validationPasswordLength":
+    "Password must be at least 6 characters.",
+  "recoverUpdate.validationPasswordMismatch": "Passwords don't match.",
+  "recoverUpdate.errorWeakPassword":
+    "The password is not valid (minimum 6 characters).",
+  "recoverUpdate.errorSamePassword":
+    "The new password must be different from the current one.",
+  "recoverUpdate.errorUnexpected":
+    "We couldn't update your password. Please try again.",
 } satisfies Dictionary;

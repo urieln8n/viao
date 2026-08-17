@@ -48,4 +48,36 @@ export const es = {
     "Demasiados intentos. Inténtalo de nuevo en unos minutos.",
   "login.errorUnexpected":
     "No se ha podido iniciar sesión. Inténtalo de nuevo.",
+  "recover.title": "Recuperar acceso",
+  "recover.description":
+    "Introduce tu email y te enviaremos un enlace para restablecer tu contraseña.",
+  "recover.emailLabel": "Email",
+  "recover.submitButton": "Enviar enlace de recuperación",
+  "recover.submitButtonLoading": "Enviando...",
+  "recover.successMessage":
+    "Si existe una cuenta con ese email, recibirás un enlace para restablecer tu contraseña.",
+  "recover.validationEmailRequired": "El email es obligatorio.",
+  "recover.errorRateLimited":
+    "Demasiados intentos. Inténtalo de nuevo en unos minutos.",
+  "recover.errorUnexpected":
+    "No se ha podido procesar la solicitud. Inténtalo de nuevo.",
+  "recoverUpdate.title": "Restablecer contraseña",
+  "recoverUpdate.passwordLabel": "Nueva contraseña",
+  "recoverUpdate.confirmPasswordLabel": "Confirmar contraseña",
+  "recoverUpdate.submitButton": "Guardar nueva contraseña",
+  "recoverUpdate.submitButtonLoading": "Guardando...",
+  "recoverUpdate.successMessage": "Contraseña actualizada correctamente.",
+  "recoverUpdate.checkingSession": "Comprobando enlace...",
+  "recoverUpdate.invalidLink":
+    "Este enlace de recuperación no es válido o ha caducado.",
+  "recoverUpdate.validationPasswordRequired": "La contraseña es obligatoria.",
+  "recoverUpdate.validationPasswordLength":
+    "La contraseña debe tener al menos 6 caracteres.",
+  "recoverUpdate.validationPasswordMismatch": "Las contraseñas no coinciden.",
+  "recoverUpdate.errorWeakPassword":
+    "La contraseña no es válida (mínimo 6 caracteres).",
+  "recoverUpdate.errorSamePassword":
+    "La nueva contraseña debe ser diferente de la actual.",
+  "recoverUpdate.errorUnexpected":
+    "No se ha podido actualizar la contraseña. Inténtalo de nuevo.",
 } as const;
