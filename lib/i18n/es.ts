@@ -13,4 +13,23 @@ export const es = {
   "i18nDemo.fallbackSectionTitle": "Prueba de fallback (locale no soportado)",
   "i18nDemo.fallbackDescription":
     'Al resolver un locale no soportado (por ejemplo, "de"), se usa español como idioma de respaldo sin lanzar errores.',
+  "register.title": "Crear cuenta",
+  "register.emailLabel": "Email",
+  "register.passwordLabel": "Contraseña",
+  "register.submitButton": "Crear cuenta",
+  "register.submitButtonLoading": "Creando cuenta...",
+  "register.successConfirmed": "Cuenta creada correctamente.",
+  "register.successPendingConfirmation":
+    "Cuenta creada. Revisa tu correo para confirmar tu cuenta.",
+  "register.errorEmailTaken": "Ya existe una cuenta con este email.",
+  "register.errorInvalidEmail": "El email no es válido.",
+  "register.errorWeakPassword": "La contraseña no es válida (mínimo 6 caracteres).",
+  "register.errorRateLimited":
+    "Demasiados intentos. Inténtalo de nuevo en unos minutos.",
+  "register.errorUnexpected":
+    "No se ha podido completar el registro. Inténtalo de nuevo.",
+  "register.validationEmailRequired": "El email es obligatorio.",
+  "register.validationPasswordRequired": "La contraseña es obligatoria.",
+  "register.validationPasswordLength":
+    "La contraseña debe tener al menos 6 caracteres.",
 } as const;

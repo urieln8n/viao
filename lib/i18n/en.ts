@@ -15,4 +15,21 @@ export const en = {
   "i18nDemo.fallbackSectionTitle": "Fallback test (unsupported locale)",
   "i18nDemo.fallbackDescription":
     'When resolving an unsupported locale (e.g. "de"), Spanish is used as a safe fallback without throwing errors.',
+  "register.title": "Create account",
+  "register.emailLabel": "Email",
+  "register.passwordLabel": "Password",
+  "register.submitButton": "Create account",
+  "register.submitButtonLoading": "Creating account...",
+  "register.successConfirmed": "Account created successfully.",
+  "register.successPendingConfirmation":
+    "Account created. Check your email to confirm your account.",
+  "register.errorEmailTaken": "An account with this email already exists.",
+  "register.errorInvalidEmail": "The email is not valid.",
+  "register.errorWeakPassword": "The password is not valid (minimum 6 characters).",
+  "register.errorRateLimited": "Too many attempts. Please try again in a few minutes.",
+  "register.errorUnexpected":
+    "We couldn't complete the registration. Please try again.",
+  "register.validationEmailRequired": "Email is required.",
+  "register.validationPasswordRequired": "Password is required.",
+  "register.validationPasswordLength": "Password must be at least 6 characters.",
 } satisfies Dictionary;
