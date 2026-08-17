@@ -80,4 +80,24 @@ export const es = {
     "La nueva contraseña debe ser diferente de la actual.",
   "recoverUpdate.errorUnexpected":
     "No se ha podido actualizar la contraseña. Inténtalo de nuevo.",
+  "profile.title": "Perfil",
+  "profile.checkingSession": "Comprobando sesión...",
+  "profile.signedOutTitle": "Sesión requerida",
+  "profile.signedOutMessage": "Debes iniciar sesión para ver tu perfil.",
+  "profile.goToLogin": "Iniciar sesión",
+  "profile.loadingProfile": "Cargando perfil...",
+  "profile.loadErrorMessage":
+    "No se ha podido cargar tu perfil. Inténtalo de nuevo.",
+  "profile.nameLabel": "Nombre",
+  "profile.avatarUrlLabel": "URL del avatar",
+  "profile.localeLabel": "Idioma",
+  "profile.localeSpanishOption": "Español",
+  "profile.localeEnglishOption": "English",
+  "profile.referralCodeLabel": "Código de referido",
+  "profile.saveButton": "Guardar cambios",
+  "profile.saveButtonLoading": "Guardando...",
+  "profile.saveSuccessMessage": "Perfil actualizado correctamente.",
+  "profile.validationAvatarUrlInvalid": "La URL del avatar no es válida.",
+  "profile.errorUnexpected":
+    "No se ha podido guardar el perfil. Inténtalo de nuevo.",
 } as const;
