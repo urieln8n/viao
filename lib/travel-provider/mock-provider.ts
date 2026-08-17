@@ -61,6 +61,16 @@ interface MockPropertyState {
   readonly property: Property;
   readonly roomsAvailable: number;
   readonly basePricePerNight: number;
+  /**
+   * F4-06 (VIAO_ROADMAP.md) — incremento fijo, en la misma moneda, que se
+   * suma al precio base por cada consulta de precio ya realizada para
+   * este alojamiento (ver `nextPriceQueryOrdinal`). `0` para el resto del
+   * catálogo: su precio permanece exactamente igual en cualquier número
+   * de consultas, sin cambio de comportamiento respecto a F4-04. Es una
+   * cuenta de llamadas, no un reloj ni aleatoriedad — determinista y
+   * reproducible dado un orden de llamadas conocido.
+   */
+  readonly priceDriftPerQuery: number;
   readonly currency: string;
   readonly conditions: Conditions;
 }
@@ -90,6 +100,7 @@ const PROPERTY_STATE: readonly MockPropertyState[] = [
     },
     roomsAvailable: 5,
     basePricePerNight: 90,
+    priceDriftPerQuery: 0,
     currency: "EUR",
     conditions: {
       cancellationPolicy:
@@ -112,6 +123,7 @@ const PROPERTY_STATE: readonly MockPropertyState[] = [
     },
     roomsAvailable: 3,
     basePricePerNight: 65,
+    priceDriftPerQuery: 0,
     currency: "EUR",
     conditions: {
       cancellationPolicy: "No reembolsable.",
@@ -132,11 +144,39 @@ const PROPERTY_STATE: readonly MockPropertyState[] = [
     },
     roomsAvailable: 1,
     basePricePerNight: 120,
+    priceDriftPerQuery: 0,
     currency: "EUR",
     conditions: {
       cancellationPolicy:
         "Cancelación gratuita hasta 7 días antes de la llegada.",
       requirements: "Edad mínima del titular de la reserva: 21 años.",
+    },
+  },
+  {
+    // F4-06 — alojamiento dedicado al escenario "cambio de precio entre
+    // búsqueda y reserva": su precio sube un importe fijo en cada
+    // consulta ya realizada (`priceDriftPerQuery`), así que una primera
+    // llamada (fase de búsqueda) y una segunda llamada posterior (fase
+    // de reserva) devuelven, de forma determinista, importes distintos.
+    property: {
+      providerName: "mock",
+      providerPropertyId: "mock-004",
+      name: "Apartamentos Turia",
+      city: "Valencia",
+      country: "España",
+      latitude: 39.4699,
+      longitude: -0.3763,
+      mainPhotoUrl: "https://mock-provider.local/photos/mock-004.jpg",
+      rating: 4.0,
+    },
+    roomsAvailable: 4,
+    basePricePerNight: 100,
+    priceDriftPerQuery: 20,
+    currency: "EUR",
+    conditions: {
+      cancellationPolicy:
+        "Cancelación gratuita hasta 24 horas antes de la llegada.",
+      requirements: "Depósito de garantía reembolsable de 50€.",
     },
   },
 ];
@@ -199,13 +239,23 @@ function assertPositive(value: number, label: string): void {
   }
 }
 
+/**
+ * `queryOrdinal` es el número de orden (1-indexado) de esta consulta de
+ * precio para esta propiedad, dentro de la misma instancia del provider
+ * (ver `nextPriceQueryOrdinal`). Para el catálogo estándar
+ * (`priceDriftPerQuery = 0`) el resultado es idéntico sea cual sea el
+ * ordinal — sigue siendo puro y reproducible, igual que en F4-04.
+ */
 function calculatePrice(
   state: MockPropertyState,
   nights: number,
   rooms: number,
+  queryOrdinal: number,
 ): PriceQuote {
+  const effectiveBasePrice =
+    state.basePricePerNight + state.priceDriftPerQuery * (queryOrdinal - 1);
   return {
-    amount: Math.round(state.basePricePerNight * nights * rooms * 100) / 100,
+    amount: Math.round(effectiveBasePrice * nights * rooms * 100) / 100,
     currency: state.currency,
   };
 }
@@ -219,6 +269,14 @@ export class MockHotelProvider
 {
   private readonly bookings = new Map<string, MockBooking>();
   private nextBookingSequence = 1;
+  private readonly priceQueryCounts = new Map<string, number>();
+
+  /** F4-06 — cuenta cuántas veces se ha consultado el precio de esta propiedad (búsqueda, reserva, etc.), en esta misma instancia. */
+  private nextPriceQueryOrdinal(providerPropertyId: string): number {
+    const next = (this.priceQueryCounts.get(providerPropertyId) ?? 0) + 1;
+    this.priceQueryCounts.set(providerPropertyId, next);
+    return next;
+  }
 
   async search(params: SearchParams): Promise<Property[]> {
     assertValidDateRange(params.checkIn, params.checkOut);
@@ -255,7 +313,8 @@ export class MockHotelProvider
     assertPositive(query.rooms, "El número de habitaciones");
 
     const state = requirePropertyState(query.providerPropertyId);
-    return calculatePrice(state, nights, query.rooms);
+    const ordinal = this.nextPriceQueryOrdinal(query.providerPropertyId);
+    return calculatePrice(state, nights, query.rooms, ordinal);
   }
 
   async getConditions(query: ConditionsQuery): Promise<Conditions> {
@@ -277,7 +336,13 @@ export class MockHotelProvider
       );
     }
 
-    const { amount, currency } = calculatePrice(state, nights, request.rooms);
+    const ordinal = this.nextPriceQueryOrdinal(request.providerPropertyId);
+    const { amount, currency } = calculatePrice(
+      state,
+      nights,
+      request.rooms,
+      ordinal,
+    );
     const providerBookingReference = `mock-booking-${this.nextBookingSequence++}`;
 
     this.bookings.set(providerBookingReference, {
