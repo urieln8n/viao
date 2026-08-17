@@ -32,4 +32,20 @@ export const es = {
   "register.validationPasswordRequired": "La contraseña es obligatoria.",
   "register.validationPasswordLength":
     "La contraseña debe tener al menos 6 caracteres.",
+  "login.title": "Iniciar sesión",
+  "login.emailLabel": "Email",
+  "login.passwordLabel": "Contraseña",
+  "login.submitButton": "Iniciar sesión",
+  "login.submitButtonLoading": "Iniciando sesión...",
+  "login.checkingSession": "Comprobando sesión...",
+  "login.signedInAs": "Sesión iniciada como",
+  "login.logoutButton": "Cerrar sesión",
+  "login.loggingOut": "Cerrando sesión...",
+  "login.validationEmailRequired": "El email es obligatorio.",
+  "login.validationPasswordRequired": "La contraseña es obligatoria.",
+  "login.errorInvalidCredentials": "Email o contraseña incorrectos.",
+  "login.errorRateLimited":
+    "Demasiados intentos. Inténtalo de nuevo en unos minutos.",
+  "login.errorUnexpected":
+    "No se ha podido iniciar sesión. Inténtalo de nuevo.",
 } as const;
