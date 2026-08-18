@@ -1,0 +1,20 @@
+-- F11-02 (revisión final) — GRANT de SELECT para service_role sobre
+-- trips.
+--
+-- Mismo vacío recurrente descubierto en F5-05/F6-02/F7-01/F8-04/F9-03/
+-- F10 (vision_scans): `service_role` tiene BYPASSRLS pero nunca recibe
+-- GRANT automático de Postgres. Descubierto aquí al corregir
+-- `associateBookingWithTrip` (lib/bookings/associate-trip.ts) para que
+-- verifique la propiedad del viaje de destino con `service_role` antes
+-- de escribir (hallazgo de esta misma revisión: sin esa comprobación,
+-- un atacante podía asociar su propia reserva legítima al `trip_id` de
+-- otro usuario llamando la función directamente) — la consulta de
+-- verificación falló en real con "permission denied for table trips".
+--
+-- Alcance mínimo: SOLO SELECT. `trips` sigue siendo Patrón A
+-- (creación/lectura/edición desde el propio cliente autenticado, RLS,
+-- sin cambios) — este GRANT no amplía quién puede crear/modificar viajes,
+-- únicamente permite que el backend verifique de forma fiable, en un
+-- único punto ya existente, que un `trip_id` recibido pertenece
+-- realmente al usuario antes de usarlo para escribir en otra tabla.
+grant select on public.trips to service_role;
