@@ -92,6 +92,84 @@ test("createVisionScanRecord: sourceLanguage/tripId ausentes se guardan como NUL
   }
 });
 
+// ── F13 (auditoría de seguridad): un tripId ajeno se descarta en vez de
+// forjar una relación falsa — misma clase de hallazgo que F10
+// (photos_insert_own) y F11 (associateBookingWithTrip): un vision_scan
+// nunca debe poder quedar asociado a un trip que no pertenece a su propio
+// usuario, ni siquiera llamando a esta función directamente con un
+// tripId real de otro usuario. ──
+test("F13: createVisionScanRecord descarta un tripId que NO pertenece al usuario (trip_id queda NULL, nunca la relación falsa)", async () => {
+  const owner = await signUpUser();
+  const attacker = await signUpUser();
+  try {
+    const { data: ownerTrip } = await owner.authedClient
+      .from("trips")
+      .insert({ user_id: owner.userId, destination: "Owner trip" })
+      .select()
+      .single();
+    assert.ok(ownerTrip);
+
+    const scanId = await createVisionScanRecord({
+      userId: attacker.userId,
+      tripId: ownerTrip.id,
+      targetLanguage: "es",
+      translatedText: "attack",
+      explanation: "attack",
+    });
+
+    const service = createServiceRoleClient();
+    const { data: scanRow } = await service.from("vision_scans").select("trip_id").eq("id", scanId).single();
+    assert.equal(scanRow?.trip_id, null, "el tripId ajeno no debe haberse asociado al escaneo");
+  } finally {
+    await deleteTestUser(owner.userId);
+    await deleteTestUser(attacker.userId);
+  }
+});
+
+test("F13: createVisionScanRecord conserva un tripId que SÍ pertenece al usuario (camino legítimo intacto)", async () => {
+  const { userId, authedClient } = await signUpUser();
+  try {
+    const { data: trip } = await authedClient
+      .from("trips")
+      .insert({ user_id: userId, destination: "Own trip" })
+      .select()
+      .single();
+    assert.ok(trip);
+
+    const scanId = await createVisionScanRecord({
+      userId,
+      tripId: trip.id,
+      targetLanguage: "es",
+      translatedText: "legit",
+      explanation: "legit",
+    });
+
+    const { data: scanRow } = await authedClient.from("vision_scans").select("trip_id").eq("id", scanId).single();
+    assert.equal(scanRow?.trip_id, trip.id);
+  } finally {
+    await deleteTestUser(userId);
+  }
+});
+
+test("F13: createVisionScanRecord con un tripId inexistente se comporta igual que uno ajeno (trip_id queda NULL, no lanza)", async () => {
+  const { userId } = await signUpUser();
+  try {
+    const scanId = await createVisionScanRecord({
+      userId,
+      tripId: "11111111-2222-3333-4444-555555555555",
+      targetLanguage: "es",
+      translatedText: "x",
+      explanation: "x",
+    });
+
+    const service = createServiceRoleClient();
+    const { data: scanRow } = await service.from("vision_scans").select("trip_id").eq("id", scanId).single();
+    assert.equal(scanRow?.trip_id, null);
+  } finally {
+    await deleteTestUser(userId);
+  }
+});
+
 // ── RLS: el propietario puede leer su escaneo, otro usuario no ──
 test("un usuario autenticado puede leer su propio escaneo (vision_scans_select_own); otro usuario no lo ve", async () => {
   const owner = await signUpUser();

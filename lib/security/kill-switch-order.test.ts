@@ -1,0 +1,68 @@
+// F13-06 (VIAO_ROADMAP.md) — Verificación permanente del orden exacto de
+// comprobaciones en los dos endpoints de coste variable (recomendación
+// IA, Vision): el interruptor de emergencia debe comprobarse ANTES de
+// consumir cupo de rate limit y ANTES de llamar a OpenAI — "como se
+// corrigió en F9/F10" (hallazgo de las revisiones finales de esas fases:
+// comprobar el kill switch solo dentro del wrapper de OpenAI significaba
+// que, con la IA/Vision desactivada, una solicitud igualmente consumía
+// cupo de rate limit antes de ser rechazada).
+//
+// Escaneo de texto fuente (mismo patrón ya establecido en
+// app/booking/actions.test.ts para verificar orden de operaciones): no
+// ejecuta la Server Action (depende de `next/headers`, no invocable fuera
+// de una petición real), confirma que la comprobación del kill switch
+// aparece ANTES, en el código fuente, que la del rate limit y que
+// cualquier importación del wrapper de OpenAI.
+
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+function readSource(relativePath: string): string {
+  return readFileSync(path.join(process.cwd(), relativePath), "utf8");
+}
+
+test("F13-06: app/search/ai-recommendation/actions.ts comprueba isAiRecommendationsEnabled() ANTES de checkAndConsumeRateLimit()", () => {
+  const source = readSource("app/search/ai-recommendation/actions.ts");
+  const killSwitchIdx = source.indexOf("isAiRecommendationsEnabled()");
+  const rateLimitIdx = source.indexOf("checkAndConsumeRateLimit(");
+  assert.ok(killSwitchIdx !== -1, "no se encontró la comprobación del kill switch");
+  assert.ok(rateLimitIdx !== -1, "no se encontró la comprobación de rate limit");
+  assert.ok(killSwitchIdx < rateLimitIdx, "el kill switch debe comprobarse ANTES del rate limit");
+});
+
+test("F13-06: app/vision/actions.ts comprueba isVisionEnabled() ANTES de checkAndConsumeRateLimit()", () => {
+  const source = readSource("app/vision/actions.ts");
+  const killSwitchIdx = source.indexOf("isVisionEnabled()");
+  const rateLimitIdx = source.indexOf("checkAndConsumeRateLimit(");
+  assert.ok(killSwitchIdx !== -1, "no se encontró la comprobación del kill switch");
+  assert.ok(rateLimitIdx !== -1, "no se encontró la comprobación de rate limit");
+  assert.ok(killSwitchIdx < rateLimitIdx, "el kill switch debe comprobarse ANTES del rate limit");
+});
+
+test("F13-06: app/vision/actions.ts comprueba isVisionEnabled() ANTES de validar/leer la imagen del cliente", () => {
+  const source = readSource("app/vision/actions.ts");
+  const killSwitchIdx = source.indexOf("isVisionEnabled()");
+  const imageReadIdx = source.indexOf('formData.get("image")');
+  assert.ok(killSwitchIdx !== -1 && imageReadIdx !== -1);
+  assert.ok(killSwitchIdx < imageReadIdx, "el kill switch debe comprobarse ANTES de tocar la imagen enviada por el cliente");
+});
+
+test("F13-06: ambos wrappers de OpenAI (lib/openai/index.ts, lib/openai/vision.ts) comprueban su kill switch ANTES de construir el cliente de OpenAI (defensa en profundidad)", () => {
+  // Se busca el SITIO DE LLAMADA real (`= getOpenAiClient()`), no la
+  // cadena suelta "getOpenAiClient()" — ambos archivos la mencionan
+  // también dentro de un comentario ANTES del código real, lo que daría
+  // un falso positivo si se buscara la cadena sin más contexto.
+  const recSource = readSource("lib/openai/index.ts");
+  const recKillSwitchIdx = recSource.indexOf("isAiRecommendationsEnabled()");
+  const recClientIdx = recSource.indexOf("= getOpenAiClient();");
+  assert.ok(recKillSwitchIdx !== -1 && recClientIdx !== -1);
+  assert.ok(recKillSwitchIdx < recClientIdx);
+
+  const visionSource = readSource("lib/openai/vision.ts");
+  const visionKillSwitchIdx = visionSource.indexOf("isVisionEnabled()");
+  const visionClientIdx = visionSource.indexOf("= getOpenAiClient();");
+  assert.ok(visionKillSwitchIdx !== -1 && visionClientIdx !== -1);
+  assert.ok(visionKillSwitchIdx < visionClientIdx);
+});
