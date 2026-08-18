@@ -283,6 +283,22 @@ test("createBookingAction (F7-04): otorga la recompensa de Points DENTRO del mis
   assert.ok(/referenceId:\s*bookingId/.test(rewardCallBlock), "referenceId debe ser el bookingId real de ESTA reserva, para la idempotencia por referencia");
 });
 
+test("createBookingAction (F12-02): registra reward_earned solo si createRewardTransaction realmente creó la fila (created:true)", () => {
+  const source = readFileSync(path.join(process.cwd(), "app/booking/actions.ts"), "utf-8");
+
+  const rewardIdx = source.indexOf("await createRewardTransaction(");
+  assert.ok(rewardIdx !== -1);
+
+  const rewardEarnedIdx = source.indexOf('logAnalyticsEvent("reward_earned"', rewardIdx);
+  assert.ok(rewardEarnedIdx !== -1, "falta la llamada a logAnalyticsEvent(\"reward_earned\", ...) tras crear la recompensa");
+
+  const betweenBlock = source.slice(rewardIdx, rewardEarnedIdx);
+  assert.ok(
+    /if\s*\(rewardResult\.created\)\s*\{/.test(betweenBlock),
+    "reward_earned debe estar condicionado a rewardResult.created, para no duplicar el evento en un reintento idempotente",
+  );
+});
+
 test("createBookingAction (F7-04): un fallo al crear la recompensa no impide devolver success (no rompe una reserva ya válida)", () => {
   const source = readFileSync(path.join(process.cwd(), "app/booking/actions.ts"), "utf-8");
 

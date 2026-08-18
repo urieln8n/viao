@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { LoadingState } from "@/components/state/loading-state";
 import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
+import { recordReturnVisitAction } from "./actions";
 
 type SubmitStatus = "idle" | "loading";
 type SessionStatus = "checking" | "signed-out" | "signed-in";
@@ -96,6 +97,11 @@ export default function LoginPage() {
       setPassword("");
       setStatus("idle");
       // onAuthStateChange actualiza sessionStatus/userEmail.
+
+      // F12-05 (VIAO_ROADMAP.md) — solo aquí, tras un signInWithPassword()
+      // real y exitoso (nunca en el useEffect de montaje) — best-effort,
+      // nunca bloquea ni afecta el resultado del login.
+      void recordReturnVisitAction();
     } catch {
       setSubmitError(t("login.errorUnexpected"));
       setStatus("idle");

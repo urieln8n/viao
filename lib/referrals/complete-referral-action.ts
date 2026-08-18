@@ -1,5 +1,6 @@
 import { createServiceRoleClient } from "../supabase/service";
 import { createRewardTransaction } from "../rewards/create-reward-transaction";
+import { logAnalyticsEvent } from "../analytics/log-event";
 import {
   REFERRED_REWARD_POINTS_PROVISIONAL,
   REFERRER_REWARD_POINTS_PROVISIONAL,
@@ -75,20 +76,41 @@ export async function completeReferralActionIfPending(
     return;
   }
 
-  await createRewardTransaction({
+  const referrerReward = await createRewardTransaction({
     userId: referral.referrer_id,
     amount: REFERRER_REWARD_POINTS_PROVISIONAL,
     reason: "referral",
     referenceType: "referral",
     referenceId: referral.id,
   });
-  await createRewardTransaction({
+  const referredReward = await createRewardTransaction({
     userId: referral.referred_id,
     amount: REFERRED_REWARD_POINTS_PROVISIONAL,
     reason: "referral",
     referenceType: "referral",
     referenceId: referral.id,
   });
+
+  // F12-02 (VIAO_ROADMAP.md) — `reward_earned` para AMBAS partes, cada una
+  // con su `userId` explícito (nunca el de la sesión actual: quien invoca
+  // esta función está autenticado como el REFERIDO, no como el referrer —
+  // ver el parámetro `explicitUserId` de `logAnalyticsEvent`, F12-02).
+  // Solo si `created: true`, mismo criterio de idempotencia que la
+  // recompensa de reserva (F12-02).
+  if (referrerReward.created) {
+    await logAnalyticsEvent(
+      "reward_earned",
+      { referralId: referral.id, reason: "referral", amount: REFERRER_REWARD_POINTS_PROVISIONAL, role: "referrer" },
+      referral.referrer_id,
+    );
+  }
+  if (referredReward.created) {
+    await logAnalyticsEvent(
+      "reward_earned",
+      { referralId: referral.id, reason: "referral", amount: REFERRED_REWARD_POINTS_PROVISIONAL, role: "referred" },
+      referral.referred_id,
+    );
+  }
 
   const { error: updateError } = await service
     .from("referrals")

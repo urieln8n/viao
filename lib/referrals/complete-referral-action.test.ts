@@ -142,6 +142,105 @@ test("completeReferralActionIfPending: con una referral pending, crea 1 reward p
   }
 });
 
+// ── F12-02: reward_earned para AMBAS partes, cada uno con su propio user_id ──
+test("completeReferralActionIfPending (F12-02): registra reward_earned para el referrer Y para el referred, cada uno atribuido a su propio user_id", async () => {
+  const { referrerId, referredId, referralId } = await createReferralPair();
+  try {
+    await completeReferralActionIfPending(referredId);
+
+    // Tanto referrer como referred son usuarios recién registrados (via
+    // createReferralPair -> signUpUser): cada uno YA tiene su propio
+    // reward_earned de registro (F12-02) antes de esta llamada — se filtra
+    // por metadata.referralId, específico del reward_earned de referido.
+    const service = createServiceRoleClient();
+    const { data: referrerEvents } = await service
+      .from("analytics_events")
+      .select("user_id, metadata")
+      .eq("event_name", "reward_earned")
+      .eq("user_id", referrerId);
+    const referrerReferralEvent = (referrerEvents ?? []).find(
+      (row) => (row.metadata as Record<string, unknown>).referralId === referralId,
+    );
+    assert.ok(referrerReferralEvent, "debe existir un reward_earned de referral para el referrer");
+
+    const { data: referredEvents } = await service
+      .from("analytics_events")
+      .select("user_id, metadata")
+      .eq("event_name", "reward_earned")
+      .eq("user_id", referredId);
+    const referredReferralEvent = (referredEvents ?? []).find(
+      (row) => (row.metadata as Record<string, unknown>).referralId === referralId,
+    );
+    assert.ok(referredReferralEvent, "debe existir un reward_earned de referral para el referido");
+  } finally {
+    await deleteTestUser(referrerId);
+    await deleteTestUser(referredId);
+  }
+});
+
+// ── F12-02: repetir la acción no duplica los eventos de analytics ──
+test("completeReferralActionIfPending (F12-02): repetir la acción sobre una referral ya rewarded no duplica reward_earned", async () => {
+  const { referrerId, referredId, referralId } = await createReferralPair();
+  try {
+    await completeReferralActionIfPending(referredId);
+    await completeReferralActionIfPending(referredId);
+    await completeReferralActionIfPending(referredId);
+
+    const service = createServiceRoleClient();
+    const { count } = await service
+      .from("analytics_events")
+      .select("id", { count: "exact", head: true })
+      .eq("event_name", "reward_earned")
+      .eq("metadata->>referralId", referralId)
+      .in("user_id", [referrerId, referredId]);
+    assert.equal(count, 2, "exactamente 1 reward_earned de referral por parte, nunca más aunque se repita la llamada");
+  } finally {
+    await deleteTestUser(referrerId);
+    await deleteTestUser(referredId);
+  }
+});
+
+// ── F12-02: referral_created se registra desde el trigger de registro, atribuido al referrer ──
+test("F12-02: referral_created se registra al crear la referral (trigger de registro), atribuido al referrer", async () => {
+  const referrer = await signUpUser();
+  const { data: referrerProfile } = await referrer.authedClient
+    .from("profiles")
+    .select("referral_code")
+    .eq("id", referrer.userId)
+    .single();
+  assert.ok(referrerProfile);
+
+  const referred = await signUpUser(referrerProfile.referral_code);
+  try {
+    const service = createServiceRoleClient();
+    const { data } = await service
+      .from("analytics_events")
+      .select("user_id, metadata")
+      .eq("event_name", "referral_created")
+      .eq("user_id", referrer.userId);
+    assert.equal(data?.length, 1);
+    assert.equal((data![0].metadata as Record<string, unknown>).referred_id, referred.userId);
+  } finally {
+    await deleteTestUser(referrer.userId);
+    await deleteTestUser(referred.userId);
+  }
+});
+
+test("F12-02: un código de referido inválido/inexistente NO genera referral_created", async () => {
+  const { userId } = await signUpUser("CODIGO-QUE-NO-EXISTE-123");
+  try {
+    const service = createServiceRoleClient();
+    const { data } = await service
+      .from("analytics_events")
+      .select("id")
+      .eq("event_name", "referral_created")
+      .eq("user_id", userId);
+    assert.equal(data?.length ?? 0, 0);
+  } finally {
+    await deleteTestUser(userId);
+  }
+});
+
 // ── Repetición: 0 rewards adicionales ──
 test("completeReferralActionIfPending: repetir la acción sobre una referral ya rewarded no crea rewards adicionales", async () => {
   const { referrerId, referredId, referralId } = await createReferralPair();

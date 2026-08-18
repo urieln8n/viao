@@ -361,13 +361,24 @@ export async function createBookingAction(
       // Igual que `updateBookingStatus`/`logAnalyticsEvent`: un fallo aquí
       // se registra pero nunca deshace ni oculta una reserva ya válida.
       try {
-        await createRewardTransaction({
+        const rewardResult = await createRewardTransaction({
           userId: user.id,
           amount: BOOKING_REWARD_POINTS_PROVISIONAL,
           reason: "booking",
           referenceType: "booking",
           referenceId: bookingId,
         });
+        // F12-02 (VIAO_ROADMAP.md) — `reward_earned` solo si esta llamada
+        // creó de verdad la fila (`created: true`); un reintento idempotente
+        // de la MISMA reserva (ver `createRewardTransaction`, F7-01) no debe
+        // duplicar el evento de analytics.
+        if (rewardResult.created) {
+          await logAnalyticsEvent("reward_earned", {
+            bookingId,
+            reason: "booking",
+            amount: BOOKING_REWARD_POINTS_PROVISIONAL,
+          });
+        }
       } catch (rewardError) {
         console.error(
           `[rewards] No se pudo registrar la recompensa de Points para la reserva "${bookingId}":`,
