@@ -42,9 +42,15 @@ function mapSignUpError(error: { message: string; code?: string }): string {
 export default function RegisterPage() {
   const emailId = useId();
   const passwordId = useId();
+  const referralCodeId = useId();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // F8-02 (VIAO_ROADMAP.md) — opcional, sin validación de formato en el
+  // cliente: el backend (trigger `handle_new_user()`) resuelve el código
+  // a un `referrer_id` real o lo ignora si no existe, nunca bloquea el
+  // registro por un código inválido.
+  const [referralCode, setReferralCode] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [status, setStatus] = useState<SubmitStatus>("idle");
@@ -78,9 +84,18 @@ export default function RegisterPage() {
 
     try {
       const supabase = createClient();
+      const trimmedReferralCode = referralCode.trim();
       const { data, error } = await supabase.auth.signUp({
         email: trimmedEmail,
         password,
+        // F8-02 — el ÚNICO dato de referido que el cliente puede enviar
+        // es este texto libre, guardado por Supabase Auth en
+        // `raw_user_meta_data` (verificado empíricamente antes de esta
+        // fase). Nunca un `referrer_id`: el backend resuelve el código a
+        // su propietario dentro del trigger de alta, server-side.
+        ...(trimmedReferralCode
+          ? { options: { data: { referral_code: trimmedReferralCode } } }
+          : {}),
       });
 
       if (error) {
@@ -156,6 +171,21 @@ export default function RegisterPage() {
                     {passwordError}
                   </p>
                 )}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor={referralCodeId} className="text-sm font-medium">
+                  {t("register.referralCodeLabel")}
+                </label>
+                <Input
+                  id={referralCodeId}
+                  name="referralCode"
+                  type="text"
+                  autoComplete="off"
+                  value={referralCode}
+                  onChange={(event) => setReferralCode(event.target.value)}
+                  disabled={isLoading}
+                />
               </div>
 
               <Button type="submit" disabled={isLoading}>

@@ -32,6 +32,7 @@ export const en = {
   "register.validationEmailRequired": "Email is required.",
   "register.validationPasswordRequired": "Password is required.",
   "register.validationPasswordLength": "Password must be at least 6 characters.",
+  "register.referralCodeLabel": "Referral code (optional)",
   "login.title": "Sign in",
   "login.emailLabel": "Email",
   "login.passwordLabel": "Password",
@@ -173,6 +174,7 @@ export const en = {
     "You'll see your Points here once you register your account or complete a booking.",
   "rewards.reasonRegistration": "Account registration",
   "rewards.reasonBooking": "Confirmed booking",
+  "rewards.reasonReferral": "Referral reward",
   "rewards.referenceLabel": "Reference",
   "rewards.unauthenticatedTitle": "Sign in to view your Wallet",
   "rewards.unauthenticatedMessage":

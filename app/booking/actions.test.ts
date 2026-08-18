@@ -313,6 +313,84 @@ test("createBookingAction (F7-04): ninguna rama de error puede alcanzar createRe
   );
 });
 
+// ── F8-04: acción válida de referidos, dentro del mismo guard, DESPUÉS de la recompensa de reserva ──
+test("createBookingAction (F8-04) llama a completeReferralActionIfPending DENTRO del mismo guard, tras la recompensa de reserva, y solo si VALID_REFERRAL_ACTION_TRIGGER === \"booking_confirmed\"", () => {
+  const source = readFileSync(path.join(process.cwd(), "app/booking/actions.ts"), "utf-8");
+
+  assert.ok(
+    /import \{ completeReferralActionIfPending \} from "\.\.\/\.\.\/lib\/referrals\/complete-referral-action"/.test(source),
+    "actions.ts debe importar completeReferralActionIfPending de lib/referrals/ (F8-04), sin reimplementar la orquestación",
+  );
+  assert.ok(
+    /import \{ VALID_REFERRAL_ACTION_TRIGGER \} from "\.\.\/\.\.\/lib\/referrals\/rules"/.test(source),
+    "actions.ts debe importar la condición centralizada de lib/referrals/rules.ts (F8-03)",
+  );
+
+  const occurrences = source.match(/await completeReferralActionIfPending\(/g) ?? [];
+  assert.equal(occurrences.length, 1, "completeReferralActionIfPending debe llamarse en exactamente un punto del archivo");
+
+  const ifGuardMatch = source.match(
+    /if \(statusUpdateSucceeded && bookingResult\.status === "confirmed"\) \{([\s\S]*?)\n {4}\}/,
+  );
+  assert.ok(ifGuardMatch, "no se encontró el guard compartido con booking_completed/la recompensa de reserva");
+  const guardBody = ifGuardMatch![1];
+
+  assert.ok(
+    /await completeReferralActionIfPending\(/.test(guardBody),
+    "completeReferralActionIfPending debe llamarse DENTRO del mismo guard, nunca fuera de él",
+  );
+  assert.ok(
+    /if \(VALID_REFERRAL_ACTION_TRIGGER === "booking_confirmed"\) \{/.test(guardBody),
+    "la llamada debe estar condicionada a la constante centralizada de F8-03, no ser incondicional",
+  );
+
+  const rewardCallIdx = guardBody.indexOf("await createRewardTransaction(");
+  const referralCallIdx = guardBody.indexOf("await completeReferralActionIfPending(");
+  assert.ok(rewardCallIdx !== -1 && referralCallIdx !== -1);
+  assert.ok(
+    referralCallIdx > rewardCallIdx,
+    "la acción válida de referidos debe evaluarse DESPUÉS de otorgar la recompensa de reserva, no antes",
+  );
+
+  assert.ok(
+    /completeReferralActionIfPending\(user\.id\)/.test(guardBody),
+    "debe pasar el id del usuario resuelto por sesión (quien confirmó la reserva = el posible referido), nunca uno enviado por el cliente",
+  );
+});
+
+test("createBookingAction (F8-04): un fallo al completar la acción válida de referidos no impide devolver success", () => {
+  const source = readFileSync(path.join(process.cwd(), "app/booking/actions.ts"), "utf-8");
+
+  const referralCallIndex = source.indexOf("await completeReferralActionIfPending(");
+  const successReturnIndex = source.indexOf('status: "success"', referralCallIndex);
+  assert.ok(referralCallIndex !== -1 && successReturnIndex !== -1);
+  assert.ok(
+    successReturnIndex > referralCallIndex,
+    "el return de éxito debe seguir ocurriendo después del intento de completar la acción válida de referidos",
+  );
+
+  const catchBodyMatch = source.match(/catch \(referralError\) \{([\s\S]*?)\n {8}\}/);
+  assert.ok(catchBodyMatch, "se esperaba un catch dedicado (referralError) que no interrumpa el flujo de éxito");
+  assert.ok(
+    !/return/.test(catchBodyMatch![1]),
+    "el catch de referralError no debe hacer return: un fallo al completar la referral no debe convertirse en un fallo de la Action",
+  );
+});
+
+test("createBookingAction (F8-04): ninguna rama de error puede alcanzar completeReferralActionIfPending", () => {
+  const source = readFileSync(path.join(process.cwd(), "app/booking/actions.ts"), "utf-8");
+
+  const outerTryIndex = source.indexOf("try {\n    const propertyRowId = await upsertPropertyCache(property);");
+  const referralCallIndex = source.indexOf("await completeReferralActionIfPending(");
+  const outerCatchIndex = source.indexOf("} catch (error) {\n    // El provider YA aceptó la reserva");
+
+  assert.ok(outerTryIndex !== -1 && referralCallIndex !== -1 && outerCatchIndex !== -1);
+  assert.ok(
+    outerTryIndex < referralCallIndex && referralCallIndex < outerCatchIndex,
+    "la llamada a completeReferralActionIfPending debe vivir dentro del try de persistencia, antes de su catch",
+  );
+});
+
 // ── F6-06: search_id solo se persiste si pertenece al usuario que reserva ──
 test("createBookingAction (F6-06) resuelve search_id vía getSearchById, DESPUÉS de conocer al usuario, nunca antes", () => {
   const source = readFileSync(path.join(process.cwd(), "app/booking/actions.ts"), "utf-8");

@@ -27,6 +27,7 @@ import { getRewardTransactions } from "../../lib/rewards/get-reward-transactions
 const REASON_LABEL_KEY: Record<string, TranslationKey> = {
   registration: "rewards.reasonRegistration",
   booking: "rewards.reasonBooking",
+  referral: "rewards.reasonReferral",
 };
 
 /** Reutiliza la etiqueta amigable si el `reason` es uno de los documentados (VIAO_DATABASE.md sección 7); si no, muestra el valor real tal cual — nunca oculta un motivo desconocido. */

@@ -32,6 +32,7 @@ export const es = {
   "register.validationPasswordRequired": "La contraseña es obligatoria.",
   "register.validationPasswordLength":
     "La contraseña debe tener al menos 6 caracteres.",
+  "register.referralCodeLabel": "Código de referido (opcional)",
   "login.title": "Iniciar sesión",
   "login.emailLabel": "Email",
   "login.passwordLabel": "Contraseña",
@@ -184,6 +185,7 @@ export const es = {
     "Aquí verás tus Points en cuanto registres tu cuenta o completes una reserva.",
   "rewards.reasonRegistration": "Registro de cuenta",
   "rewards.reasonBooking": "Reserva confirmada",
+  "rewards.reasonReferral": "Recompensa por referido",
   "rewards.referenceLabel": "Referencia",
   "rewards.unauthenticatedTitle": "Inicia sesión para ver tu Wallet",
   "rewards.unauthenticatedMessage":

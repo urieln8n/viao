@@ -98,10 +98,21 @@
 // Recompensa de Points (F7-04, VIAO_ROADMAP.md, `lib/rewards/`): dentro
 // del MISMO guard que `booking_completed` — misma regla exacta ("solo tras
 // confirmar realmente"). Idempotente vía la constraint real
-// `rewards_transactions_reference_reason_unique`, así que un reintento de
+// `rewards_transactions_user_reference_reason_unique` (corregida en F8-04,
+// ver `lib/rewards/create-reward-transaction.ts`), así que un reintento de
 // esta Action para la misma reserva nunca duplica los Points. Monto
 // PROVISIONAL (`BOOKING_REWARD_POINTS_PROVISIONAL`,
 // `lib/rewards/rules.ts`) — sin ninguna conversión a EUR.
+//
+// Acción válida de referidos (F8-04, VIAO_ROADMAP.md, `lib/referrals/`):
+// también dentro del MISMO guard — una reserva confirmada es HOY la
+// implementación técnica PROVISIONAL de "acción válida"
+// (`VALID_REFERRAL_ACTION_TRIGGER`, `lib/referrals/rules.ts`, ÚNICO punto
+// de configuración; no una decisión de producto definitiva, ver ese
+// archivo). `completeReferralActionIfPending()` reutiliza
+// `createRewardTransaction()` (F7-01) para recompensar a ambas partes —
+// nunca escribe `rewards_transactions` directamente ni crea un ledger
+// paralelo.
 
 import { getTravelProvider } from "../../lib/travel-provider";
 import {
@@ -116,6 +127,8 @@ import { updateBookingStatus } from "../../lib/bookings/update-booking-status";
 import { logAnalyticsEvent } from "../../lib/analytics/log-event";
 import { createRewardTransaction } from "../../lib/rewards/create-reward-transaction";
 import { BOOKING_REWARD_POINTS_PROVISIONAL } from "../../lib/rewards/rules";
+import { completeReferralActionIfPending } from "../../lib/referrals/complete-referral-action";
+import { VALID_REFERRAL_ACTION_TRIGGER } from "../../lib/referrals/rules";
 import { getSearchById } from "../../lib/searches/get-search-by-id";
 import { isValidUuid } from "../properties/[id]/resolve";
 import { t } from "../../lib/i18n";
@@ -341,8 +354,8 @@ export async function createBookingAction(
       // reserva confirmada, dentro del MISMO guard que `booking_completed`:
       // solo tras una confirmación real, nunca por un clic, una reserva
       // rechazada ni un `pending` sin confirmar. Idempotente vía la
-      // constraint real `rewards_transactions_reference_reason_unique`
-      // (`reason='booking'`, `reference_type='booking'`,
+      // constraint real `rewards_transactions_user_reference_reason_unique`
+      // (`user_id=user.id`, `reason='booking'`, `reference_type='booking'`,
       // `reference_id=bookingId`) — un reintento o una doble ejecución de
       // esta Action para la MISMA reserva nunca duplica la recompensa.
       // Igual que `updateBookingStatus`/`logAnalyticsEvent`: un fallo aquí
@@ -360,6 +373,26 @@ export async function createBookingAction(
           `[rewards] No se pudo registrar la recompensa de Points para la reserva "${bookingId}":`,
           rewardError,
         );
+      }
+
+      // F8-04 (VIAO_ROADMAP.md) — si esta reserva confirmada es la
+      // "acción válida" configurada (hoy: `VALID_REFERRAL_ACTION_TRIGGER
+      // === "booking_confirmed"`, lib/referrals/rules.ts — ÚNICO punto de
+      // configuración, ver F8-03), y este usuario fue referido por otro,
+      // recompensa a ambas partes y transiciona la referral a `rewarded`.
+      // `completeReferralActionIfPending` es un no-op silencioso si este
+      // usuario nunca fue referido (o su referral ya se resolvió) — no es
+      // un error. Mismo patrón de resiliencia que el resto de este guard:
+      // un fallo aquí nunca deshace ni oculta una reserva ya válida.
+      if (VALID_REFERRAL_ACTION_TRIGGER === "booking_confirmed") {
+        try {
+          await completeReferralActionIfPending(user.id);
+        } catch (referralError) {
+          console.error(
+            `[referrals] No se pudo completar la acción válida de referido para el usuario "${user.id}" (reserva "${bookingId}"):`,
+            referralError,
+          );
+        }
       }
     }
 

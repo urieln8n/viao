@@ -1,0 +1,27 @@
+-- F8-04 (VIAO_ROADMAP.md) — GRANT de service_role sobre referrals.
+--
+-- Mismo patrón recurrente ya descubierto en F5-05/F6-02/F6-03/F7-01:
+-- `service_role` tiene `BYPASSRLS` pero NUNCA recibe ningún GRANT de
+-- Postgres automáticamente — verificado con `\dp public.referrals` contra
+-- Supabase local: `service_role=Dxtm` (sin SELECT/INSERT/UPDATE).
+--
+-- VIAO_DATABASE.md sección 9: "Insertar/Modificar/Eliminar: nadie desde
+-- el cliente — la fila se crea en el backend durante el registro
+-- (validando el código y la unicidad) y el estado cambia a `rewarded`
+-- cuando el backend confirma la acción válida".
+--
+-- Alcance: ÚNICAMENTE SELECT + UPDATE.
+-- - SELECT: `lib/referrals/complete-referral-action.ts` (F8-04) necesita
+--   leer la fila `pending` del usuario referido para poder recompensar a
+--   ambas partes.
+-- - UPDATE: esa misma función transiciona `status` de `pending` a
+--   `rewarded` cuando ambas recompensas se han creado correctamente.
+-- - SIN INSERT: la fila de `referrals` la crea el trigger
+--   `handle_new_user()` (F8-02, migración 20260818140000_*.sql),
+--   `SECURITY DEFINER` propiedad de `postgres` — ese trigger NO necesita
+--   ningún GRANT (superusuario), así que `service_role` nunca inserta una
+--   referral desde código de aplicación. Conceder INSERT aquí sería un
+--   privilegio más amplio del necesario.
+-- - SIN DELETE: ninguna fase borra una referral.
+
+grant select, update on public.referrals to service_role;

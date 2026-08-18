@@ -21,16 +21,23 @@ import { createServiceRoleClient } from "../supabase/service";
 //
 // Idempotencia (F7, "punto CRÍTICO"): dos formas de uso.
 // - CON referencia (`referenceType`+`referenceId`, p. ej. una reserva
-//   confirmada): se apoya en la constraint real
-//   `rewards_transactions_reference_reason_unique`
-//   (UNIQUE (reason, reference_type, reference_id), migración
-//   20260818100000_*.sql) mediante `upsert(..., {ignoreDuplicates: true})`
-//   — genera `ON CONFLICT (...) DO NOTHING`, nunca un UPDATE (coherente
-//   con el GRANT: `service_role` no tiene privilegio de UPDATE). Si la
-//   fila ya existía, no devuelve datos (comportamiento de PostgREST con
-//   `resolution=ignore-duplicates`), así que se hace una lectura de
-//   recuperación para devolver el id existente de forma auditable — nunca
-//   se oculta que se trataba de un duplicado (`created: false`).
+//   confirmada, o una referral que recompensa a dos usuarios distintos
+//   sobre el mismo `reference_id` — F8-04): se apoya en la constraint real
+//   `rewards_transactions_user_reference_reason_unique`
+//   (UNIQUE (user_id, reason, reference_type, reference_id), migración
+//   20260818150000_*.sql — corrige a la constraint original de F7-01,
+//   `UNIQUE (reason, reference_type, reference_id)` sin `user_id`, que
+//   bloqueaba incorrectamente que dos usuarios distintos —referrer y
+//   referred— tuvieran cada uno su propia recompensa sobre la MISMA
+//   referral; hallazgo empírico de F8-04, ver esa migración para el
+//   detalle completo) mediante `upsert(..., {ignoreDuplicates: true})` —
+//   genera `ON CONFLICT (...) DO NOTHING`, nunca un UPDATE (coherente con
+//   el GRANT: `service_role` no tiene privilegio de UPDATE). Si la fila ya
+//   existía (mismo usuario, misma referencia), no devuelve datos
+//   (comportamiento de PostgREST con `resolution=ignore-duplicates`), así
+//   que se hace una lectura de recuperación para devolver el id existente
+//   de forma auditable — nunca se oculta que se trataba de un duplicado
+//   (`created: false`).
 // - SIN referencia (p. ej. `reason: "registration"`): en producción ese
 //   caso real NUNCA pasa por esta función — se otorga desde el trigger
 //   `handle_new_user()` (ver `lib/rewards/rules.ts` y la migración
@@ -86,7 +93,7 @@ export async function createRewardTransaction({
           reference_type: referenceType,
           reference_id: referenceId,
         },
-        { onConflict: "reason,reference_type,reference_id", ignoreDuplicates: true },
+        { onConflict: "user_id,reason,reference_type,reference_id", ignoreDuplicates: true },
       )
       .select("id");
 
@@ -97,11 +104,13 @@ export async function createRewardTransaction({
       return { id: data[0].id as string, created: true };
     }
 
-    // Conflicto ignorado: ya existía. Se recupera su id para devolverlo
-    // igualmente (auditable), nunca se oculta el resultado.
+    // Conflicto ignorado: ya existía (mismo usuario, misma referencia).
+    // Se recupera su id para devolverlo igualmente (auditable), nunca se
+    // oculta el resultado.
     const { data: existing, error: existingError } = await service
       .from("rewards_transactions")
       .select("id")
+      .eq("user_id", userId)
       .eq("reason", reason)
       .eq("reference_type", referenceType)
       .eq("reference_id", referenceId)
