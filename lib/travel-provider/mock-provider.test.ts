@@ -136,6 +136,34 @@ test("getPrice: es determinista/reproducible para la misma consulta", async () =
   assert.equal(first.currency, "EUR");
 });
 
+// ── F14-01 (VIAO_ROADMAP.md): cierra el único hueco real detectado en la
+// auditoría de cobertura del contrato — getPrice/getConditions ya se
+// probaban para un alojamiento válido, pero no para uno inexistente
+// (a diferencia de checkAvailability/getDetails, que sí lo hacían desde
+// F4-04). Mismo comportamiento consistente en las 4 capacidades de
+// solo-lectura del contrato: ProviderUnavailableError, nunca otro tipo
+// de error ni un resultado inventado. ──
+test("getPrice: alojamiento inexistente lanza ProviderUnavailableError (mismo contrato que checkAvailability/getDetails)", async () => {
+  const provider = new MockHotelProvider();
+  await assert.rejects(
+    () => provider.getPrice({ providerPropertyId: "no-existe", ...VALID_STAY }),
+    ProviderUnavailableError,
+  );
+});
+
+test("getConditions: alojamiento inexistente lanza ProviderUnavailableError (mismo contrato que checkAvailability/getDetails)", async () => {
+  const provider = new MockHotelProvider();
+  await assert.rejects(
+    () =>
+      provider.getConditions({
+        providerPropertyId: "no-existe",
+        checkIn: VALID_STAY.checkIn,
+        checkOut: VALID_STAY.checkOut,
+      }),
+    ProviderUnavailableError,
+  );
+});
+
 test("getConditions: devuelve condiciones estables para un alojamiento válido", async () => {
   const provider = new MockHotelProvider();
   const conditions = await provider.getConditions({
