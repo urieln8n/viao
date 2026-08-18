@@ -100,4 +100,31 @@ export const es = {
   "profile.validationAvatarUrlInvalid": "La URL del avatar no es válida.",
   "profile.errorUnexpected":
     "No se ha podido guardar el perfil. Inténtalo de nuevo.",
+  "search.title": "Buscar alojamiento",
+  "search.destinationLabel": "Destino",
+  "search.checkInLabel": "Fecha de entrada",
+  "search.checkOutLabel": "Fecha de salida",
+  "search.guestsLabel": "Huéspedes",
+  "search.roomsLabel": "Habitaciones",
+  "search.submitButton": "Buscar",
+  "search.validationDestinationRequired": "El destino es obligatorio.",
+  "search.validationCheckInRequired": "La fecha de entrada es obligatoria.",
+  "search.validationCheckOutRequired": "La fecha de salida es obligatoria.",
+  "search.validationDateRange":
+    "La fecha de salida debe ser posterior a la de entrada.",
+  "search.validationGuestsMin":
+    "El número de huéspedes debe ser al menos 1.",
+  "search.validationRoomsMin":
+    "El número de habitaciones debe ser al menos 1.",
+  "results.title": "Resultados de búsqueda",
+  "results.loadingMessage": "Buscando alojamientos...",
+  "results.backToSearch": "Volver a la búsqueda",
+  "results.viewProperty": "Ver alojamiento",
+  "results.priceUnavailable": "Precio no disponible",
+  "results.emptyTitle": "No se han encontrado alojamientos",
+  "results.emptyMessage": "Prueba con otro destino o con otras fechas.",
+  "results.invalidInputTitle": "Búsqueda no válida",
+  "results.errorTitle": "No se pudo completar la búsqueda",
+  "propertyDetail.backToSearch": "Volver a la búsqueda",
+  "propertyDetail.errorTitle": "No se pudo cargar el alojamiento",
 } as const;

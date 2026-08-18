@@ -1,0 +1,37 @@
+-- F5-05 (VIAO_ROADMAP.md) — GRANT de service_role sobre analytics_events.
+--
+-- Descubierto empíricamente al probar `lib/supabase/service.ts` (F5-05)
+-- contra Supabase local real: el insert fallaba con
+-- "permission denied for table analytics_events" (Postgres 42501).
+-- `20260817150000_enable_rls_and_policies.sql` activó RLS en todas las
+-- tablas pero nunca otorgó ningún GRANT explícito a `service_role` sobre
+-- `analytics_events` (ni sobre el resto del Patrón B). RLS y los
+-- privilegios de GRANT son mecanismos ortogonales en Postgres: que
+-- `service_role` tenga `BYPASSRLS` no le concede automáticamente
+-- SELECT/INSERT sobre una tabla — sin GRANT, la operación falla igual,
+-- pase o no pase las políticas RLS.
+--
+-- F3-07 no topó con esto porque el evento `registered` se inserta desde
+-- una función `SECURITY DEFINER` propiedad de `postgres` (ejecuta como
+-- superusuario, sin pasar por los privilegios de `service_role`). F5-05 es
+-- la primera escritura real de VIAO que sí pasa por un cliente
+-- autenticado como `service_role` (`lib/supabase/service.ts`), y la
+-- primera en detectar este vacío.
+--
+-- Alcance deliberadamente mínimo: únicamente `analytics_events`, la tabla
+-- que F5-05 necesita. El mismo vacío existe hoy también en
+-- `bookings`/`rewards_transactions`/`referrals`/`vision_scans`, pero
+-- corregirlo ahí no es necesario para F5-05 — se deja fuera de alcance a
+-- propósito, para la fase que implemente su primera escritura real vía
+-- `service_role` (p. ej. F6-02 para `bookings`), sin adelantar ese
+-- trabajo aquí.
+--
+-- Alcance del privilegio: SELECT + INSERT únicamente, coherente con
+-- VIAO_DATABASE.md sección 12 ("Insertar: solo el backend... Modificar/
+-- Eliminar: nadie"). Sin UPDATE ni DELETE: `analytics_events` es un log de
+-- solo-inserción (append-only), igual que el resto de tablas append-only
+-- del esquema. SELECT se concede porque la propia sección 12 prevé lectura
+-- de backend/reporting interno, y porque verificar un insert vía
+-- PostgREST (patrón `.insert().select()`) lo requiere.
+
+grant select, insert on public.analytics_events to service_role;
