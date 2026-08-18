@@ -5,6 +5,7 @@ import { getSearchById } from "../../../lib/searches/get-search-by-id";
 import { getTravelProvider } from "../../../lib/travel-provider";
 import { TravelProviderError } from "../../../lib/travel-provider/errors";
 import { checkAndConsumeRateLimit } from "../../../lib/rate-limit/check-rate-limit";
+import { AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL } from "../../../lib/rate-limit/config";
 import {
   generateSearchRecommendation,
   type RecommendationContextItem,
@@ -118,6 +119,7 @@ export async function requestAiRecommendationAction(
   const rateLimit = await checkAndConsumeRateLimit({
     userId,
     endpoint: ENDPOINT,
+    rule: AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL,
   });
   if (!rateLimit.allowed) {
     await logAiRecommendationOutcome({

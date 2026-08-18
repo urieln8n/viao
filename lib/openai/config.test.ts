@@ -12,6 +12,7 @@ import {
   getOpenAiModel,
   getOpenAiTimeoutMs,
   isAiRecommendationsEnabled,
+  isVisionEnabled,
 } from "./config";
 
 function withEnv(name: string, value: string | undefined, run: () => void) {
@@ -60,6 +61,42 @@ test("isAiRecommendationsEnabled: cualquier otro valor (mayúsculas, \"1\", text
 test("isAiRecommendationsEnabled: cadena vacía deshabilita", () => {
   withEnv("AI_RECOMMENDATIONS_ENABLED", "", () => {
     assert.equal(isAiRecommendationsEnabled(), false);
+  });
+});
+
+// ── F10-05: kill switch de Vision, fail-closed e independiente del de recomendación ──
+test("isVisionEnabled: sin la variable definida, deshabilitado (fail-closed)", () => {
+  withEnv("VISION_ENABLED", undefined, () => {
+    assert.equal(isVisionEnabled(), false);
+  });
+});
+
+test('isVisionEnabled: "true" exacto habilita', () => {
+  withEnv("VISION_ENABLED", "true", () => {
+    assert.equal(isVisionEnabled(), true);
+  });
+});
+
+test("isVisionEnabled: cualquier otro valor deshabilita (fail-closed)", () => {
+  for (const value of ["TRUE", "1", "yes", " true", "true "]) {
+    withEnv("VISION_ENABLED", value, () => {
+      assert.equal(isVisionEnabled(), false);
+    });
+  }
+});
+
+test("isVisionEnabled y isAiRecommendationsEnabled son independientes (activar uno no activa el otro)", () => {
+  withEnv("VISION_ENABLED", "true", () => {
+    withEnv("AI_RECOMMENDATIONS_ENABLED", undefined, () => {
+      assert.equal(isVisionEnabled(), true);
+      assert.equal(isAiRecommendationsEnabled(), false);
+    });
+  });
+  withEnv("AI_RECOMMENDATIONS_ENABLED", "true", () => {
+    withEnv("VISION_ENABLED", undefined, () => {
+      assert.equal(isAiRecommendationsEnabled(), true);
+      assert.equal(isVisionEnabled(), false);
+    });
   });
 });
 

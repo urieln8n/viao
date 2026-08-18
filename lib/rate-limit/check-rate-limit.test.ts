@@ -13,7 +13,10 @@ import { createClient } from "@supabase/supabase-js";
 
 import { createServiceRoleClient } from "../supabase/service";
 import { checkAndConsumeRateLimit } from "./check-rate-limit";
-import { AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL } from "./config";
+import {
+  AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL,
+  VISION_SCAN_RATE_LIMIT_PROVISIONAL,
+} from "./config";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -49,11 +52,11 @@ test(`checkAndConsumeRateLimit: permite hasta ${AI_RECOMMENDATION_RATE_LIMIT_PRO
   const { userId } = await signUpUser();
   try {
     for (let i = 0; i < AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL.maxRequests; i++) {
-      const result = await checkAndConsumeRateLimit({ userId, endpoint: ENDPOINT });
+      const result = await checkAndConsumeRateLimit({ userId, endpoint: ENDPOINT, rule: AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL });
       assert.equal(result.allowed, true, `la llamada ${i + 1} debía estar permitida`);
     }
 
-    const blocked = await checkAndConsumeRateLimit({ userId, endpoint: ENDPOINT });
+    const blocked = await checkAndConsumeRateLimit({ userId, endpoint: ENDPOINT, rule: AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL });
     assert.equal(blocked.allowed, false, "la llamada límite+1 debía estar bloqueada");
     assert.equal(blocked.limit, AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL.maxRequests);
   } finally {
@@ -65,10 +68,10 @@ test("checkAndConsumeRateLimit: una llamada bloqueada NO inserta una fila nueva 
   const { userId } = await signUpUser();
   try {
     for (let i = 0; i < AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL.maxRequests; i++) {
-      await checkAndConsumeRateLimit({ userId, endpoint: ENDPOINT });
+      await checkAndConsumeRateLimit({ userId, endpoint: ENDPOINT, rule: AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL });
     }
-    await checkAndConsumeRateLimit({ userId, endpoint: ENDPOINT });
-    await checkAndConsumeRateLimit({ userId, endpoint: ENDPOINT });
+    await checkAndConsumeRateLimit({ userId, endpoint: ENDPOINT, rule: AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL });
+    await checkAndConsumeRateLimit({ userId, endpoint: ENDPOINT, rule: AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL });
 
     const service = createServiceRoleClient();
     const { count } = await service
@@ -92,13 +95,13 @@ test("checkAndConsumeRateLimit: dos usuarios distintos tienen presupuestos indep
   const userB = await signUpUser();
   try {
     for (let i = 0; i < AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL.maxRequests; i++) {
-      const result = await checkAndConsumeRateLimit({ userId: userA.userId, endpoint: ENDPOINT });
+      const result = await checkAndConsumeRateLimit({ userId: userA.userId, endpoint: ENDPOINT, rule: AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL });
       assert.equal(result.allowed, true);
     }
-    const blockedA = await checkAndConsumeRateLimit({ userId: userA.userId, endpoint: ENDPOINT });
+    const blockedA = await checkAndConsumeRateLimit({ userId: userA.userId, endpoint: ENDPOINT, rule: AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL });
     assert.equal(blockedA.allowed, false, "usuario A debe estar bloqueado tras agotar su cupo");
 
-    const firstB = await checkAndConsumeRateLimit({ userId: userB.userId, endpoint: ENDPOINT });
+    const firstB = await checkAndConsumeRateLimit({ userId: userB.userId, endpoint: ENDPOINT, rule: AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL });
     assert.equal(firstB.allowed, true, "usuario B no debe verse afectado por el consumo de A");
   } finally {
     await deleteTestUser(userA.userId);
@@ -110,12 +113,12 @@ test("checkAndConsumeRateLimit: distintos endpoints no comparten presupuesto", a
   const { userId } = await signUpUser();
   try {
     for (let i = 0; i < AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL.maxRequests; i++) {
-      await checkAndConsumeRateLimit({ userId, endpoint: "endpoint_a" });
+      await checkAndConsumeRateLimit({ userId, endpoint: "endpoint_a", rule: AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL });
     }
-    const blockedA = await checkAndConsumeRateLimit({ userId, endpoint: "endpoint_a" });
+    const blockedA = await checkAndConsumeRateLimit({ userId, endpoint: "endpoint_a", rule: AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL });
     assert.equal(blockedA.allowed, false);
 
-    const firstB = await checkAndConsumeRateLimit({ userId, endpoint: "endpoint_b" });
+    const firstB = await checkAndConsumeRateLimit({ userId, endpoint: "endpoint_b", rule: AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL });
     assert.equal(firstB.allowed, true, "un endpoint distinto no debe compartir el contador");
   } finally {
     await deleteTestUser(userId);
@@ -160,4 +163,37 @@ test("un cliente anon no puede leer ni insertar en ai_rate_limit_events", async 
     .from("ai_rate_limit_events")
     .insert({ user_id: "00000000-0000-0000-0000-000000000000", endpoint: ENDPOINT });
   assert.ok(insertError, "se esperaba que el insert anon fuera rechazado");
+});
+
+// ── F10-05: cada endpoint usa su PROPIA rule, no la de otro (presupuesto independiente con límites distintos) ──
+test("checkAndConsumeRateLimit: AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL y VISION_SCAN_RATE_LIMIT_PROVISIONAL son valores provisionales distintos", () => {
+  assert.notEqual(
+    AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL.maxRequests,
+    VISION_SCAN_RATE_LIMIT_PROVISIONAL.maxRequests,
+    "si algún día coincidieran por casualidad, este test deja de ser útil como evidencia — deben configurarse por separado",
+  );
+});
+
+test("checkAndConsumeRateLimit: la rule pasada, no el endpoint, determina el límite aplicado (bloquea justo en VISION_SCAN_RATE_LIMIT_PROVISIONAL.maxRequests, no en el de recomendación)", async () => {
+  const { userId } = await signUpUser();
+  try {
+    for (let i = 0; i < VISION_SCAN_RATE_LIMIT_PROVISIONAL.maxRequests; i++) {
+      const result = await checkAndConsumeRateLimit({
+        userId,
+        endpoint: "vision_scan_test",
+        rule: VISION_SCAN_RATE_LIMIT_PROVISIONAL,
+      });
+      assert.equal(result.allowed, true, `la llamada ${i + 1} debía estar permitida bajo el límite de Vision`);
+    }
+
+    const blocked = await checkAndConsumeRateLimit({
+      userId,
+      endpoint: "vision_scan_test",
+      rule: VISION_SCAN_RATE_LIMIT_PROVISIONAL,
+    });
+    assert.equal(blocked.allowed, false);
+    assert.equal(blocked.limit, VISION_SCAN_RATE_LIMIT_PROVISIONAL.maxRequests);
+  } finally {
+    await deleteTestUser(userId);
+  }
 });

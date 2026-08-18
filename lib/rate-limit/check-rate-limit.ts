@@ -1,5 +1,5 @@
 import { createServiceRoleClient } from "../supabase/service";
-import { AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL } from "./config";
+import type { RateLimitRule } from "./config";
 
 // F9-03 (VIAO_ROADMAP.md) — Rate limiting por usuario, persistente
 // (`ai_rate_limit_events`, supabase/migrations/20260818160000_*.sql —
@@ -28,6 +28,8 @@ import { AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL } from "./config";
 export interface CheckAndConsumeRateLimitInput {
   userId: string;
   endpoint: string;
+  /** F10-05 (VIAO_ROADMAP.md): cada endpoint define su propio presupuesto (p. ej. AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL, VISION_SCAN_RATE_LIMIT_PROVISIONAL) — este módulo no asume ninguno por su cuenta. */
+  rule: RateLimitRule;
 }
 
 export interface RateLimitResult {
@@ -38,8 +40,9 @@ export interface RateLimitResult {
 export async function checkAndConsumeRateLimit({
   userId,
   endpoint,
+  rule,
 }: CheckAndConsumeRateLimitInput): Promise<RateLimitResult> {
-  const { maxRequests, windowMs } = AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL;
+  const { maxRequests, windowMs } = rule;
   const service = createServiceRoleClient();
   const windowStart = new Date(Date.now() - windowMs).toISOString();
 

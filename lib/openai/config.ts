@@ -31,6 +31,17 @@ export function isAiRecommendationsEnabled(): boolean {
 }
 
 /**
+ * Interruptor de emergencia de VIAO Vision (F10-05), independiente del de
+ * recomendaciones — VIAO_ARCHITECTURE.md sección 23 nombra Vision
+ * explícitamente como ejemplo de "función costosa" que debe poder
+ * desactivarse por separado. Mismo criterio fail-closed que
+ * `isAiRecommendationsEnabled`.
+ */
+export function isVisionEnabled(): boolean {
+  return process.env.VISION_ENABLED === "true";
+}
+
+/**
  * Precios USD por 1M tokens — únicamente los modelos que VIAO usa
  * realmente. El resultado de `estimateCostUsd` es una ESTIMACIÓN para
  * controlar el presupuesto de pruebas (20-50€, MVP sección 18), nunca un

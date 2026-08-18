@@ -19,3 +19,14 @@ export const AI_RECOMMENDATION_RATE_LIMIT_PROVISIONAL: RateLimitRule = {
   maxRequests: 5,
   windowMs: 60 * 60 * 1000,
 };
+
+// F10-05 (VIAO_ROADMAP.md) — presupuesto INDEPENDIENTE del de
+// recomendación IA (mismo `checkAndConsumeRateLimit`, `endpoint`
+// distinto: "vision_scan"). Un escaneo de Vision es más costoso por
+// llamada (incluye tokens de imagen) que una recomendación de texto, por
+// eso el límite provisional es más bajo — mismo criterio "provisional,
+// se ajusta después" que el resto de esta configuración.
+export const VISION_SCAN_RATE_LIMIT_PROVISIONAL: RateLimitRule = {
+  maxRequests: 3,
+  windowMs: 60 * 60 * 1000,
+};

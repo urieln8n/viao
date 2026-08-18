@@ -52,3 +52,36 @@ export async function logAiRecommendationOutcome(
 ): Promise<void> {
   await logAnalyticsEvent("recommendation_requested", { ...input });
 }
+
+// F10-02/F10-03 (VIAO_ROADMAP.md) — mismo mecanismo que
+// `logAiRecommendationOutcome` (F9-04), pero para VIAO Vision: reutiliza
+// `analytics_events`/"vision_used" (F3-07, ya reservado en la taxonomía
+// cerrada específicamente para esto) en vez de crear un segundo sistema
+// de logging paralelo. Mismas reglas: se registra CADA intento (éxito,
+// error, bloqueado por rate limit, bloqueado por kill switch, sin
+// consentimiento), nunca la imagen ni el texto completo del resultado —
+// solo metadatos estructurales.
+export type VisionOutcome =
+  | "success"
+  | "provider_error"
+  | "rate_limited"
+  | "disabled"
+  | "no_consent";
+
+export interface LogVisionOutcomeInput {
+  endpoint: string;
+  scanId?: string;
+  model?: string;
+  tokensPrompt?: number;
+  tokensCompletion?: number;
+  estimatedCostUsd?: number;
+  outcome: VisionOutcome;
+  requestId?: string;
+  errorMessage?: string;
+}
+
+export async function logVisionOutcome(
+  input: LogVisionOutcomeInput,
+): Promise<void> {
+  await logAnalyticsEvent("vision_used", { ...input });
+}

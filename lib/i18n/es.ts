@@ -206,4 +206,26 @@ export const es = {
     "Has alcanzado el límite de solicitudes de recomendación. Inténtalo más tarde.",
   "aiRecommendation.errorDisabled":
     "La recomendación por IA no está disponible en este momento.",
+  "vision.title": "VIAO Vision",
+  "vision.description":
+    "Escanea un cartel, menú o señal para traducirlo y obtener una breve explicación.",
+  "vision.consentTitle": "Consentimiento",
+  "vision.consentDescription":
+    "Antes de escanear, necesitamos tu consentimiento para procesar la imagen.",
+  "vision.consentGrantedStatus": "Consentimiento otorgado.",
+  "vision.grantConsentButton": "Dar consentimiento",
+  "vision.withdrawConsentButton": "Retirar consentimiento",
+  "vision.tripIdPlaceholder": "ID de viaje (opcional, para guardar la imagen)",
+  "vision.scanButton": "Escanear",
+  "vision.scanButtonLoading": "Escaneando...",
+  "vision.saveButton": "Guardar imagen",
+  "vision.deleteButton": "Eliminar escaneo",
+  "vision.saveSuccessMessage": "Imagen guardada correctamente.",
+  "vision.deleteSuccessMessage": "Escaneo eliminado correctamente.",
+  "vision.errorUnauthenticated": "Debes iniciar sesión para usar VIAO Vision.",
+  "vision.errorDisabled": "VIAO Vision no está disponible en este momento.",
+  "vision.errorNoConsent": "Necesitas dar tu consentimiento antes de escanear.",
+  "vision.errorRateLimited":
+    "Has alcanzado el límite de escaneos. Inténtalo más tarde.",
+  "vision.errorInvalidImage": "La imagen no es válida.",
 } as const;

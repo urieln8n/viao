@@ -5,9 +5,9 @@
 //
 // Reglas comprobadas:
 // - Solo lib/openai/client.ts construye un cliente (`new OpenAI(`).
-// - Solo lib/openai/client.ts y lib/openai/index.ts importan el paquete
-//   "openai" (index.ts únicamente para el tipo de error `APIError`, no
-//   para construir un cliente).
+// - Solo lib/openai/client.ts, lib/openai/index.ts y lib/openai/vision.ts
+//   (F10-02) importan el paquete "openai" (index.ts/vision.ts únicamente
+//   para el tipo de error `APIError`, no para construir un cliente).
 // - Ningún Client Component ("use client") importa "openai".
 // - Ninguna Server Action (app/**/actions.ts) importa "openai"
 //   directamente — todas deben pasar por lib/openai/.
@@ -53,9 +53,13 @@ test("único cliente OpenAI: solo lib/openai/client.ts construye `new OpenAI(`",
   assert.deepEqual(offenders, [], `archivos que construyen un cliente OpenAI fuera de lib/openai/client.ts: ${offenders.join(", ")}`);
 });
 
-test('único punto de importación: solo lib/openai/client.ts y lib/openai/index.ts importan el paquete "openai"', () => {
+test('único punto de importación: solo lib/openai/client.ts, lib/openai/index.ts y lib/openai/vision.ts importan el paquete "openai"', () => {
   const files = walk(path.join(ROOT, "app")).concat(walk(path.join(ROOT, "lib")));
-  const allowed = new Set(["lib/openai/client.ts", "lib/openai/index.ts"]);
+  const allowed = new Set([
+    "lib/openai/client.ts",
+    "lib/openai/index.ts",
+    "lib/openai/vision.ts",
+  ]);
   const offenders: string[] = [];
 
   for (const file of files) {

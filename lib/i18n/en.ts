@@ -195,4 +195,25 @@ export const en = {
     "You've reached the recommendation request limit. Try again later.",
   "aiRecommendation.errorDisabled":
     "AI recommendations are not available right now.",
+  "vision.title": "VIAO Vision",
+  "vision.description":
+    "Scan a sign, menu, or notice to translate it and get a brief explanation.",
+  "vision.consentTitle": "Consent",
+  "vision.consentDescription":
+    "Before scanning, we need your consent to process the image.",
+  "vision.consentGrantedStatus": "Consent granted.",
+  "vision.grantConsentButton": "Give consent",
+  "vision.withdrawConsentButton": "Withdraw consent",
+  "vision.tripIdPlaceholder": "Trip ID (optional, to save the image)",
+  "vision.scanButton": "Scan",
+  "vision.scanButtonLoading": "Scanning...",
+  "vision.saveButton": "Save image",
+  "vision.deleteButton": "Delete scan",
+  "vision.saveSuccessMessage": "Image saved successfully.",
+  "vision.deleteSuccessMessage": "Scan deleted successfully.",
+  "vision.errorUnauthenticated": "You must sign in to use VIAO Vision.",
+  "vision.errorDisabled": "VIAO Vision is not available right now.",
+  "vision.errorNoConsent": "You need to give consent before scanning.",
+  "vision.errorRateLimited": "You've reached the scan limit. Try again later.",
+  "vision.errorInvalidImage": "The image is not valid.",
 } satisfies Dictionary;
