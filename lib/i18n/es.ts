@@ -191,4 +191,19 @@ export const es = {
   "rewards.unauthenticatedMessage":
     "Necesitas iniciar sesión para consultar tu saldo y tu historial de Points.",
   "rewards.loginCta": "Iniciar sesión",
+  "aiRecommendation.title": "Recomendación VIAO AI",
+  "aiRecommendation.description":
+    "Basada únicamente en los resultados reales de tu búsqueda.",
+  "aiRecommendation.requestButton": "Obtener recomendación",
+  "aiRecommendation.requestButtonLoading": "Generando recomendación...",
+  "aiRecommendation.backToResults": "Volver a los resultados",
+  "aiRecommendation.errorUnauthenticated":
+    "Debes iniciar sesión para pedir una recomendación.",
+  "aiRecommendation.errorInvalidSearchId": "Esta búsqueda no es válida.",
+  "aiRecommendation.errorSearchNotFound":
+    "No se encuentra esta búsqueda, o no te pertenece.",
+  "aiRecommendation.errorRateLimited":
+    "Has alcanzado el límite de solicitudes de recomendación. Inténtalo más tarde.",
+  "aiRecommendation.errorDisabled":
+    "La recomendación por IA no está disponible en este momento.",
 } as const;

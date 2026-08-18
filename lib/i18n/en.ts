@@ -180,4 +180,19 @@ export const en = {
   "rewards.unauthenticatedMessage":
     "You need to sign in to check your Points balance and history.",
   "rewards.loginCta": "Sign in",
+  "aiRecommendation.title": "VIAO AI recommendation",
+  "aiRecommendation.description":
+    "Based only on the real results of your search.",
+  "aiRecommendation.requestButton": "Get recommendation",
+  "aiRecommendation.requestButtonLoading": "Generating recommendation...",
+  "aiRecommendation.backToResults": "Back to results",
+  "aiRecommendation.errorUnauthenticated":
+    "You must sign in to request a recommendation.",
+  "aiRecommendation.errorInvalidSearchId": "This search is not valid.",
+  "aiRecommendation.errorSearchNotFound":
+    "This search could not be found, or it doesn't belong to you.",
+  "aiRecommendation.errorRateLimited":
+    "You've reached the recommendation request limit. Try again later.",
+  "aiRecommendation.errorDisabled":
+    "AI recommendations are not available right now.",
 } satisfies Dictionary;
