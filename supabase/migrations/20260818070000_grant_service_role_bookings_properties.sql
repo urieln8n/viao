@@ -1,0 +1,45 @@
+-- F6-02 (VIAO_ROADMAP.md) — GRANT de service_role sobre bookings y
+-- properties.
+--
+-- Descubierto empíricamente durante la auditoría obligatoria de F6-02,
+-- mismo patrón exacto que F5-05 (20260817200000_*.sql): RLS y GRANT son
+-- mecanismos ortogonales en Postgres. `service_role` tiene `BYPASSRLS`
+-- pero NUNCA recibió ningún GRANT explícito sobre `bookings` ni
+-- `properties` — verificado con `\dp public.bookings` / `\dp
+-- public.properties` contra Supabase local: ambas mostraban
+-- `service_role=Dxtm` (solo TRUNCATE/REFERENCES/TRIGGER/MAINTAIN, sin
+-- SELECT/INSERT/UPDATE). Sin este GRANT, cualquier intento de
+-- INSERT/upsert falla con "permission denied" (Postgres 42501),
+-- exactamente como le ocurrió a `analytics_events` antes de F5-05.
+--
+-- bookings (VIAO_DATABASE.md sección 6): "Insertar/Modificar/Eliminar:
+-- nadie desde el cliente — el backend (rol de servicio) crea y actualiza
+-- la reserva". Confirmado también que NO existe ninguna policy ni GRANT
+-- de INSERT para `authenticated` (solo `bookings_select_own`, de solo
+-- lectura) — `service_role` es la ÚNICA vía posible para crear una
+-- reserva, no una elección de amplitud de privilegios.
+--
+-- Alcance de bookings: SELECT + INSERT únicamente. Sin UPDATE ni DELETE:
+-- F6-02 solo crea la fila inicial (`status='pending'`); la transición
+-- pending → confirmed/cancelled es F6-03, fuera de alcance aquí — no se
+-- adelanta ese trabajo concediendo un privilegio que todavía no hace
+-- falta.
+--
+-- properties (VIAO_DATABASE.md sección 4): "copia local necesaria...
+-- para que bookings tenga a qué referenciarse [...] Insertar/Modificar/
+-- Eliminar: solo el backend (rol de servicio), tras llamar a
+-- HotelProvider" — ya documentado desde Fase 1, nunca implementado hasta
+-- F6-02 porque ninguna fase anterior necesitaba escribir en `bookings`
+-- (cuyo `property_id` es FK NOT NULL a `properties.id`, no al id de texto
+-- del proveedor). Alcance: SELECT + INSERT + UPDATE (upsert real vía
+-- `ON CONFLICT (provider_name, provider_property_id) DO UPDATE`,
+-- aprovechando el UNIQUE ya definido en el esquema — "caché" implica
+-- refrescar, no un log de solo-inserción). El SELECT es necesario incluso
+-- para el upsert: Postgres exige privilegio de lectura sobre la fila en
+-- conflicto para poder evaluarla y aplicar `DO UPDATE` — verificado
+-- empíricamente ("permission denied for table properties" con solo
+-- INSERT+UPDATE, hasta añadir SELECT). Sin DELETE: no es necesario para
+-- F6-02.
+
+grant select, insert on public.bookings to service_role;
+grant select, insert, update on public.properties to service_role;

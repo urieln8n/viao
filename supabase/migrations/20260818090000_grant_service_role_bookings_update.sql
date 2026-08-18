@@ -1,0 +1,32 @@
+-- F6-03 (VIAO_ROADMAP.md) — GRANT de UPDATE de service_role sobre
+-- bookings, para la transición pending -> confirmed/cancelled.
+--
+-- La migración de F6-02
+-- (20260818070000_grant_service_role_bookings_properties.sql) concedió
+-- deliberadamente solo SELECT + INSERT a service_role sobre bookings,
+-- documentando explícitamente: "la transición pending -> confirmed/
+-- cancelled es F6-03, fuera de alcance aquí — no se adelanta ese trabajo
+-- concediendo un privilegio que todavía no hace falta". F6-03 es
+-- precisamente esa fase: hace falta ahora.
+--
+-- Verificado empíricamente contra Supabase local antes de crear esta
+-- migración (`\dp public.bookings`): `service_role=arDxtm` — solo INSERT
+-- (a) y SELECT (r), sin UPDATE (w). Sin este GRANT, cualquier UPDATE de
+-- service_role sobre bookings falla con "permission denied" (Postgres
+-- 42501), igual que le ocurrió a `properties` en F6-02 antes de su GRANT.
+--
+-- VIAO_DATABASE.md sección 6 (bookings, RLS Patrón B): "Insertar/
+-- Modificar/Eliminar: nadie desde el cliente — el backend (rol de
+-- servicio) crea y actualiza la reserva a medida que avanza el flujo
+-- (pending -> confirmed/cancelled), incluidos los campos económicos" — ya
+-- documentado desde antes de F6-02, service_role es la única vía posible
+-- también para el UPDATE, no una elección de privilegio más amplio.
+--
+-- Alcance: únicamente UPDATE, añadido al SELECT + INSERT ya existentes.
+-- Sin DELETE: F6-03 no borra reservas, solo transiciona su estado.
+--
+-- No se modifica la migración histórica de F6-02: es una migración nueva,
+-- de alcance mínimo, siguiendo el mismo patrón ya establecido en F5-05/
+-- F6-02 (nunca editar una migración ya aplicada/cerrada).
+
+grant update on public.bookings to service_role;

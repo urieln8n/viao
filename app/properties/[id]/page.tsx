@@ -8,6 +8,7 @@ import { ErrorState } from "@/components/state/error-state";
 import { t } from "@/lib/i18n";
 
 import { resolvePropertyDetail } from "./resolve";
+import { BookCtaLink } from "./book-cta-link";
 import { formatLocation, formatRating } from "../../search/results/format";
 
 // F5-04 (VIAO_ROADMAP.md) — Página de detalle de un alojamiento.
@@ -35,8 +36,20 @@ import { formatLocation, formatRating } from "../../search/results/format";
 // mecanismo de trazabilidad de búsqueda que pertenece a F5-07, no a esta
 // fase.
 //
-// Sin botón de reserva: pertenece a Fase 6 (roadmap: "Base para iniciar
-// reserva (Fase 6)").
+// Extensión F6-01 (documentada): CTA "Reservar" que navega a
+// `/booking/[propertyId]` (nueva pantalla, F6-01), conservando `search_id`
+// cuando existe — mismo patrón exacto que `BackToSearchLink`/F5-07, sin
+// tocar `resolvePropertyDetail` ni el resto de esta página. Es solo
+// navegación: no ejecuta ninguna reserva ni llama a `TravelProvider.book()`
+// (eso es F6-02). Hasta esta fase deliberadamente no había CTA de reserva
+// (roadmap: "Base para iniciar reserva (Fase 6)") — ahora sí, porque F6-01
+// existe precisamente para ello.
+//
+// Extensión F6-04 (documentada): el CTA vive ahora en `book-cta-link.tsx`
+// (Client Component, "use client") en vez de definirse inline aquí — el
+// único cambio funcional es que registra `booking_clicked` en su `onClick`
+// real (ver ese archivo). Esta página sigue siendo un Server Component
+// completo: no se convierte por esto, solo el propio CTA lo es.
 //
 // Extensión F5-07 (documentada): lee `search_id` de la query string (lo
 // puso ahí el enlace de F5-03/`buildPropertyHref`, con el `searches.id`
@@ -130,6 +143,8 @@ export default async function PropertyDetailPage({
           </p>
         )}
       </div>
+
+      <BookCtaLink propertyId={id} searchId={searchId} />
     </main>
   );
 }
