@@ -94,6 +94,14 @@
 // "Reservar" en `/properties/[id]`) se registra fuera de esta Action, en
 // `app/properties/[id]/log-booking-clicked-action.ts` — antes de que
 // exista ningún dato de esta reserva.
+//
+// Recompensa de Points (F7-04, VIAO_ROADMAP.md, `lib/rewards/`): dentro
+// del MISMO guard que `booking_completed` — misma regla exacta ("solo tras
+// confirmar realmente"). Idempotente vía la constraint real
+// `rewards_transactions_reference_reason_unique`, así que un reintento de
+// esta Action para la misma reserva nunca duplica los Points. Monto
+// PROVISIONAL (`BOOKING_REWARD_POINTS_PROVISIONAL`,
+// `lib/rewards/rules.ts`) — sin ninguna conversión a EUR.
 
 import { getTravelProvider } from "../../lib/travel-provider";
 import {
@@ -106,6 +114,8 @@ import { upsertPropertyCache } from "../../lib/properties/upsert-property-cache"
 import { createBookingRecord } from "../../lib/bookings/create-booking-record";
 import { updateBookingStatus } from "../../lib/bookings/update-booking-status";
 import { logAnalyticsEvent } from "../../lib/analytics/log-event";
+import { createRewardTransaction } from "../../lib/rewards/create-reward-transaction";
+import { BOOKING_REWARD_POINTS_PROVISIONAL } from "../../lib/rewards/rules";
 import { getSearchById } from "../../lib/searches/get-search-by-id";
 import { isValidUuid } from "../properties/[id]/resolve";
 import { t } from "../../lib/i18n";
@@ -326,6 +336,31 @@ export async function createBookingAction(
         ...(searchId ? { searchId } : {}),
         status: bookingResult.status,
       });
+
+      // F7-04 (VIAO_ROADMAP.md) — recompensa PROVISIONAL de Points por
+      // reserva confirmada, dentro del MISMO guard que `booking_completed`:
+      // solo tras una confirmación real, nunca por un clic, una reserva
+      // rechazada ni un `pending` sin confirmar. Idempotente vía la
+      // constraint real `rewards_transactions_reference_reason_unique`
+      // (`reason='booking'`, `reference_type='booking'`,
+      // `reference_id=bookingId`) — un reintento o una doble ejecución de
+      // esta Action para la MISMA reserva nunca duplica la recompensa.
+      // Igual que `updateBookingStatus`/`logAnalyticsEvent`: un fallo aquí
+      // se registra pero nunca deshace ni oculta una reserva ya válida.
+      try {
+        await createRewardTransaction({
+          userId: user.id,
+          amount: BOOKING_REWARD_POINTS_PROVISIONAL,
+          reason: "booking",
+          referenceType: "booking",
+          referenceId: bookingId,
+        });
+      } catch (rewardError) {
+        console.error(
+          `[rewards] No se pudo registrar la recompensa de Points para la reserva "${bookingId}":`,
+          rewardError,
+        );
+      }
     }
 
     return {

@@ -241,6 +241,78 @@ test("createBookingAction (F6-04): ninguna rama de error (invalid_input/unauthen
   );
 });
 
+// ── F7-04: recompensa de Points solo tras una confirmación real, dentro del mismo guard que booking_completed ──
+test("createBookingAction (F7-04): otorga la recompensa de Points DENTRO del mismo guard que booking_completed, DESPUÉS de registrarlo", () => {
+  const source = readFileSync(path.join(process.cwd(), "app/booking/actions.ts"), "utf-8");
+
+  assert.ok(
+    /import \{ createRewardTransaction \} from "\.\.\/\.\.\/lib\/rewards\/create-reward-transaction"/.test(source),
+    "actions.ts debe importar createRewardTransaction de lib/rewards/create-reward-transaction (F7-01), sin reimplementar la escritura",
+  );
+  assert.ok(
+    /import \{ BOOKING_REWARD_POINTS_PROVISIONAL \} from "\.\.\/\.\.\/lib\/rewards\/rules"/.test(source),
+    "el monto debe venir de lib/rewards/rules.ts (config centralizada), no de un número mágico",
+  );
+
+  const occurrences = source.match(/await createRewardTransaction\(/g) ?? [];
+  assert.equal(occurrences.length, 1, "createRewardTransaction debe llamarse en exactamente un punto del archivo");
+
+  const ifGuardMatch = source.match(
+    /if \(statusUpdateSucceeded && bookingResult\.status === "confirmed"\) \{([\s\S]*?)\n {4}\}/,
+  );
+  assert.ok(ifGuardMatch, "no se encontró el guard compartido con booking_completed (F6-04)");
+  const guardBody = ifGuardMatch![1];
+
+  assert.ok(
+    /await createRewardTransaction\(/.test(guardBody),
+    "createRewardTransaction debe llamarse DENTRO del mismo guard que booking_completed, nunca fuera de él",
+  );
+
+  const completedMatch = guardBody.match(/logAnalyticsEvent\(\s*"booking_completed"/);
+  const rewardIdx = guardBody.indexOf("await createRewardTransaction(");
+  assert.ok(completedMatch, "no se encontró la llamada a booking_completed dentro del guard");
+  const completedIdx = guardBody.indexOf(completedMatch![0]);
+  assert.ok(rewardIdx > completedIdx, "la recompensa debe otorgarse después de registrar booking_completed, no antes");
+
+  // Datos correctos: reason/referenceType='booking', referenceId=bookingId (la reserva real), userId=user.id (nunca del cliente), amount=la constante provisional.
+  const rewardCallBlock = guardBody.slice(rewardIdx, rewardIdx + 260);
+  assert.ok(/userId:\s*user\.id/.test(rewardCallBlock), "debe usar el id del usuario resuelto por sesión, igual que createBookingRecord/updateBookingStatus");
+  assert.ok(/amount:\s*BOOKING_REWARD_POINTS_PROVISIONAL/.test(rewardCallBlock), "debe usar el monto provisional centralizado");
+  assert.ok(/reason:\s*"booking"/.test(rewardCallBlock));
+  assert.ok(/referenceType:\s*"booking"/.test(rewardCallBlock));
+  assert.ok(/referenceId:\s*bookingId/.test(rewardCallBlock), "referenceId debe ser el bookingId real de ESTA reserva, para la idempotencia por referencia");
+});
+
+test("createBookingAction (F7-04): un fallo al crear la recompensa no impide devolver success (no rompe una reserva ya válida)", () => {
+  const source = readFileSync(path.join(process.cwd(), "app/booking/actions.ts"), "utf-8");
+
+  const rewardCallIndex = source.indexOf("await createRewardTransaction(");
+  const successReturnIndex = source.indexOf('status: "success"', rewardCallIndex);
+  assert.ok(rewardCallIndex !== -1 && successReturnIndex !== -1);
+  assert.ok(successReturnIndex > rewardCallIndex, "el return de éxito debe seguir ocurriendo después del intento de otorgar la recompensa");
+
+  const catchBodyMatch = source.match(/catch \(rewardError\) \{([\s\S]*?)\n {6}\}/);
+  assert.ok(catchBodyMatch, "se esperaba un catch dedicado (rewardError) que no interrumpa el flujo de éxito");
+  assert.ok(
+    !/return/.test(catchBodyMatch![1]),
+    "el catch de rewardError no debe hacer return: un fallo al otorgar Points no debe convertirse en un fallo de la Action",
+  );
+});
+
+test("createBookingAction (F7-04): ninguna rama de error puede alcanzar createRewardTransaction (mismo guard ya protegido que booking_completed)", () => {
+  const source = readFileSync(path.join(process.cwd(), "app/booking/actions.ts"), "utf-8");
+
+  const outerTryIndex = source.indexOf("try {\n    const propertyRowId = await upsertPropertyCache(property);");
+  const rewardCallIndex = source.indexOf("await createRewardTransaction(");
+  const outerCatchIndex = source.indexOf("} catch (error) {\n    // El provider YA aceptó la reserva");
+
+  assert.ok(outerTryIndex !== -1 && rewardCallIndex !== -1 && outerCatchIndex !== -1);
+  assert.ok(
+    outerTryIndex < rewardCallIndex && rewardCallIndex < outerCatchIndex,
+    "la llamada a createRewardTransaction debe vivir dentro del try de persistencia, antes de su catch — nunca alcanzable desde una rama de error temprana",
+  );
+});
+
 // ── F6-06: search_id solo se persiste si pertenece al usuario que reserva ──
 test("createBookingAction (F6-06) resuelve search_id vía getSearchById, DESPUÉS de conocer al usuario, nunca antes", () => {
   const source = readFileSync(path.join(process.cwd(), "app/booking/actions.ts"), "utf-8");

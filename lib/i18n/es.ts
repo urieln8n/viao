@@ -173,4 +173,20 @@ export const es = {
   "bookingStatus.unauthenticatedMessage":
     "Necesitas iniciar sesión para consultar el estado de esta reserva.",
   "bookingStatus.loginCta": "Iniciar sesión",
+  "rewards.pageTitle": "Wallet",
+  "rewards.balanceLabel": "Saldo actual",
+  "rewards.pointsUnit": "Points",
+  "rewards.provisionalNote":
+    "Los Points son provisionales y no representan ningún valor definitivo en euros.",
+  "rewards.historyTitle": "Historial de transacciones",
+  "rewards.emptyTitle": "Todavía no tienes movimientos",
+  "rewards.emptyMessage":
+    "Aquí verás tus Points en cuanto registres tu cuenta o completes una reserva.",
+  "rewards.reasonRegistration": "Registro de cuenta",
+  "rewards.reasonBooking": "Reserva confirmada",
+  "rewards.referenceLabel": "Referencia",
+  "rewards.unauthenticatedTitle": "Inicia sesión para ver tu Wallet",
+  "rewards.unauthenticatedMessage":
+    "Necesitas iniciar sesión para consultar tu saldo y tu historial de Points.",
+  "rewards.loginCta": "Iniciar sesión",
 } as const;

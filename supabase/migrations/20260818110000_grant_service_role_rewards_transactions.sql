@@ -1,0 +1,28 @@
+-- F7-01 (VIAO_ROADMAP.md) — GRANT de service_role sobre
+-- rewards_transactions.
+--
+-- Mismo patrón exacto ya descubierto en F5-05 (`analytics_events`) y F6-02
+-- (`bookings`/`properties`): `service_role` tiene `BYPASSRLS` pero NUNCA
+-- recibe ningún GRANT de Postgres automáticamente — verificado con
+-- `\dp public.rewards_transactions` contra Supabase local:
+-- `service_role=Dxtm` (sin SELECT/INSERT). Sin este GRANT, cualquier
+-- intento de `lib/rewards/create-reward-transaction.ts` de insertar una
+-- transacción fallaría con "permission denied" (Postgres 42501).
+--
+-- VIAO_DATABASE.md sección 7: "Insertar/Modificar/Eliminar: nunca desde el
+-- cliente, bajo ninguna circunstancia — exclusivamente el backend (rol de
+-- servicio)" — `service_role` es la única vía posible para crear una
+-- transacción de recompensa, no una elección de privilegio más amplio.
+--
+-- Alcance: SELECT + INSERT únicamente.
+-- - SELECT es necesario incluso para `ON CONFLICT (...) DO NOTHING`: el
+--   patrón de idempotencia (F7-01, migración 20260818100000_*.sql) usa
+--   `.upsert(..., {ignoreDuplicates: true})`, y cuando el conflicto ya
+--   existe, `create-reward-transaction.ts` hace una lectura de
+--   recuperación (`SELECT id ...`) para devolver el id de la transacción
+--   ya existente de forma auditable, en vez de silenciarlo sin más.
+-- - Sin UPDATE ni DELETE: el ledger es append-only por diseño explícito
+--   ("NO implementar UPDATE de transacciones. NO implementar DELETE de
+--   transacciones") — no se concede lo que nunca se va a usar.
+
+grant select, insert on public.rewards_transactions to service_role;

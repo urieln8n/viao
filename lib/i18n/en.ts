@@ -162,4 +162,20 @@ export const en = {
   "bookingStatus.unauthenticatedMessage":
     "You need to sign in to check the status of this booking.",
   "bookingStatus.loginCta": "Sign in",
+  "rewards.pageTitle": "Wallet",
+  "rewards.balanceLabel": "Current balance",
+  "rewards.pointsUnit": "Points",
+  "rewards.provisionalNote":
+    "Points are provisional and do not represent any definitive value in euros.",
+  "rewards.historyTitle": "Transaction history",
+  "rewards.emptyTitle": "No activity yet",
+  "rewards.emptyMessage":
+    "You'll see your Points here once you register your account or complete a booking.",
+  "rewards.reasonRegistration": "Account registration",
+  "rewards.reasonBooking": "Confirmed booking",
+  "rewards.referenceLabel": "Reference",
+  "rewards.unauthenticatedTitle": "Sign in to view your Wallet",
+  "rewards.unauthenticatedMessage":
+    "You need to sign in to check your Points balance and history.",
+  "rewards.loginCta": "Sign in",
 } satisfies Dictionary;
