@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState, type FormEvent } from "react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -196,6 +197,25 @@ export default function LoginPage() {
                   ? t("login.submitButtonLoading")
                   : t("login.submitButton")}
               </Button>
+
+              {/* Bloque 13 ("Pulido final antes del piloto") — navegación
+                  Login <-> Register + recuperación de contraseña, ambas
+                  rutas ya existentes (F3-01/F3-04), sin ningún flujo
+                  nuevo. */}
+              <div className="flex flex-col items-center gap-1 text-sm">
+                <p className="text-muted-foreground">
+                  {t("login.registerPromptText")}{" "}
+                  <Link href="/register" className="text-primary underline-offset-4 hover:underline">
+                    {t("login.registerPromptLink")}
+                  </Link>
+                </p>
+                <Link
+                  href="/recover"
+                  className="text-muted-foreground underline-offset-4 hover:underline"
+                >
+                  {t("login.forgotPasswordLink")}
+                </Link>
+              </div>
             </form>
           )}
 

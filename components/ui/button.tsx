@@ -3,21 +3,44 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+// Bloque 13 ("Pulido final antes del piloto") — hallazgo de la auditoría
+// visual: la clase base incluía `border-transparent`, y la variante
+// `outline` declaraba por su cuenta `border-border` — ambas fijan la
+// misma propiedad CSS (`border-color`) al mismo nivel de especificidad, y
+// `cn()` (lib/utils.ts) usa `tailwind-merge` para deduplicar conflictos de
+// este tipo. `tailwind-merge` no reconoce los tokens de color propios del
+// tema de este proyecto (`border`, `input`, etc., definidos vía CSS
+// custom properties) como "colores" válidos para su tabla de conflictos
+// por defecto, así que NO deduplicaba estas dos clases — dejaba a ambas
+// en el DOM y el orden de aparición en la hoja de estilos generada (no la
+// intención del desarrollador) decidía cuál ganaba: en la práctica,
+// `border-transparent` siempre ganaba, dejando `outline` con un borde
+// invisible en reposo, verificado con `getComputedStyle` (`border: 1px
+// solid rgba(0, 0, 0, 0)`) en varios puntos ya existentes de la app.
+//
+// Corrección mínima y acotada a este componente (sin tocar `cn()`/
+// `tailwind-merge` globalmente, que afectaría a todos los componentes del
+// proyecto): se retira `border-transparent` de la clase base compartida
+// — solo queda `border` (ancho, sin color) para seguir reservando el
+// espacio del borde y evitar salto de layout al enfocar
+// (`focus-visible:border-ring`) — y cada variante declara ahora su propio
+// color de borde en reposo explícitamente. Así ninguna variante depende
+// de que `tailwind-merge` resuelva un conflicto que no sabe resolver.
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "border-transparent hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
-        link: "text-primary underline-offset-4 hover:underline",
+          "border-transparent bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+        link: "border-transparent text-primary underline-offset-4 hover:underline",
       },
       size: {
         default:

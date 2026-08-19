@@ -153,6 +153,22 @@ export default async function Home() {
               <p className="text-sm text-muted-foreground">{t("home.greetingSubtitle")}</p>
             </div>
             <HomeSearchForm />
+
+            {/* Bloque 13 ("Pulido final antes del piloto") — CTA
+                secundario de registro, solo para visitantes sin sesión
+                real. Reutiliza la misma señal ya establecida en esta
+                página para distinguir "sin sesión" de "con sesión, sin
+                viajes" (balance === undefined, igual que
+                home.pointsTeaserSignedOut más abajo) — no se añade
+                ninguna comprobación de autenticación nueva. */}
+            {balance === undefined && (
+              <Link
+                href="/register"
+                className={buttonVariants({ variant: "outline" })}
+              >
+                {t("home.createAccountCta")}
+              </Link>
+            )}
           </section>
         )}
 

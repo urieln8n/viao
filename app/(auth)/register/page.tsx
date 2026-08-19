@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -193,6 +194,15 @@ export default function RegisterPage() {
                   ? t("register.submitButtonLoading")
                   : t("register.submitButton")}
               </Button>
+
+              {/* Bloque 13 ("Pulido final antes del piloto") — navegación
+                  Register -> Login, ruta ya existente (F3-03). */}
+              <p className="text-center text-sm text-muted-foreground">
+                {t("register.loginPromptText")}{" "}
+                <Link href="/login" className="text-primary underline-offset-4 hover:underline">
+                  {t("register.loginPromptLink")}
+                </Link>
+              </p>
             </form>
           )}
 
