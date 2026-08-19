@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
-import { ImageOff } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PropertyImage } from "@/components/property/property-image";
+import { PageContainer } from "@/components/layout/page-container";
 import { EmptyState } from "@/components/state/empty-state";
 import { ErrorState } from "@/components/state/error-state";
 import { t } from "@/lib/i18n";
@@ -81,39 +81,28 @@ function PropertyCard({
       href={buildPropertyHref(property.providerPropertyId, searchId)}
       className="block rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
     >
-      <Card className="transition-colors hover:bg-muted/50">
-        <div className="relative aspect-video w-full overflow-hidden rounded-t-xl bg-muted">
-          {property.mainPhotoUrl ? (
-            <Image
-              src={property.mainPhotoUrl}
-              alt={property.name}
-              fill
-              unoptimized
-              className="object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <ImageOff
-                className="size-6 text-muted-foreground"
-                aria-hidden="true"
-              />
-            </div>
-          )}
-        </div>
+      <Card className="overflow-hidden transition-colors hover:bg-muted/30">
+        <PropertyImage
+          src={property.mainPhotoUrl}
+          alt={property.name}
+          className="rounded-t-xl"
+        />
         <CardHeader>
           <CardTitle>{property.name}</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-1">
-          <p className="text-sm font-medium">
-            {price ?? t("results.priceUnavailable")}
-          </p>
-          {rating && (
-            <p className="text-sm text-muted-foreground">★ {rating}</p>
-          )}
+        <CardContent className="flex flex-col gap-2">
           {location && (
             <p className="text-sm text-muted-foreground">{location}</p>
           )}
-          <span className="mt-1 text-sm text-primary">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-lg font-semibold">
+              {price ?? t("results.priceUnavailable")}
+            </p>
+            {rating && (
+              <p className="text-sm text-muted-foreground">★ {rating}</p>
+            )}
+          </div>
+          <span className="text-sm text-primary">
             {t("results.viewProperty")}
           </span>
         </CardContent>
@@ -129,42 +118,44 @@ export default async function SearchResultsPage({
   const result = await searchAction(parseSearchQuery(rawQuery));
 
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
-      <h1 className="text-xl font-semibold">{t("results.title")}</h1>
+    <main className="flex flex-1 flex-col">
+      <PageContainer variant="wide" className="flex flex-1 flex-col gap-4 px-4 py-6 lg:px-8">
+        <h1 className="text-xl font-semibold">{t("results.title")}</h1>
 
-      {result.status === "invalid_input" && (
-        <ErrorState
-          title={t("results.invalidInputTitle")}
-          message={Object.values(result.fieldErrors).join(" ")}
-          action={<BackToSearchLink />}
-        />
-      )}
+        {result.status === "invalid_input" && (
+          <ErrorState
+            title={t("results.invalidInputTitle")}
+            message={Object.values(result.fieldErrors).join(" ")}
+            action={<BackToSearchLink />}
+          />
+        )}
 
-      {result.status === "provider_error" && (
-        <ErrorState
-          title={t("results.errorTitle")}
-          message={result.message}
-          action={<BackToSearchLink />}
-        />
-      )}
+        {result.status === "provider_error" && (
+          <ErrorState
+            title={t("results.errorTitle")}
+            message={result.message}
+            action={<BackToSearchLink />}
+          />
+        )}
 
-      {result.status === "success" && result.results.length === 0 && (
-        <EmptyState
-          title={t("results.emptyTitle")}
-          message={t("results.emptyMessage")}
-          action={<BackToSearchLink />}
-        />
-      )}
+        {result.status === "success" && result.results.length === 0 && (
+          <EmptyState
+            title={t("results.emptyTitle")}
+            message={t("results.emptyMessage")}
+            action={<BackToSearchLink />}
+          />
+        )}
 
-      {result.status === "success" && result.results.length > 0 && (
-        <ul className="flex flex-col gap-4">
-          {result.results.map((property) => (
-            <li key={property.providerPropertyId}>
-              <PropertyCard property={property} searchId={result.searchId} />
-            </li>
-          ))}
-        </ul>
-      )}
+        {result.status === "success" && result.results.length > 0 && (
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {result.results.map((property) => (
+              <li key={property.providerPropertyId}>
+                <PropertyCard property={property} searchId={result.searchId} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </PageContainer>
     </main>
   );
 }
