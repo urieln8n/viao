@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { MainNav } from "@/components/nav/main-nav";
+import { AppShell } from "@/components/layout/app-shell";
 import { PostHogProvider } from "@/components/analytics/posthog-provider";
 import "./globals.css";
 
@@ -34,8 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <PostHogProvider>
-          {children}
-          <MainNav />
+          <AppShell>{children}</AppShell>
         </PostHogProvider>
       </body>
     </html>

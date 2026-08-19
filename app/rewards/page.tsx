@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState } from "@/components/state/error-state";
 import { EmptyState } from "@/components/state/empty-state";
+import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/types";
 
@@ -61,15 +63,15 @@ export default async function RewardsPage() {
   const transactions = await getRewardTransactions();
 
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
+    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 p-6">
       <h1 className="text-xl font-semibold">{t("rewards.pageTitle")}</h1>
 
       <Card>
         <CardHeader>
           <CardTitle>{t("rewards.balanceLabel")}</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-1">
-          <p className="text-3xl font-semibold">
+        <CardContent className="flex flex-col gap-2 py-2">
+          <p className="text-3xl font-semibold text-success">
             {balance}{" "}
             <span className="text-base font-normal text-muted-foreground">
               {t("rewards.pointsUnit")}
@@ -93,36 +95,60 @@ export default async function RewardsPage() {
             />
           ) : (
             <ul className="flex flex-col divide-y divide-border">
-              {transactions.map((transaction) => (
-                <li
-                  key={transaction.id}
-                  className="flex flex-col gap-0.5 py-3 first:pt-0 last:pb-0"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium">
-                      {formatReason(transaction.reason)}
-                    </span>
+              {transactions.map((transaction) => {
+                // Único mecanismo que existe hoy (F7-01, `createRewardTransaction`):
+                // `amount` siempre es positivo — no hay ningún flujo real de
+                // gasto/canje todavía. Se mantiene la comparación `> 0` (idéntica
+                // a la ya existente antes de este bloque) para que, si algún día
+                // se implementa un `type: "spent"` real, el tratamiento negativo
+                // ya esté correctamente en su sitio sin tocar esta pantalla otra
+                // vez — no se inventa ningún dato ni caso de prueba para ello.
+                const isPositive = transaction.amount > 0;
+                const Icon = isPositive ? ArrowUpRight : ArrowDownRight;
+
+                return (
+                  <li
+                    key={transaction.id}
+                    className="flex items-center gap-3 py-4 first:pt-0 last:pb-0"
+                  >
                     <span
-                      className={
-                        transaction.amount > 0
-                          ? "text-sm font-semibold text-primary"
-                          : "text-sm font-semibold text-destructive"
-                      }
+                      className={cn(
+                        "flex size-8 shrink-0 items-center justify-center rounded-full",
+                        isPositive
+                          ? "bg-success/10 text-success"
+                          : "bg-destructive/10 text-destructive",
+                      )}
+                      aria-hidden="true"
                     >
-                      {transaction.amount > 0 ? "+" : ""}
-                      {transaction.amount}
+                      <Icon className="size-4" />
                     </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                    <span>{transaction.createdAt.slice(0, 10)}</span>
-                    {transaction.referenceId && (
-                      <span className="break-all">
-                        {t("rewards.referenceLabel")}: {transaction.referenceId}
-                      </span>
-                    )}
-                  </div>
-                </li>
-              ))}
+                    <div className="flex flex-1 flex-col gap-0.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">
+                          {formatReason(transaction.reason)}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-sm font-semibold",
+                            isPositive ? "text-success" : "text-destructive",
+                          )}
+                        >
+                          {isPositive ? "+" : ""}
+                          {transaction.amount}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                        <span>{transaction.createdAt.slice(0, 10)}</span>
+                        {transaction.referenceId && (
+                          <span className="break-all">
+                            {t("rewards.referenceLabel")}: {transaction.referenceId}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>
