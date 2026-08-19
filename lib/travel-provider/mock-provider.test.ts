@@ -29,7 +29,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { MockHotelProvider } from "./mock-provider";
+import { MockHotelProvider, listKnownDestinations } from "./mock-provider";
 import {
   ProviderError,
   ProviderNotSupportedError,
@@ -260,4 +260,20 @@ test("ProviderNotSupportedError: patrón de detección de capacidad ausente en u
 
   const provider = new MockHotelProvider();
   assert.doesNotThrow(() => cancelIfSupported(provider));
+});
+
+// Bloque 16 ("Destinos seleccionables") — listKnownDestinations() alimenta
+// el autocomplete de destino; debe reflejar exactamente las 4 ciudades
+// reales del catálogo, sin duplicados ni destinos inventados.
+test("listKnownDestinations: devuelve las 4 ciudades reales del catálogo, sin duplicados", () => {
+  const destinations = listKnownDestinations();
+
+  assert.equal(destinations.length, 4);
+  assert.deepEqual(
+    destinations.map((d) => d.city).sort(),
+    ["Barcelona", "Madrid", "Sevilla", "Valencia"],
+  );
+  for (const destination of destinations) {
+    assert.equal(destination.country, "España");
+  }
 });

@@ -7,7 +7,7 @@ import { createBookingRecord } from "../bookings/create-booking-record";
 import { updateBookingStatus } from "../bookings/update-booking-status";
 import { createRewardTransaction } from "../rewards/create-reward-transaction";
 import { logAnalyticsEvent } from "../analytics/log-event";
-import { BOOKING_REWARD_POINTS_PROVISIONAL } from "../rewards/rules";
+import { calculateHotelBookingRewardPoints } from "../rewards/rules";
 import type { BookingResult } from "../../types/travel";
 
 // F14-03/F14-04 (VIAO_ROADMAP.md) — Helper compartido para los tests de
@@ -172,17 +172,24 @@ export async function runFullBookingFlow({
       userId,
     );
 
-    const rewardResult = await createRewardTransaction({
-      userId,
-      amount: BOOKING_REWARD_POINTS_PROVISIONAL,
-      reason: "booking",
-      referenceType: "booking",
-      referenceId: bookingId,
-    });
-    if (rewardResult.created) {
+    const rewardPoints =
+      bookingResult.amount !== undefined
+        ? calculateHotelBookingRewardPoints(bookingResult.amount)
+        : 0;
+    const rewardResult =
+      rewardPoints > 0
+        ? await createRewardTransaction({
+            userId,
+            amount: rewardPoints,
+            reason: "booking",
+            referenceType: "booking",
+            referenceId: bookingId,
+          })
+        : undefined;
+    if (rewardResult?.created) {
       await logAnalyticsEvent(
         "reward_earned",
-        { bookingId, reason: "booking", amount: BOOKING_REWARD_POINTS_PROVISIONAL },
+        { bookingId, reason: "booking", amount: rewardPoints },
         userId,
       );
     }

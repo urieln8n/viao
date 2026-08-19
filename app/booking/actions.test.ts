@@ -250,8 +250,8 @@ test("createBookingAction (F7-04): otorga la recompensa de Points DENTRO del mis
     "actions.ts debe importar createRewardTransaction de lib/rewards/create-reward-transaction (F7-01), sin reimplementar la escritura",
   );
   assert.ok(
-    /import \{ BOOKING_REWARD_POINTS_PROVISIONAL \} from "\.\.\/\.\.\/lib\/rewards\/rules"/.test(source),
-    "el monto debe venir de lib/rewards/rules.ts (config centralizada), no de un número mágico",
+    /import \{ calculateHotelBookingRewardPoints \} from "\.\.\/\.\.\/lib\/rewards\/rules"/.test(source),
+    "el monto debe calcularse con la fórmula centralizada de lib/rewards/rules.ts, no de un número mágico",
   );
 
   const occurrences = source.match(/await createRewardTransaction\(/g) ?? [];
@@ -274,10 +274,10 @@ test("createBookingAction (F7-04): otorga la recompensa de Points DENTRO del mis
   const completedIdx = guardBody.indexOf(completedMatch![0]);
   assert.ok(rewardIdx > completedIdx, "la recompensa debe otorgarse después de registrar booking_completed, no antes");
 
-  // Datos correctos: reason/referenceType='booking', referenceId=bookingId (la reserva real), userId=user.id (nunca del cliente), amount=la constante provisional.
+  // Datos correctos: reason/referenceType='booking', referenceId=bookingId (la reserva real), userId=user.id (nunca del cliente), amount=el resultado de la fórmula V1.
   const rewardCallBlock = guardBody.slice(rewardIdx, rewardIdx + 260);
   assert.ok(/userId:\s*user\.id/.test(rewardCallBlock), "debe usar el id del usuario resuelto por sesión, igual que createBookingRecord/updateBookingStatus");
-  assert.ok(/amount:\s*BOOKING_REWARD_POINTS_PROVISIONAL/.test(rewardCallBlock), "debe usar el monto provisional centralizado");
+  assert.ok(/amount:\s*rewardPoints/.test(rewardCallBlock), "debe usar el monto calculado con calculateHotelBookingRewardPoints, no un número fijo");
   assert.ok(/reason:\s*"booking"/.test(rewardCallBlock));
   assert.ok(/referenceType:\s*"booking"/.test(rewardCallBlock));
   assert.ok(/referenceId:\s*bookingId/.test(rewardCallBlock), "referenceId debe ser el bookingId real de ESTA reserva, para la idempotencia por referencia");
@@ -294,8 +294,8 @@ test("createBookingAction (F12-02): registra reward_earned solo si createRewardT
 
   const betweenBlock = source.slice(rewardIdx, rewardEarnedIdx);
   assert.ok(
-    /if\s*\(rewardResult\.created\)\s*\{/.test(betweenBlock),
-    "reward_earned debe estar condicionado a rewardResult.created, para no duplicar el evento en un reintento idempotente",
+    /if\s*\(rewardResult\?\.created\)\s*\{/.test(betweenBlock),
+    "reward_earned debe estar condicionado a rewardResult?.created (rewardResult puede ser undefined si rewardPoints no es > 0), para no duplicar el evento en un reintento idempotente",
   );
 });
 

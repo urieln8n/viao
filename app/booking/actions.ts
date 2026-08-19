@@ -101,8 +101,9 @@
 // `rewards_transactions_user_reference_reason_unique` (corregida en F8-04,
 // ver `lib/rewards/create-reward-transaction.ts`), así que un reintento de
 // esta Action para la misma reserva nunca duplica los Points. Monto
-// PROVISIONAL (`BOOKING_REWARD_POINTS_PROVISIONAL`,
-// `lib/rewards/rules.ts`) — sin ninguna conversión a EUR.
+// calculado dinámicamente a partir del importe real de la reserva
+// (`calculateHotelBookingRewardPoints`, `lib/rewards/rules.ts` — economía
+// VIAO Rewards V1 del piloto: 2% del importe), nunca un valor fijo.
 //
 // Acción válida de referidos (F8-04, VIAO_ROADMAP.md, `lib/referrals/`):
 // también dentro del MISMO guard — una reserva confirmada es HOY la
@@ -126,7 +127,7 @@ import { createBookingRecord } from "../../lib/bookings/create-booking-record";
 import { updateBookingStatus } from "../../lib/bookings/update-booking-status";
 import { logAnalyticsEvent } from "../../lib/analytics/log-event";
 import { createRewardTransaction } from "../../lib/rewards/create-reward-transaction";
-import { BOOKING_REWARD_POINTS_PROVISIONAL } from "../../lib/rewards/rules";
+import { calculateHotelBookingRewardPoints } from "../../lib/rewards/rules";
 import { completeReferralActionIfPending } from "../../lib/referrals/complete-referral-action";
 import { VALID_REFERRAL_ACTION_TRIGGER } from "../../lib/referrals/rules";
 import { findOrCreateTripForBooking } from "../../lib/trips/find-or-create-trip-for-booking";
@@ -352,33 +353,44 @@ export async function createBookingAction(
         status: bookingResult.status,
       });
 
-      // F7-04 (VIAO_ROADMAP.md) — recompensa PROVISIONAL de Points por
-      // reserva confirmada, dentro del MISMO guard que `booking_completed`:
-      // solo tras una confirmación real, nunca por un clic, una reserva
-      // rechazada ni un `pending` sin confirmar. Idempotente vía la
-      // constraint real `rewards_transactions_user_reference_reason_unique`
+      // Economía VIAO Rewards V1 (piloto, `lib/rewards/rules.ts`): recompensa
+      // de Points por reserva confirmada, dentro del MISMO guard que
+      // `booking_completed`: solo tras una confirmación real, nunca por un
+      // clic, una reserva rechazada ni un `pending` sin confirmar.
+      // Idempotente vía la constraint real
+      // `rewards_transactions_user_reference_reason_unique`
       // (`user_id=user.id`, `reason='booking'`, `reference_type='booking'`,
       // `reference_id=bookingId`) — un reintento o una doble ejecución de
       // esta Action para la MISMA reserva nunca duplica la recompensa.
       // Igual que `updateBookingStatus`/`logAnalyticsEvent`: un fallo aquí
       // se registra pero nunca deshace ni oculta una reserva ya válida.
+      // `bookingResult.amount` es opcional (`BookingResult`, types/travel.ts
+      // — un provider podría no informar importe); sin importe no hay base
+      // para calcular Points, así que se trata igual que "0 Points" (no se
+      // inventa un valor de respaldo).
+      const rewardPoints =
+        bookingResult.amount !== undefined
+          ? calculateHotelBookingRewardPoints(bookingResult.amount)
+          : 0;
       try {
-        const rewardResult = await createRewardTransaction({
-          userId: user.id,
-          amount: BOOKING_REWARD_POINTS_PROVISIONAL,
-          reason: "booking",
-          referenceType: "booking",
-          referenceId: bookingId,
-        });
+        const rewardResult = rewardPoints > 0
+          ? await createRewardTransaction({
+              userId: user.id,
+              amount: rewardPoints,
+              reason: "booking",
+              referenceType: "booking",
+              referenceId: bookingId,
+            })
+          : undefined;
         // F12-02 (VIAO_ROADMAP.md) — `reward_earned` solo si esta llamada
         // creó de verdad la fila (`created: true`); un reintento idempotente
         // de la MISMA reserva (ver `createRewardTransaction`, F7-01) no debe
         // duplicar el evento de analytics.
-        if (rewardResult.created) {
+        if (rewardResult?.created) {
           await logAnalyticsEvent("reward_earned", {
             bookingId,
             reason: "booking",
-            amount: BOOKING_REWARD_POINTS_PROVISIONAL,
+            amount: rewardPoints,
           });
         }
       } catch (rewardError) {

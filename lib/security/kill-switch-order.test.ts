@@ -44,9 +44,16 @@ test("F13-06: app/vision/actions.ts comprueba isVisionEnabled() ANTES de checkAn
 test("F13-06: app/vision/actions.ts comprueba isVisionEnabled() ANTES de validar/leer la imagen del cliente", () => {
   const source = readSource("app/vision/actions.ts");
   const killSwitchIdx = source.indexOf("isVisionEnabled()");
-  const imageReadIdx = source.indexOf('formData.get("image")');
+  // Bloque "Cámara como flujo principal de Vision" — el cliente ya no
+  // envía el File original (`formData.get("image")`, provocaba "Body
+  // exceeded 1 MB limit" en fotos de móvil reales): ahora sube el
+  // archivo directamente a Storage y solo envía la ruta
+  // (`formData.get("imagePath")`). Misma propiedad de seguridad que
+  // antes: el kill switch debe comprobarse ANTES de tocar cualquier
+  // referencia a la imagen enviada por el cliente.
+  const imageReadIdx = source.indexOf('formData.get("imagePath")');
   assert.ok(killSwitchIdx !== -1 && imageReadIdx !== -1);
-  assert.ok(killSwitchIdx < imageReadIdx, "el kill switch debe comprobarse ANTES de tocar la imagen enviada por el cliente");
+  assert.ok(killSwitchIdx < imageReadIdx, "el kill switch debe comprobarse ANTES de tocar la referencia de imagen enviada por el cliente");
 });
 
 test("F13-06: ambos wrappers de OpenAI (lib/openai/index.ts, lib/openai/vision.ts) comprueban su kill switch ANTES de construir el cliente de OpenAI (defensa en profundidad)", () => {

@@ -16,6 +16,13 @@ import { AiRecommendationView } from "./ai-recommendation-view";
 // app/booking/[propertyId]/page.tsx), validado aquí con el mismo
 // `isValidUuid` — un valor ausente o con formato inválido nunca llega a
 // `AiRecommendationView`.
+//
+// Bloque 19 ("Identidad visual") — el título/descripción ya no viven
+// sueltos en esta página: se movieron dentro de la Card de
+// `AiRecommendationView` (mismo patrón que el resto de la app: contenido
+// dentro de Card, no un <h1> suelto) para que VIAO AI se perciba como una
+// pieza propia, no como un texto más de la página. Ningún dato ni lógica
+// nueva — `requestAiRecommendationAction` sin tocar.
 interface AiRecommendationPageProps {
   searchParams: Promise<{ searchId?: string | string[] }>;
 }
@@ -37,11 +44,6 @@ export default async function AiRecommendationPage({
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
-      <h1 className="text-xl font-semibold">{t("aiRecommendation.title")}</h1>
-      <p className="text-sm text-muted-foreground">
-        {t("aiRecommendation.description")}
-      </p>
-
       {!isValidUuid(searchId) ? (
         <ErrorState
           message={t("aiRecommendation.errorInvalidSearchId")}

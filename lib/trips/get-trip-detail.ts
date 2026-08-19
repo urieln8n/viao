@@ -24,6 +24,11 @@ export interface TripBookingView {
   id: string;
   propertyId: string;
   propertyName: string | null;
+  /** Coordenadas reales del alojamiento (`properties.latitude/longitude`, ya presentes desde `upsertPropertyCache`) — `null` si el proveedor no las informó. Nunca inventadas: sin ambas, no se construye ningún enlace de ubicación (Bloque 16). */
+  latitude: number | null;
+  longitude: number | null;
+  /** Foto del alojamiento (`properties.main_photo_url`) — usada como fallback de portada en Mi viaje cuando el viaje todavía no tiene ninguna foto propia (Bloque 19). */
+  mainPhotoUrl: string | null;
   checkIn: string;
   checkOut: string;
   status: string;
@@ -36,6 +41,8 @@ export interface TripPhotoView {
   storagePath: string;
   caption: string | null;
   visionScanId: string | null;
+  /** URL firmada temporal (Bloque 16) para renderizar la foto real — el bucket `photos` es privado, así que `storagePath` nunca es una URL utilizable directamente. `null` si no se pudo generar (nunca se inventa una URL): la UI cae de vuelta al texto (`caption`/`storagePath`). */
+  signedUrl: string | null;
 }
 
 export interface TripScanView {
@@ -100,35 +107,88 @@ export async function getTripDetail(
     // reserva pasa por `upsertPropertyCache` antes de crearse) o la
     // consulta falla, `propertyName` queda `null` y la UI cae de vuelta al
     // UUID — nunca se inventa un nombre.
+    //
+    // Bloque 16 — misma consulta ya existente, ampliada con
+    // `latitude`/`longitude` (columnas ya presentes en `properties` desde
+    // antes de este bloque, pobladas por `upsertPropertyCache` en cada
+    // reserva) para el enlace "Ver ubicación" — sin query nueva, sin
+    // cambio de arquitectura.
     const rawBookings = bookingsResult.data ?? [];
     const propertyIds = [...new Set(rawBookings.map((row) => row.property_id as string))];
-    const propertyNameById = new Map<string, string>();
+    interface PropertyLocationInfo {
+      name: string;
+      latitude: number | null;
+      longitude: number | null;
+      mainPhotoUrl: string | null;
+    }
+    const propertyInfoById = new Map<string, PropertyLocationInfo>();
     if (propertyIds.length > 0) {
+      // Bloque 19 — misma consulta ya existente (Bloque 11/16), ampliada
+      // con `main_photo_url` para la portada de Mi viaje (fallback cuando
+      // el viaje todavía no tiene ninguna foto propia guardada, ver
+      // `photos` más abajo). Sin query nueva, sin cambio de arquitectura.
       const { data: propertiesData } = await sessionClient
         .from("properties")
-        .select("id, name")
+        .select("id, name, latitude, longitude, main_photo_url")
         .in("id", propertyIds);
       for (const row of propertiesData ?? []) {
-        propertyNameById.set(row.id as string, row.name as string);
+        propertyInfoById.set(row.id as string, {
+          name: row.name as string,
+          latitude: row.latitude === null ? null : Number(row.latitude),
+          longitude: row.longitude === null ? null : Number(row.longitude),
+          mainPhotoUrl: row.main_photo_url as string | null,
+        });
       }
     }
 
-    const bookings: TripBookingView[] = rawBookings.map((row) => ({
-      id: row.id as string,
-      propertyId: row.property_id as string,
-      propertyName: propertyNameById.get(row.property_id as string) ?? null,
-      checkIn: row.check_in as string,
-      checkOut: row.check_out as string,
-      status: row.status as string,
-      bookingValue: row.booking_value as number | null,
-      currency: row.currency as string,
-    }));
+    const bookings: TripBookingView[] = rawBookings.map((row) => {
+      const info = propertyInfoById.get(row.property_id as string);
+      return {
+        id: row.id as string,
+        propertyId: row.property_id as string,
+        propertyName: info?.name ?? null,
+        latitude: info?.latitude ?? null,
+        longitude: info?.longitude ?? null,
+        mainPhotoUrl: info?.mainPhotoUrl ?? null,
+        checkIn: row.check_in as string,
+        checkOut: row.check_out as string,
+        status: row.status as string,
+        bookingValue: row.booking_value as number | null,
+        currency: row.currency as string,
+      };
+    });
 
-    const photos: TripPhotoView[] = (photosResult.data ?? []).map((row) => ({
+    // Bloque 16 — el bucket `photos` es privado (RLS + `owner_id`, ver
+    // supabase/migrations/20260817170000_create_storage_policies.sql), así
+    // que `storage_path` nunca es una URL renderizable directamente: hace
+    // falta una URL firmada temporal. Se piden todas de una vez
+    // (`createSignedUrls`, batch real de supabase-js) con el MISMO cliente
+    // de sesión ya usado en toda esta función — nunca `service_role` — así
+    // que RLS (`photos_select_own` + las políticas de `storage.objects`)
+    // sigue siendo quien decide qué puede firmarse: pedir la URL de la
+    // foto de otro usuario simplemente falla, nunca se salta la
+    // comprobación de ownership. Expiración de 1h: suficiente para ver la
+    // página, sin dejar enlaces firmados de larga duración circulando.
+    const rawPhotos = photosResult.data ?? [];
+    const signedUrlByPath = new Map<string, string>();
+    if (rawPhotos.length > 0) {
+      const paths = rawPhotos.map((row) => row.storage_path as string);
+      const { data: signedUrlsData } = await sessionClient.storage
+        .from("photos")
+        .createSignedUrls(paths, 3600);
+      for (const entry of signedUrlsData ?? []) {
+        if (entry.signedUrl && entry.path) {
+          signedUrlByPath.set(entry.path, entry.signedUrl);
+        }
+      }
+    }
+
+    const photos: TripPhotoView[] = rawPhotos.map((row) => ({
       id: row.id as string,
       storagePath: row.storage_path as string,
       caption: row.caption as string | null,
       visionScanId: row.vision_scan_id as string | null,
+      signedUrl: signedUrlByPath.get(row.storage_path as string) ?? null,
     }));
 
     const scans: TripScanView[] = (scansResult.data ?? []).map((row) => ({

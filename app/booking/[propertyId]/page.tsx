@@ -11,6 +11,7 @@ import { t } from "@/lib/i18n";
 import { resolveBookingContext } from "./resolve";
 import { BookingForm } from "./booking-form";
 import { formatLocation, formatPrice, formatRating } from "../../search/results/format";
+import { calculateHotelBookingRewardPoints, pointsToEuroValue } from "../../../lib/rewards/rules";
 
 // F6-01 (VIAO_ROADMAP.md) — Pantalla de confirmación/inicio de reserva.
 //
@@ -31,6 +32,15 @@ import { formatLocation, formatPrice, formatRating } from "../../search/results/
 // (foto, nombre, valoración, ubicación — mismo criterio que F5-04, mismos
 // campos inexistentes en el modelo omitidos) más, si `search_id` trae una
 // búsqueda propia real, un precio de referencia (`getPrice()`).
+//
+// Preview de Points (Economía VIAO Rewards V1, `lib/rewards/rules.ts`): el
+// usuario debe saber CUÁNTO gana ANTES de confirmar, no solo después —
+// calculado con la MISMA función y a partir del MISMO precio de referencia
+// que otorgará realmente `app/booking/actions.ts` tras confirmar, así que
+// nunca puede desincronizarse de lo que se otorga de verdad. Solo visible
+// cuando hay precio de referencia (idéntica condición que `referencePrice`
+// ya usaba antes de este bloque) — sin precio no hay nada que calcular, y
+// no se inventa un valor de respaldo.
 //
 // Datos solicitados: exactamente los 4 campos que `BookingRequest`
 // (F4-02) necesita más allá del alojamiento ya elegido — `checkIn`,
@@ -98,6 +108,7 @@ export default async function BookingPage({
   const location = formatLocation(property);
   const rating = formatRating(property.rating);
   const referencePrice = formatPrice(price);
+  const previewPoints = price ? calculateHotelBookingRewardPoints(price.amount) : undefined;
 
   return (
     <main className="flex flex-1 flex-col" data-search-id={searchId}>
@@ -130,6 +141,25 @@ export default async function BookingPage({
             )}
           </CardContent>
         </Card>
+
+        {previewPoints !== undefined && previewPoints > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("booking.pointsPreviewTitle")}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-1">
+              <p className="text-2xl font-semibold text-success">
+                +{previewPoints} {t("rewards.pointsUnit")}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                ≈ {pointsToEuroValue(previewPoints).toFixed(2)} € {t("rewards.valueSuffix")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("booking.pointsPreviewDisclaimer")}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

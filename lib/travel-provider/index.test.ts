@@ -11,10 +11,96 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { getTravelProvider } from "./index";
+import { getFixedHotelbedsHotelCodes, getTravelProvider, resolveTravelProviderKind } from "./index";
 import { MockHotelProvider } from "./mock-provider";
 import type { ActiveTravelProvider } from "./index";
 import type { Property, SearchParams } from "../../types/travel";
+
+function withEnv(name: string, value: string | undefined, run: () => void) {
+  const original = process.env[name];
+  if (value === undefined) {
+    delete process.env[name];
+  } else {
+    process.env[name] = value;
+  }
+  try {
+    run();
+  } finally {
+    if (original === undefined) {
+      delete process.env[name];
+    } else {
+      process.env[name] = original;
+    }
+  }
+}
+
+// ── resolveTravelProviderKind: fail-safe, solo "hotelbeds" exacto activa el camino no-mock ──
+
+test('resolveTravelProviderKind: TRAVEL_PROVIDER ausente -> "mock"', () => {
+  withEnv("TRAVEL_PROVIDER", undefined, () => {
+    assert.equal(resolveTravelProviderKind(), "mock");
+  });
+});
+
+test('resolveTravelProviderKind: TRAVEL_PROVIDER vacío -> "mock"', () => {
+  withEnv("TRAVEL_PROVIDER", "", () => {
+    assert.equal(resolveTravelProviderKind(), "mock");
+  });
+});
+
+test('resolveTravelProviderKind: cualquier valor distinto de "hotelbeds" -> "mock" (mayúsculas incluidas, fail-safe)', () => {
+  for (const value of ["Hotelbeds", "HOTELBEDS", "mock", "real", " hotelbeds", "hotelbeds "]) {
+    withEnv("TRAVEL_PROVIDER", value, () => {
+      assert.equal(resolveTravelProviderKind(), "mock", `se esperaba "mock" para ${JSON.stringify(value)}`);
+    });
+  }
+});
+
+test('resolveTravelProviderKind: TRAVEL_PROVIDER="hotelbeds" exacto -> "hotelbeds"', () => {
+  withEnv("TRAVEL_PROVIDER", "hotelbeds", () => {
+    assert.equal(resolveTravelProviderKind(), "hotelbeds");
+  });
+});
+
+// ── getFixedHotelbedsHotelCodes: nunca inventa un código ──
+
+test("getFixedHotelbedsHotelCodes: HOTELBEDS_FIXED_HOTEL_CODES ausente -> undefined", () => {
+  withEnv("HOTELBEDS_FIXED_HOTEL_CODES", undefined, () => {
+    assert.equal(getFixedHotelbedsHotelCodes(), undefined);
+  });
+});
+
+test("getFixedHotelbedsHotelCodes: vacío o solo espacios -> undefined", () => {
+  for (const value of ["", "   "]) {
+    withEnv("HOTELBEDS_FIXED_HOTEL_CODES", value, () => {
+      assert.equal(getFixedHotelbedsHotelCodes(), undefined, `se esperaba undefined para ${JSON.stringify(value)}`);
+    });
+  }
+});
+
+test("getFixedHotelbedsHotelCodes: \"3424,168\" -> [3424, 168] (los 2 códigos ya verificados con una petición real)", () => {
+  withEnv("HOTELBEDS_FIXED_HOTEL_CODES", "3424,168", () => {
+    assert.deepEqual(getFixedHotelbedsHotelCodes(), [3424, 168]);
+  });
+});
+
+test("getFixedHotelbedsHotelCodes: admite espacios alrededor de cada código", () => {
+  withEnv("HOTELBEDS_FIXED_HOTEL_CODES", " 3424 , 168 ", () => {
+    assert.deepEqual(getFixedHotelbedsHotelCodes(), [3424, 168]);
+  });
+});
+
+test("getFixedHotelbedsHotelCodes: descarta tokens no numéricos o no positivos, conserva el resto", () => {
+  withEnv("HOTELBEDS_FIXED_HOTEL_CODES", "3424,abc,-5,0,168", () => {
+    assert.deepEqual(getFixedHotelbedsHotelCodes(), [3424, 168]);
+  });
+});
+
+test("getFixedHotelbedsHotelCodes: si NINGÚN token es válido, undefined (nunca un array vacío)", () => {
+  withEnv("HOTELBEDS_FIXED_HOTEL_CODES", "abc,-5,0", () => {
+    assert.equal(getFixedHotelbedsHotelCodes(), undefined);
+  });
+});
 
 const VALID_SEARCH: SearchParams = {
   destination: "Madrid",

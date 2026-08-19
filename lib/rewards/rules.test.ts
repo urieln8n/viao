@@ -1,9 +1,4 @@
-// F7-04/F7-05 (VIAO_ROADMAP.md) — Tests de las reglas promocionales.
-//
-// 14/15 son requisitos de DOCUMENTACIÓN/diseño, no de comportamiento en
-// runtime — se comprueban sobre el propio código fuente, igual que otros
-// tests estructurales de este proyecto (p. ej.
-// app/booking/actions.test.ts).
+// F7-04/F7-05 (VIAO_ROADMAP.md) — Tests de la economía VIAO Rewards V1.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -11,50 +6,56 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import {
-  BOOKING_REWARD_POINTS_PROVISIONAL,
+  HOTEL_BOOKING_REWARD_RATE,
+  POINTS_PER_EURO,
   REGISTRATION_REWARD_POINTS_PROVISIONAL,
+  calculateHotelBookingRewardPoints,
+  pointsToEuroValue,
 } from "./rules";
 
-test("los montos de recompensa son números positivos concretos (sin los cuales las Server Actions/triggers no podrían operar)", () => {
+test("REGISTRATION_REWARD_POINTS_PROVISIONAL es un entero positivo", () => {
   assert.ok(Number.isInteger(REGISTRATION_REWARD_POINTS_PROVISIONAL));
   assert.ok(REGISTRATION_REWARD_POINTS_PROVISIONAL > 0);
-  assert.ok(Number.isInteger(BOOKING_REWARD_POINTS_PROVISIONAL));
-  assert.ok(BOOKING_REWARD_POINTS_PROVISIONAL > 0);
 });
 
-// ── 14. Los montos están marcados como PROVISIONALES ──
-test("rules.ts marca explícitamente los montos como PROVISIONAL en el código", () => {
-  const source = readFileSync(path.join(process.cwd(), "lib/rewards/rules.ts"), "utf-8");
-
-  assert.ok(/PROVISIONAL/.test(source), "rules.ts debe marcar explícitamente los montos como provisionales");
-
-  const registrationExport = source.match(
-    /export const REGISTRATION_REWARD_POINTS_PROVISIONAL[\s\S]{0,20}/,
-  );
-  const bookingExport = source.match(/export const BOOKING_REWARD_POINTS_PROVISIONAL[\s\S]{0,20}/);
-  assert.ok(registrationExport, "debe existir REGISTRATION_REWARD_POINTS_PROVISIONAL");
-  assert.ok(bookingExport, "debe existir BOOKING_REWARD_POINTS_PROVISIONAL");
+test("POINTS_PER_EURO y HOTEL_BOOKING_REWARD_RATE son la economía V1 confirmada (100 Points = 1 €, 2% por reserva de hotel)", () => {
+  assert.equal(POINTS_PER_EURO, 100);
+  assert.equal(HOTEL_BOOKING_REWARD_RATE, 0.02);
 });
 
-// ── 15. No existe conversión Points -> EUR definitiva ──
-test("rules.ts no define ninguna conversión definitiva Points -> EUR", () => {
-  const source = readFileSync(path.join(process.cwd(), "lib/rewards/rules.ts"), "utf-8");
-
-  assert.ok(
-    !/EUR_PER_POINT|POINT_TO_EUR|EUR_CONVERSION|POINTS_TO_EUR_RATE/i.test(source),
-    "no debe existir ninguna constante de conversión definitiva Points -> EUR",
-  );
-  assert.ok(
-    /no representan una conversión|NO establecer una conversión|sin ninguna conversión/i.test(source),
-    "debe documentarse explícitamente que no hay conversión definitiva a EUR",
-  );
+// ── calculateHotelBookingRewardPoints: ejemplos obligatorios del bloque ──
+test("calculateHotelBookingRewardPoints calcula el 2% del importe en Points, redondeado hacia abajo", () => {
+  assert.equal(calculateHotelBookingRewardPoints(100), 200);
+  assert.equal(calculateHotelBookingRewardPoints(250), 500);
+  assert.equal(calculateHotelBookingRewardPoints(400), 800);
+  assert.equal(calculateHotelBookingRewardPoints(1000), 2000);
 });
 
-test("create-reward-transaction.ts no realiza ningún cálculo de conversión a EUR ni de comisión", () => {
-  const source = readFileSync(path.join(process.cwd(), "lib/rewards/create-reward-transaction.ts"), "utf-8");
+test("calculateHotelBookingRewardPoints redondea hacia abajo para importes no exactos", () => {
+  // 133 * 0.02 * 100 = 266 (exacto); 133.4 * 0.02 * 100 = 266.8 -> floor 266.
+  assert.equal(calculateHotelBookingRewardPoints(133), 266);
+  assert.equal(calculateHotelBookingRewardPoints(133.4), 266);
+});
+
+test("calculateHotelBookingRewardPoints devuelve 0 para un importe 0", () => {
+  assert.equal(calculateHotelBookingRewardPoints(0), 0);
+});
+
+// ── pointsToEuroValue: inversa de la conversión V1 ──
+test("pointsToEuroValue convierte Points a su valor aproximado en euros (100 Points = 1 €)", () => {
+  assert.equal(pointsToEuroValue(200), 2);
+  assert.equal(pointsToEuroValue(800), 8);
+  assert.equal(pointsToEuroValue(1000), 10);
+});
+
+test("create-reward-transaction.ts no realiza ningún cálculo de comisión ni de revenue", () => {
+  const source = readFileSync(
+    path.join(process.cwd(), "lib/rewards/create-reward-transaction.ts"),
+    "utf-8",
+  );
 
   assert.ok(
-    !/EUR|commission|comisión|revenue/i.test(source),
-    "la creación de transacciones no debe calcular ni mencionar comisión/revenue/EUR: eso pertenece a bookings, no a rewards_transactions",
+    !/commission|comisión|revenue/i.test(source),
+    "la creación de transacciones no debe calcular ni mencionar comisión/revenue: eso pertenece a bookings, no a rewards_transactions",
   );
 });

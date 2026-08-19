@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { LoadingState } from "@/components/state/loading-state";
 import { t, type Locale, SUPPORTED_LOCALES } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
+import { pointsToEuroValue } from "../../lib/rewards/rules";
+import { getProfileRewardsBalanceAction } from "./actions";
 
 type SessionStatus = "checking" | "signed-out" | "signed-in";
 // "idle" cubre también "cargando": mientras la promesa de carga está en
@@ -65,6 +67,11 @@ export default function ProfilePage() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Bloque 16 ("Perfil") — resumen de Rewards, mismo criterio "undefined
+  // = sin sesión/sin cargar todavía" que StatCard en Home (app/page.tsx).
+  const [rewardsBalance, setRewardsBalance] = useState<number | undefined>(undefined);
+  const [logoutLoading, setLogoutLoading] = useState(false);
+
   useEffect(() => {
     const supabase = createClient();
 
@@ -117,6 +124,39 @@ export default function ProfilePage() {
       cancelled = true;
     };
   }, [sessionStatus, user]);
+
+  // Bloque 16 ("Perfil") — reutiliza getWalletBalance() (lib/rewards/,
+  // Bloque 15) vía el wrapper de Server Action de ./actions.ts, sin
+  // duplicar su query. Efecto independiente del de arriba (perfil vs
+  // rewards son datos no relacionados) para que un fallo en uno no
+  // bloquee al otro.
+  useEffect(() => {
+    if (sessionStatus !== "signed-in") {
+      return;
+    }
+
+    let cancelled = false;
+    getProfileRewardsBalanceAction().then((balance) => {
+      if (!cancelled) {
+        setRewardsBalance(balance);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionStatus]);
+
+  // Bloque 16 ("Perfil") — MISMO patrón exacto que handleLogout en
+  // app/(auth)/login/page.tsx: signOut() + onAuthStateChange (ya
+  // suscrito arriba) actualiza sessionStatus automáticamente, sin
+  // redirección manual.
+  async function handleLogout() {
+    setLogoutLoading(true);
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setLogoutLoading(false);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -197,6 +237,15 @@ export default function ProfilePage() {
 
           {sessionStatus === "signed-in" && profileStatus === "error" && (
             <ErrorState message={t("profile.loadErrorMessage", activeLocale)} />
+          )}
+
+          {sessionStatus === "signed-in" && profileStatus === "ready" && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">
+                {t("profile.emailLabel", activeLocale)}
+              </span>
+              <p className="text-sm text-muted-foreground">{user?.email}</p>
+            </div>
           )}
 
           {sessionStatus === "signed-in" && profileStatus === "ready" && (
@@ -286,6 +335,63 @@ export default function ProfilePage() {
                   : t("profile.saveButton", activeLocale)}
               </Button>
             </form>
+          )}
+
+          {sessionStatus === "signed-in" && profileStatus === "ready" && (
+            <div className="flex flex-col gap-2 border-t border-border pt-4">
+              <span className="text-sm font-medium">
+                {t("profile.rewardsTitle", activeLocale)}
+              </span>
+              {rewardsBalance !== undefined && (
+                <>
+                  <p className="text-2xl font-semibold text-success">
+                    {rewardsBalance} {t("rewards.pointsUnit", activeLocale)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    ≈ {pointsToEuroValue(rewardsBalance).toFixed(2)} €{" "}
+                    {t("rewards.valueSuffix", activeLocale)}
+                  </p>
+                </>
+              )}
+              <Link
+                href="/rewards"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                {t("profile.viewRewardsCta", activeLocale)}
+              </Link>
+            </div>
+          )}
+
+          {sessionStatus === "signed-in" && profileStatus === "ready" && (
+            <div className="flex flex-col gap-2 border-t border-border pt-4">
+              <span className="text-sm font-medium">
+                {t("profile.tripsTitle", activeLocale)}
+              </span>
+              <Link
+                href="/trips"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                {t("profile.viewTripsCta", activeLocale)}
+              </Link>
+            </div>
+          )}
+
+          {sessionStatus === "signed-in" && profileStatus === "ready" && (
+            <div className="flex flex-col gap-2 border-t border-border pt-4">
+              <span className="text-sm font-medium">
+                {t("profile.accountTitle", activeLocale)}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleLogout}
+                disabled={logoutLoading}
+              >
+                {logoutLoading
+                  ? t("login.loggingOut", activeLocale)
+                  : t("login.logoutButton", activeLocale)}
+              </Button>
+            </div>
           )}
 
           {saveStatus === "saving" && (

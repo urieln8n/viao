@@ -181,6 +181,34 @@ const PROPERTY_STATE: readonly MockPropertyState[] = [
   },
 ];
 
+export interface KnownDestination {
+  city: string;
+  country: string;
+}
+
+/**
+ * Bloque 16 ("Destinos seleccionables") — deriva la lista de destinos del
+ * MISMO catálogo que `search()` ya usa (`PROPERTY_STATE`), en vez de
+ * mantener una lista separada que podría desincronizarse. Deduplicada por
+ * `city` (los 4 alojamientos del mock cubren 4 ciudades distintas, una
+ * cada una, pero esto sigue siendo correcto si en el futuro hubiera más de
+ * un alojamiento por ciudad). NO cambia ni depende de `search()`: es
+ * puramente informativa, para que la UI pueda sugerir destinos válidos sin
+ * inventar ninguno nuevo.
+ */
+export function listKnownDestinations(): KnownDestination[] {
+  const seen = new Set<string>();
+  const destinations: KnownDestination[] = [];
+  for (const { property } of PROPERTY_STATE) {
+    if (!property.city || seen.has(property.city)) {
+      continue;
+    }
+    seen.add(property.city);
+    destinations.push({ city: property.city, country: property.country ?? "" });
+  }
+  return destinations;
+}
+
 // Porcentaje de comisión ilustrativo, únicamente para este mock. La
 // economía real de comisiones sigue sin decidirse (MVP sección 18, punto
 // 1) — este valor NO representa ninguna decisión de negocio.

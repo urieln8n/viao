@@ -34,11 +34,32 @@ import { SUPPORTED_LOCALES, type Locale } from "../../lib/i18n/types";
 //    de OpenAI para Vision; el kill switch se revuelve a comprobar dentro
 //    (defensa en profundidad).
 // 7. Persistencia en `vision_scans` (F10-03) — `image_retained=false` por
-//    defecto, nunca se sube la imagen a Storage en este flujo (ver
-//    lib/openai/vision.ts: la imagen viaja a OpenAI como base64 en el
-//    cuerpo de la petición, nunca toca Supabase Storage) — cumple "no
-//    almacenamiento permanente por defecto" de la forma más fuerte
-//    posible: ni siquiera transitoriamente.
+//    defecto: la fila de `vision_scans` en sí sigue sin guardar la
+//    imagen (solo texto) — la relación con una imagen real en Storage
+//    solo existe si el usuario decide "Guardar en Mi viaje" (`photos`,
+//    `vision_scan_id`), exactamente igual que antes de este bloque.
+//
+// Corrección de arquitectura (bloque "Cámara como flujo principal de
+// Vision") — hallazgo real: esta Action recibía el `File` original
+// dentro del FormData. Una Server Action de Next.js tiene un límite de
+// tamaño de cuerpo (1 MB por defecto) muy por debajo de una foto de
+// móvil real, así que cualquier captura de cámara medianamente grande
+// hacía fallar la invocación de la Action ANTES de que este código
+// llegara a ejecutarse ("Body exceeded 1 MB limit") — subir el límite de
+// `serverActions.bodySizeLimit` habría escondido el síntoma sin
+// solucionar el problema real: seguir enviando binarios grandes por un
+// canal pensado para datos de formulario pequeños.
+//
+// Ahora el cliente sube el archivo DIRECTAMENTE a Storage (bucket
+// `photos`, RLS `photos_insert_own` ya lo permite — mismo patrón que
+// "Guardar imagen" ya usaba) ANTES de llamar a esta Action, y solo envía
+// `imagePath` (una ruta de texto, unos pocos bytes). Aquí se descargan
+// los bytes reales desde Storage con el cliente de sesión (una petición
+// saliente normal server-to-Supabase, sin el límite de las Server
+// Actions) para poder seguir ejecutando EXACTAMENTE la misma validación
+// (`validateImage`, magic bytes reales, límite de 10 MB — ya vigente en
+// `lib/vision/config.ts` antes de este bloque, nunca tocado) y la misma
+// llamada a OpenAI (`generateVisionScan`, base64, sin cambios).
 const ENDPOINT = "vision_scan";
 
 export type ScanVisionActionResult =
@@ -92,15 +113,34 @@ export async function scanVisionAction(
     return { status: "no_consent" };
   }
 
-  const file = formData.get("image");
-  if (!(file instanceof File)) {
+  const rawImagePath = formData.get("imagePath");
+  if (typeof rawImagePath !== "string" || !rawImagePath.startsWith(`${userId}/`)) {
+    // El prefijo de carpeta debe ser el propio userId — misma
+    // comprobación de defensa en profundidad que ya usa el resto del
+    // proyecto para Storage (RLS ya lo exige al nivel de Postgres; esto
+    // solo evita una descarga innecesaria si el valor viene manipulado).
+    return { status: "invalid_image", reason: "invalid_mime_type" };
+  }
+  const imagePath = rawImagePath;
+
+  // Segunda instancia del cliente de sesión: la de arriba queda fuera de
+  // alcance al cerrarse su propio try/catch (patrón ya existente de esta
+  // función, sin tocar). RLS (`photos_select_own`) sigue siendo quien
+  // decide qué puede descargarse — la comprobación de prefijo de arriba
+  // es solo una capa extra, no la que realmente protege esto.
+  const sessionClient = await createSessionClient();
+  const { data: downloadedFile, error: downloadError } = await sessionClient.storage
+    .from("photos")
+    .download(imagePath);
+  if (downloadError || !downloadedFile) {
     return { status: "invalid_image", reason: "invalid_mime_type" };
   }
 
-  const arrayBuffer = await file.arrayBuffer();
+  const arrayBuffer = await downloadedFile.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
+  const mimeType = downloadedFile.type || "image/jpeg";
   const validation = validateImage({
-    mimeType: file.type,
+    mimeType,
     sizeBytes: bytes.byteLength,
     bytes,
   });
@@ -128,7 +168,7 @@ export async function scanVisionAction(
   const imageBase64 = Buffer.from(bytes).toString("base64");
   const wrapperResult = await generateVisionScan({
     imageBase64,
-    mimeType: file.type,
+    mimeType,
     targetLanguage,
   });
 

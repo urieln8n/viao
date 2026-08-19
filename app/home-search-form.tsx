@@ -2,9 +2,11 @@
 
 import { useId, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { CalendarDays } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DestinationInput } from "@/components/search/destination-input";
 import { t } from "@/lib/i18n";
 
 interface HomeSearchFormValues {
@@ -117,15 +119,13 @@ export function HomeSearchForm() {
         <label htmlFor={destinationId} className="text-sm font-medium">
           {t("search.destinationLabel")}
         </label>
-        <Input
+        <DestinationInput
           id={destinationId}
           name="destination"
-          type="text"
-          autoComplete="off"
           value={destination}
-          onChange={(event) => setDestination(event.target.value)}
-          aria-invalid={errors.destination ? true : undefined}
-          aria-describedby={errors.destination ? `${destinationId}-error` : undefined}
+          onChange={setDestination}
+          ariaInvalid={errors.destination ? true : undefined}
+          ariaDescribedBy={errors.destination ? `${destinationId}-error` : undefined}
         />
         {errors.destination && (
           <p id={`${destinationId}-error`} className="text-sm text-destructive">
@@ -134,45 +134,51 @@ export function HomeSearchForm() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor={checkInId} className="text-sm font-medium">
-            {t("search.checkInLabel")}
-          </label>
-          <Input
-            id={checkInId}
-            name="checkIn"
-            type="date"
-            value={checkIn}
-            onChange={(event) => setCheckIn(event.target.value)}
-            aria-invalid={errors.checkIn ? true : undefined}
-            aria-describedby={errors.checkIn ? `${checkInId}-error` : undefined}
-          />
-          {errors.checkIn && (
-            <p id={`${checkInId}-error`} className="text-sm text-destructive">
-              {errors.checkIn}
-            </p>
-          )}
-        </div>
+      <div className="flex flex-col gap-2 rounded-xl border border-border p-3">
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <CalendarDays className="size-3.5" aria-hidden="true" />
+          {t("search.datesGroupLabel")}
+        </span>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={checkInId} className="text-sm font-medium">
+              {t("search.checkInLabel")}
+            </label>
+            <Input
+              id={checkInId}
+              name="checkIn"
+              type="date"
+              value={checkIn}
+              onChange={(event) => setCheckIn(event.target.value)}
+              aria-invalid={errors.checkIn ? true : undefined}
+              aria-describedby={errors.checkIn ? `${checkInId}-error` : undefined}
+            />
+            {errors.checkIn && (
+              <p id={`${checkInId}-error`} className="text-sm text-destructive">
+                {errors.checkIn}
+              </p>
+            )}
+          </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor={checkOutId} className="text-sm font-medium">
-            {t("search.checkOutLabel")}
-          </label>
-          <Input
-            id={checkOutId}
-            name="checkOut"
-            type="date"
-            value={checkOut}
-            onChange={(event) => setCheckOut(event.target.value)}
-            aria-invalid={errors.checkOut ? true : undefined}
-            aria-describedby={errors.checkOut ? `${checkOutId}-error` : undefined}
-          />
-          {errors.checkOut && (
-            <p id={`${checkOutId}-error`} className="text-sm text-destructive">
-              {errors.checkOut}
-            </p>
-          )}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={checkOutId} className="text-sm font-medium">
+              {t("search.checkOutLabel")}
+            </label>
+            <Input
+              id={checkOutId}
+              name="checkOut"
+              type="date"
+              value={checkOut}
+              onChange={(event) => setCheckOut(event.target.value)}
+              aria-invalid={errors.checkOut ? true : undefined}
+              aria-describedby={errors.checkOut ? `${checkOutId}-error` : undefined}
+            />
+            {errors.checkOut && (
+              <p id={`${checkOutId}-error`} className="text-sm text-destructive">
+                {errors.checkOut}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 

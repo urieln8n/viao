@@ -1,5 +1,3 @@
-import { t } from "@/lib/i18n";
-
 import { hasActiveVisionConsent } from "../../lib/vision/check-vision-consent";
 import { getUserTrips } from "../../lib/trips/get-user-trips";
 import { VisionView } from "./vision-view";
@@ -17,14 +15,17 @@ import { VisionView } from "./vision-view";
 // real, `getUserTrips()` ya devuelve `[]` (best-effort, mismo criterio que
 // `hasActiveVisionConsent`) — VisionView cae al estado vacío, sin ningún
 // caso especial nuevo aquí.
+//
+// Bloque 19 ("Identidad visual") — título/descripción ya no viven sueltos
+// aquí: se movieron dentro de la Card de cabecera de `VisionView` (mismo
+// criterio que VIAO AI) para que Vision se perciba como una herramienta
+// propia. Ningún dato ni lógica nueva.
 export default async function VisionPage() {
   const initialHasConsent = await hasActiveVisionConsent();
   const trips = await getUserTrips();
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
-      <h1 className="text-xl font-semibold">{t("vision.title")}</h1>
-      <p className="text-sm text-muted-foreground">{t("vision.description")}</p>
       <VisionView initialHasConsent={initialHasConsent} trips={trips} />
     </main>
   );

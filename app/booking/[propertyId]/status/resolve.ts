@@ -72,6 +72,8 @@ export interface BookingStatusView {
   bookingValue?: number;
   currency: string;
   searchId?: string;
+  /** Points realmente otorgados por esta reserva (Economía VIAO Rewards V1, `lib/rewards/rules.ts`) — leídos del ledger real, nunca recalculados aquí. `undefined` si la reserva no llegó a `confirmed` o no generó recompensa. */
+  rewardPoints?: number;
   property: BookingStatusPropertyView;
 }
 
@@ -179,6 +181,30 @@ export async function resolveBookingStatus(
     };
   }
 
+  // Points otorgados por esta reserva (Economía VIAO Rewards V1,
+  // `lib/rewards/rules.ts`): se leen del ledger real
+  // (`rewards_transactions`), NUNCA se recalculan aquí a partir del
+  // precio — así la pantalla siempre muestra exactamente lo que se otorgó,
+  // aunque la fórmula cambie en el futuro para reservas nuevas. Mismo
+  // Patrón A que el resto de este archivo: cliente de sesión, RLS
+  // (`rewards_transactions_select_own`) ya limita el resultado al propio
+  // usuario — una fila de otro usuario, bajo RLS, no es alcanzable aquí.
+  // Solo relevante si la reserva quedó `confirmed` (único caso en el que
+  // `app/booking/actions.ts` otorga la recompensa); para `pending`/
+  // `cancelled` no existe ninguna fila y la consulta simplemente no
+  // encuentra nada.
+  let rewardPoints: number | undefined;
+  if (data.status === "confirmed") {
+    const { data: rewardRow } = await sessionClient
+      .from("rewards_transactions")
+      .select("amount")
+      .eq("reference_type", "booking")
+      .eq("reference_id", rawId)
+      .eq("reason", "booking")
+      .maybeSingle();
+    rewardPoints = rewardRow ? Number(rewardRow.amount) : undefined;
+  }
+
   return {
     status: "found",
     booking: {
@@ -194,6 +220,7 @@ export async function resolveBookingStatus(
           : Number(data.booking_value),
       currency: data.currency,
       searchId: data.search_id ?? undefined,
+      rewardPoints,
       property: {
         name: data.property.name,
         city: data.property.city ?? undefined,

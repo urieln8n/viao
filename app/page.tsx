@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Search, ScanEye } from "lucide-react";
+import { Search, ScanEye, Eye, Heart } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import type { TranslationKey } from "@/lib/i18n/types";
 import { getUserTrips } from "../lib/trips/get-user-trips";
 import { getTripDetail, type TripDetail } from "../lib/trips/get-trip-detail";
 import { getWalletBalance } from "../lib/rewards/get-wallet-balance";
+import { pointsToEuroValue } from "../lib/rewards/rules";
 import { HomeSearchForm } from "./home-search-form";
 
 // F11-04 (VIAO_ROADMAP.md) ya expone `getTripDetail()` — no existe hoy
@@ -169,6 +170,78 @@ export default async function Home() {
                 {t("home.createAccountCta")}
               </Link>
             )}
+
+            {/* Bloque "Landing + VIAO Rewards V1" — introducción breve de
+                qué es VIAO y por qué es diferente, y comunicación de la
+                Economía VIAO Rewards V1 (`lib/rewards/rules.ts`). Solo en
+                esta rama (sin viaje destacado): un usuario que ya tiene un
+                viaje en curso no necesita volver a ver la explicación del
+                producto cada vez que abre Home. No sustituye el buscador
+                (arriba, sin tocar) ni crea ningún sistema nuevo de fotos/
+                recuerdos: "Después" enlaza directamente a Mi viaje, que ya
+                los gestiona. */}
+            {/* Bloque 19 ("Identidad visual") — mismo copy exacto de
+                Bloque 15, solo se añade un icono + el acento de color de
+                la pieza dominante de cada fase (Antes=naranja VIAO,
+                decidir/reservar; Durante=azul, Vision; Después=verde,
+                Rewards) para que la progresión se lea de un vistazo, no
+                solo leyendo el texto. */}
+            <section className="flex flex-col gap-8 border-t border-border pt-8">
+              <div className="grid gap-6 sm:grid-cols-3">
+                <div className="flex flex-col gap-1">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-viao-orange">
+                    <Search className="size-3.5" aria-hidden="true" />
+                    {t("home.introBeforeEyebrow")}
+                  </span>
+                  <p className="text-sm font-semibold">{t("home.introBeforeTitle")}</p>
+                  <p className="text-sm text-muted-foreground">{t("home.introBeforeItem1")}</p>
+                  <p className="text-sm text-muted-foreground">{t("home.introBeforeItem2")}</p>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-info">
+                    <Eye className="size-3.5" aria-hidden="true" />
+                    {t("home.introDuringEyebrow")}
+                  </span>
+                  <p className="text-sm font-semibold">{t("home.introDuringTitle")}</p>
+                  <p className="text-sm text-muted-foreground">{t("home.introDuringItem1")}</p>
+                  <p className="text-sm text-muted-foreground">{t("home.introDuringItem2")}</p>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">
+                    <Heart className="size-3.5" aria-hidden="true" />
+                    {t("home.introAfterEyebrow")}
+                  </span>
+                  <p className="text-sm font-semibold">{t("home.introAfterTitle")}</p>
+                  <p className="text-sm text-muted-foreground">{t("home.introAfterItem")}</p>
+                  <Link
+                    href="/trips"
+                    className="w-fit text-sm text-primary underline-offset-4 hover:underline"
+                  >
+                    {t("home.introAfterCta")}
+                  </Link>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 rounded-xl bg-accent p-6">
+                <p className="text-sm font-semibold">{t("home.rewardsIntroTitle")}</p>
+                <p className="flex items-center gap-1.5 text-lg font-semibold text-success">
+                  <Heart className="size-4" aria-hidden="true" />
+                  {t("home.rewardsExample")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("home.rewardsDisclaimer")}
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center gap-3 text-center">
+                <p className="text-sm font-medium">{t("home.closingTagline")}</p>
+                <Link href="/search" className={buttonVariants({ variant: "default" })}>
+                  {t("home.startTripCta")}
+                </Link>
+              </div>
+            </section>
           </section>
         )}
 
@@ -192,7 +265,11 @@ export default async function Home() {
           <StatCard
             label={t("home.pointsTeaserTitle")}
             value={balance !== undefined ? balance : "—"}
-            caption={balance !== undefined ? t("rewards.pointsUnit") : t("home.pointsTeaserSignedOut")}
+            caption={
+              balance !== undefined
+                ? `≈ ${pointsToEuroValue(balance).toFixed(2)} € ${t("rewards.valueSuffix")}`
+                : t("home.pointsTeaserSignedOut")
+            }
             tone={balance !== undefined ? "positive" : "default"}
             action={
               <Link
@@ -204,16 +281,19 @@ export default async function Home() {
             }
           />
 
-          <Card>
+          <Card className="border-info/30">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <ScanEye className="size-4 text-muted-foreground" aria-hidden="true" />
+                <ScanEye className="size-4 text-info" aria-hidden="true" />
                 {t("vision.title")}
               </CardTitle>
               <CardDescription>{t("vision.description")}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Link href="/vision" className={buttonVariants({ variant: "outline" })}>
+              <Link
+                href="/vision"
+                className={buttonVariants({ variant: "outline", className: "text-info" })}
+              >
                 {t("home.visionTeaserCta")}
               </Link>
             </CardContent>

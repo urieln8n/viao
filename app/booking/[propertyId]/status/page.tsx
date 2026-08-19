@@ -13,6 +13,7 @@ import type { TranslationKey } from "@/lib/i18n/types";
 
 import { resolveBookingStatus } from "./resolve";
 import { formatLocation, formatPrice, formatRating } from "../../../search/results/format";
+import { pointsToEuroValue } from "../../../../lib/rewards/rules";
 import type { BookingStatus } from "../../../../types/travel";
 
 // F6-05 (VIAO_ROADMAP.md) — Pantalla de estado de una reserva existente.
@@ -178,6 +179,21 @@ export default async function BookingStatusPage({
             </p>
           </div>
         </div>
+
+        {booking.rewardPoints !== undefined && booking.rewardPoints > 0 && (
+          <Card>
+            <CardContent className="flex flex-col gap-1">
+              <p className="text-2xl font-semibold text-success">
+                {t("bookingStatus.pointsGrantedTitlePrefix")} {booking.rewardPoints}{" "}
+                {t("rewards.pointsUnit")}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                ≈ {pointsToEuroValue(booking.rewardPoints).toFixed(2)} €{" "}
+                {t("bookingStatus.pointsGrantedValueSuffix")}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="overflow-hidden">
           <PropertyImage

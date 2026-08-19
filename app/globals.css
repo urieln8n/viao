@@ -51,6 +51,8 @@ body {
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
+  --color-viao-orange: var(--viao-orange);
+  --color-viao-orange-foreground: var(--viao-orange-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -93,6 +95,22 @@ body {
   --success: oklch(0.45 0.14 155);
   --warning: oklch(0.55 0.16 70);
   --info: oklch(0.5 0.17 240);
+  /* Bloque 19 ("Identidad visual") — naranja de marca, color de acción
+     principal de VIAO (CTA/Button default/VIAO AI). Opción B de las 3
+     estudiadas en la auditoría — verificada con cálculo real de contraste
+     WCAG (conversión OKLCH -> sRGB, no solo estimación visual):
+     - Como fondo de botón con texto oscuro (--viao-orange-foreground):
+       4.88:1 (pasa AA texto normal, 4.5:1). Con texto casi-blanco
+       (el mismo patrón que --primary) solo daría 3.69:1 — POR ESO el
+       texto sobre este color es oscuro, no blanco, a diferencia de
+       --primary/--primary-foreground.
+     - Como icono/borde sobre card clara: 3.74:1 (pasa AA de elemento
+       gráfico, 3:1). Sobre card oscura: 4.65:1.
+     Mismo valor en :root y .dark (mismo cálculo, mismo resultado válido
+     en ambos temas — no hace falta aclarar el naranja en sí, solo se
+     redeclara en .dark por claridad, ver más abajo). */
+  --viao-orange: oklch(0.62 0.16 52);
+  --viao-orange-foreground: oklch(0.18 0 0);
   --border: oklch(0.92 0 0);
   --input: oklch(0.92 0 0);
   --ring: oklch(0.5 0.17 240);
@@ -128,6 +146,23 @@ body {
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  /* Bloque 19 — hallazgo real: --success/--warning/--info NUNCA se
+     redefinían aquí, así que en modo oscuro heredaban el valor de :root
+     (calibrado para fondo claro) sin que nadie lo hubiera decidido así.
+     Verificado con cálculo de contraste real: heredados sin cambio daban
+     2.66:1 (success), 3.59:1 (warning) y 3.20:1 (info) sobre la card
+     oscura — los 3 por debajo del 4.5:1 exigido para texto normal (AA).
+     Mismo hue/chroma, L subida para compensar el fondo oscuro; los 3
+     ahora dan 5.95-7.01:1 sobre card oscura, verificado. */
+  --success: oklch(0.65 0.16 155);
+  --warning: oklch(0.72 0.16 70);
+  --info: oklch(0.68 0.15 240);
+  /* Mismo naranja que :root (ver comentario allí) — el cálculo de
+     contraste ya es válido en ambos temas, se redeclara aquí solo para
+     que quede explícito y no ocurra el mismo problema de "olvido
+     silencioso" que tenían success/warning/info. */
+  --viao-orange: oklch(0.62 0.16 52);
+  --viao-orange-foreground: oklch(0.18 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);

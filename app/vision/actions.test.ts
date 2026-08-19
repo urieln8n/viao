@@ -29,9 +29,9 @@ test("scanVisionAction: sin sesión real, unauthenticated, no lanza (incluso con
   assert.equal(result.status, "unauthenticated");
 });
 
-test("scanVisionAction: sin sesión real, unauthenticated incluso con una imagen adjunta (la sesión se comprueba antes que la imagen)", async () => {
+test("scanVisionAction: sin sesión real, unauthenticated incluso con una ruta de imagen adjunta (la sesión se comprueba antes que la imagen)", async () => {
   const formData = new FormData();
-  formData.append("image", new File([new Uint8Array([0xff, 0xd8, 0xff])], "test.jpg", { type: "image/jpeg" }));
+  formData.append("imagePath", "some-user-id/test.jpg");
   const result = await scanVisionAction(formData);
   assert.equal(result.status, "unauthenticated");
 });

@@ -31,7 +31,16 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+        // Bloque 19 ("Identidad visual") — antes usaba --primary (negro/
+        // blanco puro, oklch con croma 0), igual que cualquier otro
+        // elemento neutro del sistema. Ahora usa el naranja de marca
+        // (--viao-orange, app/globals.css), para que la acción PRINCIPAL
+        // de cada pantalla sea reconocible como "esto es VIAO", no un
+        // botón genérico. Texto oscuro (--viao-orange-foreground), no
+        // blanco: verificado con cálculo real de contraste — blanco sobre
+        // este naranja solo da 3.69:1 (no pasa AA texto normal), oscuro da
+        // 4.88:1 (si pasa) — distinto del patrón de --primary a propósito.
+        default: "border-transparent bg-viao-orange text-viao-orange-foreground hover:bg-viao-orange/85",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
@@ -42,12 +51,24 @@ const buttonVariants = cva(
           "border-transparent bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "border-transparent text-primary underline-offset-4 hover:underline",
       },
+      // Bloque 23 ("Corrección P1 mobile touch targets") — alturas
+      // subidas al mínimo táctil recomendado (~44px, Apple HIG/Material).
+      // Verificado por grep antes de tocar nada: `default` se usa en toda
+      // la app (mayor impacto, la razón real de este bloque); `sm` solo
+      // en 3 sitios, todos enlaces independientes con espacio propio
+      // (app/page.tsx, app/profile/page.tsx x2) — sin layouts apretados
+      // donde 44px pudiera romper algo; `lg`/`xs` no se usan en ningún
+      // sitio hoy (cero riesgo de regresión visual). Solo se cambia
+      // `h-*` — gap/padding/tipografía/color intactos, tal como se pidió
+      // ("no rediseñar"). Las variantes `icon*` (cuadradas) no se tocan:
+      // no están pedidas explícitamente y su único uso real es dentro de
+      // `Dialog`, que no se renderiza en ningún sitio de la app.
       size: {
         default:
-          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+          "h-11 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        xs: "h-9 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-11 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-12 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         icon: "size-8",
         "icon-xs":
           "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
