@@ -33,6 +33,8 @@ export const es = {
   "register.validationPasswordLength":
     "La contraseña debe tener al menos 6 caracteres.",
   "register.referralCodeLabel": "Código de referido (opcional)",
+  "register.loginPromptText": "¿Ya tienes cuenta?",
+  "register.loginPromptLink": "Inicia sesión",
   "login.title": "Iniciar sesión",
   "login.emailLabel": "Email",
   "login.passwordLabel": "Contraseña",
@@ -49,6 +51,9 @@ export const es = {
     "Demasiados intentos. Inténtalo de nuevo en unos minutos.",
   "login.errorUnexpected":
     "No se ha podido iniciar sesión. Inténtalo de nuevo.",
+  "login.registerPromptText": "¿No tienes cuenta?",
+  "login.registerPromptLink": "Regístrate",
+  "login.forgotPasswordLink": "¿Olvidaste tu contraseña?",
   "recover.title": "Recuperar acceso",
   "recover.description":
     "Introduce tu email y te enviaremos un enlace para restablecer tu contraseña.",
@@ -126,6 +131,7 @@ export const es = {
   "results.emptyMessage": "Prueba con otro destino o con otras fechas.",
   "results.invalidInputTitle": "Búsqueda no válida",
   "results.errorTitle": "No se pudo completar la búsqueda",
+  "results.aiRecommendationCta": "Pedir recomendación a VIAO AI",
   "propertyDetail.backToSearch": "Volver a la búsqueda",
   "propertyDetail.errorTitle": "No se pudo cargar el alojamiento",
   "propertyDetail.bookCta": "Reservar",
@@ -215,7 +221,10 @@ export const es = {
   "vision.consentGrantedStatus": "Consentimiento otorgado.",
   "vision.grantConsentButton": "Dar consentimiento",
   "vision.withdrawConsentButton": "Retirar consentimiento",
-  "vision.tripIdPlaceholder": "ID de viaje (opcional, para guardar la imagen)",
+  "vision.tripSelectLabel": "Viaje (opcional, para asociar el escaneo)",
+  "vision.tripSelectNoneOption": "Sin viaje asociado",
+  "vision.tripSelectEmptyState":
+    "Todavía no tienes ningún viaje. Crea uno en Mi viaje para poder asociar tus escaneos.",
   "vision.scanButton": "Escanear",
   "vision.scanButtonLoading": "Escaneando...",
   "vision.saveButton": "Guardar imagen",
@@ -260,7 +269,9 @@ export const es = {
   "trips.rewardsEmpty": "Todavía no hay Points asociados a este viaje.",
   "trips.pointsUnit": "Points",
   "home.greetingTitle": "¿A dónde vamos?",
-  "home.greetingSubtitle": "Encuentra tu próximo alojamiento en segundos.",
+  "home.greetingSubtitle":
+    "Busca tu alojamiento y prepara tu viaje con IA, Vision y Points a tu lado.",
+  "home.createAccountCta": "Crear cuenta",
   "home.pointsTeaserTitle": "Tus Points",
   "home.pointsTeaserCta": "Ver Wallet",
   "home.pointsTeaserSignedOut": "Inicia sesión para ver tu saldo.",

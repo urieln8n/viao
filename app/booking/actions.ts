@@ -129,6 +129,8 @@ import { createRewardTransaction } from "../../lib/rewards/create-reward-transac
 import { BOOKING_REWARD_POINTS_PROVISIONAL } from "../../lib/rewards/rules";
 import { completeReferralActionIfPending } from "../../lib/referrals/complete-referral-action";
 import { VALID_REFERRAL_ACTION_TRIGGER } from "../../lib/referrals/rules";
+import { findOrCreateTripForBooking } from "../../lib/trips/find-or-create-trip-for-booking";
+import { associateBookingWithTrip } from "../../lib/bookings/associate-trip";
 import { getSearchById } from "../../lib/searches/get-search-by-id";
 import { isValidUuid } from "../properties/[id]/resolve";
 import { t } from "../../lib/i18n";
@@ -404,6 +406,33 @@ export async function createBookingAction(
             referralError,
           );
         }
+      }
+
+      // Bloque 11 ("Conexión del MVP para piloto") — asocia automáticamente
+      // la reserva a un viaje del usuario, dentro del MISMO guard que el
+      // resto de efectos de una confirmación real: nunca por un pending ni
+      // una reserva rechazada. `destination` reutiliza `property.city` (ya
+      // conocido de `provider.getDetails()`, más arriba en este mismo
+      // flujo), con `property.name` como respaldo si el provider no informa
+      // ciudad — nunca se inventa un dato nuevo. `findOrCreateTripForBooking`
+      // reutiliza (o crea, ver ese archivo) un viaje compatible;
+      // `associateBookingWithTrip` es la MISMA función ya usada por
+      // `app/trips/[id]/actions.ts` (F11-02) para la asociación manual — no
+      // se reimplementa. Mismo patrón de resiliencia que el resto de este
+      // guard: un fallo aquí nunca deshace ni oculta una reserva ya válida.
+      try {
+        const { tripId } = await findOrCreateTripForBooking({
+          userId: user.id,
+          destination: property.city?.trim() || property.name,
+          checkIn,
+          checkOut,
+        });
+        await associateBookingWithTrip({ bookingId, tripId, userId: user.id });
+      } catch (tripError) {
+        console.error(
+          `[trips] No se pudo asociar la reserva "${bookingId}" a un viaje:`,
+          tripError,
+        );
       }
     }
 

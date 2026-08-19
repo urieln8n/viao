@@ -85,7 +85,9 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
             <ul className="flex flex-col divide-y divide-border">
               {bookings.map((booking) => (
                 <li key={booking.id} className="flex flex-col gap-0.5 py-2 first:pt-0 last:pb-0">
-                  <span className="text-sm font-medium">{booking.propertyId}</span>
+                  <span className="text-sm font-medium">
+                    {booking.propertyName ?? booking.propertyId}
+                  </span>
                   <span className="text-xs text-muted-foreground">
                     {booking.checkIn} — {booking.checkOut} ({booking.status})
                     {booking.bookingValue != null &&

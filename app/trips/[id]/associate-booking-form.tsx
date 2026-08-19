@@ -49,7 +49,9 @@ export function AssociateBookingForm({
             className="flex items-center justify-between gap-2 py-3 first:pt-0 last:pb-0"
           >
             <div className="flex flex-col">
-              <span className="text-sm font-medium">{booking.propertyId}</span>
+              <span className="text-sm font-medium">
+                {booking.propertyName ?? booking.propertyId}
+              </span>
               <span className="text-xs text-muted-foreground">
                 {booking.checkIn} — {booking.checkOut} ({booking.status})
               </span>

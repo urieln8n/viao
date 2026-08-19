@@ -23,6 +23,7 @@ import { getTripById, type TripRecord } from "./get-trip-by-id";
 export interface TripBookingView {
   id: string;
   propertyId: string;
+  propertyName: string | null;
   checkIn: string;
   checkOut: string;
   status: string;
@@ -90,9 +91,32 @@ export async function getTripDetail(
         .order("created_at", { ascending: false }),
     ]);
 
-    const bookings: TripBookingView[] = (bookingsResult.data ?? []).map((row) => ({
+    // Bloque 11 — nombre humano del alojamiento en vez del UUID en bruto
+    // de `bookings.property_id` (hallazgo de la auditoría de retención).
+    // `properties` es Patrón B con lectura abierta a cualquier usuario
+    // autenticado (VIAO_DATABASE.md sección 4, `USING (true)`) — el
+    // cliente de sesión ya usado en esta misma función basta, sin
+    // `service_role`. Si la fila no existe (no debería ocurrir: toda
+    // reserva pasa por `upsertPropertyCache` antes de crearse) o la
+    // consulta falla, `propertyName` queda `null` y la UI cae de vuelta al
+    // UUID — nunca se inventa un nombre.
+    const rawBookings = bookingsResult.data ?? [];
+    const propertyIds = [...new Set(rawBookings.map((row) => row.property_id as string))];
+    const propertyNameById = new Map<string, string>();
+    if (propertyIds.length > 0) {
+      const { data: propertiesData } = await sessionClient
+        .from("properties")
+        .select("id, name")
+        .in("id", propertyIds);
+      for (const row of propertiesData ?? []) {
+        propertyNameById.set(row.id as string, row.name as string);
+      }
+    }
+
+    const bookings: TripBookingView[] = rawBookings.map((row) => ({
       id: row.id as string,
       propertyId: row.property_id as string,
+      propertyName: propertyNameById.get(row.property_id as string) ?? null,
       checkIn: row.check_in as string,
       checkOut: row.check_out as string,
       status: row.status as string,

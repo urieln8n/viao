@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ChangeEvent } from "react";
+import { useId, useState, useTransition, type ChangeEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
   deleteVisionScanAction,
   type ScanVisionActionResult,
 } from "./actions";
+import type { TripListItem } from "../../lib/trips/get-user-trips";
 
 // F10-00→F10-04 (VIAO_ROADMAP.md) — Único punto de la app que invoca las
 // Server Actions de Vision. Necesario para poder ejercitar el flujo real
@@ -25,10 +26,19 @@ import {
 // ya permite al propio cliente subir a Storage (`photos_insert_own`,
 // F1-10) e insertar en `photos` (`photos_insert_own`, F1-06) directamente
 // — un trigger server-side (migración 20260818170000) sincroniza
-// `vision_scans.image_retained` automáticamente. `tripId` se pide aquí
-// como campo de texto libre porque "Crear viaje" es F11-01 (Fase 11,
-// todavía no existe ninguna forma de listar/crear un viaje propio) — ver
-// el reporte de la fase para esta limitación preexistente.
+// `vision_scans.image_retained` automáticamente.
+//
+// Bloque 11 ("Conexión del MVP para piloto") — `tripId` ya NO es un campo
+// de texto libre: `trips` (prop, ya cargada server-side por
+// `app/vision/page.tsx` vía `getUserTrips()`, F11-01) alimenta un
+// `<select>` con los viajes reales del usuario — nunca se pide ni se
+// expone ningún UUID en la UI. El estado `tripId` y su uso en
+// `handleScan`/`handleSave` no cambian: `scanVisionAction` (F10-02) sigue
+// leyendo exactamente el mismo campo `tripId` del FormData, y sigue
+// verificando la propiedad del viaje server-side
+// (`lib/vision/create-vision-scan-record.ts`) — este cambio es
+// exclusivamente de qué valor puede llegar a proponer la UI, nunca de
+// confianza nueva depositada en el cliente.
 function scanErrorMessageFor(result: ScanVisionActionResult): string | undefined {
   switch (result.status) {
     case "unauthenticated":
@@ -48,7 +58,15 @@ function scanErrorMessageFor(result: ScanVisionActionResult): string | undefined
   }
 }
 
-export function VisionView({ initialHasConsent }: { initialHasConsent: boolean }) {
+export function VisionView({
+  initialHasConsent,
+  trips,
+}: {
+  initialHasConsent: boolean;
+  trips: TripListItem[];
+}) {
+  const tripSelectId = useId();
+
   const [hasConsent, setHasConsent] = useState(initialHasConsent);
   const [file, setFile] = useState<File | null>(null);
   const [targetLanguage, setTargetLanguage] = useState("es");
@@ -183,11 +201,31 @@ export function VisionView({ initialHasConsent }: { initialHasConsent: boolean }
             <option value="es">Español</option>
             <option value="en">English</option>
           </select>
-          <Input
-            value={tripId}
-            onChange={(event) => setTripId(event.target.value)}
-            placeholder={t("vision.tripIdPlaceholder")}
-          />
+          {trips.length > 0 ? (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={tripSelectId} className="text-sm font-medium">
+                {t("vision.tripSelectLabel")}
+              </label>
+              <select
+                id={tripSelectId}
+                value={tripId}
+                onChange={(event) => setTripId(event.target.value)}
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              >
+                <option value="">{t("vision.tripSelectNoneOption")}</option>
+                {trips.map((trip) => (
+                  <option key={trip.id} value={trip.id}>
+                    {trip.destination}
+                    {trip.startDate && trip.endDate
+                      ? ` · ${trip.startDate} — ${trip.endDate}`
+                      : ` · ${t("trips.datesUnset")}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("vision.tripSelectEmptyState")}</p>
+          )}
           <Button onClick={handleScan} disabled={!file || isPending}>
             {isPending ? t("vision.scanButtonLoading") : t("vision.scanButton")}
           </Button>

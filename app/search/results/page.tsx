@@ -12,6 +12,7 @@ import type { SearchParams } from "@/types/travel";
 import { searchAction } from "../actions";
 import type { PropertyResult } from "../actions";
 import { buildPropertyHref, formatLocation, formatPrice, formatRating } from "./format";
+import { isAiRecommendationsEnabled } from "../../../lib/openai/config";
 
 // F5-03 (VIAO_ROADMAP.md) — Listado de resultados.
 //
@@ -147,13 +148,34 @@ export default async function SearchResultsPage({
         )}
 
         {result.status === "success" && result.results.length > 0 && (
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {result.results.map((property) => (
-              <li key={property.providerPropertyId}>
-                <PropertyCard property={property} searchId={result.searchId} />
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {result.results.map((property) => (
+                <li key={property.providerPropertyId}>
+                  <PropertyCard property={property} searchId={result.searchId} />
+                </li>
+              ))}
+            </ul>
+
+            {/* Bloque 11 ("Conexión del MVP para piloto") — punto de
+                entrada visible hacia VIAO AI (F9-02), hasta ahora
+                inalcanzable desde la UI real (hallazgo de la auditoría de
+                retención). Solo aparece cuando la IA está habilitada
+                (isAiRecommendationsEnabled(), mismo interruptor F9-05 que
+                ya usa requestAiRecommendationAction) y cuando existe un
+                search_id real (F5-06/F5-07) — un usuario anónimo sin
+                search_id no ve un enlace roto. No dispara ninguna llamada:
+                es solo navegación; la Server Action solo se invoca al
+                pulsar el botón dentro de AiRecommendationView. */}
+            {isAiRecommendationsEnabled() && result.searchId && (
+              <Link
+                href={`/search/ai-recommendation?searchId=${encodeURIComponent(result.searchId)}`}
+                className={buttonVariants({ variant: "outline" })}
+              >
+                {t("results.aiRecommendationCta")}
+              </Link>
+            )}
+          </>
         )}
       </PageContainer>
     </main>
