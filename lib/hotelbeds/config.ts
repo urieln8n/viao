@@ -38,12 +38,23 @@ export function getHotelbedsCredentials(): HotelbedsCredentials {
 
 // Certificado cliente (mTLS) — Hotelbeds lo exige para al menos algunas
 // operaciones del Booking API (disponibilidad, checkrates, confirmación,
-// cancelación, según su documentación de "Mutual Authentication"). Mismo
-// criterio que las credenciales: las RUTAS a los archivos vienen del
-// entorno (nunca hardcodeadas, nunca commiteadas), y el contenido no se
-// lee hasta la primera llamada real. `readFileSync` se hace aquí, no en
-// cada llamada HTTP, para que el error de "archivo no encontrado" sea
-// tan claro como el de "variable no configurada".
+// cancelación, según su documentación de "Mutual Authentication").
+//
+// Dos formas de configurarlo, nunca mezcladas dentro del mismo par
+// cert/key (evita un cert de una fuente con una key de otra):
+// - Por VALOR (`HOTELBEDS_CLIENT_CERT`/`HOTELBEDS_CLIENT_KEY`): el
+//   contenido PEM completo como valor de la variable — la única forma
+//   viable en Vercel (u otro entorno serverless), que no tiene acceso al
+//   sistema de archivos local donde vive el certificado. Tiene
+//   prioridad: si `HOTELBEDS_CLIENT_CERT` está presente, se usa esta vía
+//   y `HOTELBEDS_CLIENT_KEY` pasa a ser obligatoria.
+// - Por RUTA (`HOTELBEDS_CLIENT_CERT_PATH`/`HOTELBEDS_CLIENT_KEY_PATH`,
+//   comportamiento ya existente): fallback para desarrollo local, donde
+//   sí hay sistema de archivos y tiene sentido apuntar a los archivos
+//   descargados de Hotelbeds sin pegar su contenido en `.env.local`.
+//   `readFileSync` se hace aquí, no en cada llamada HTTP, para que el
+//   error de "archivo no encontrado" sea tan claro como el de "variable
+//   no configurada".
 export interface HotelbedsClientCertificate {
   cert: Buffer;
   key: Buffer;
@@ -62,6 +73,15 @@ function readRequiredCertificateFile(envVarName: string): Buffer {
 }
 
 export function getHotelbedsClientCertificate(): HotelbedsClientCertificate {
+  const certValue = process.env.HOTELBEDS_CLIENT_CERT?.trim();
+  if (certValue) {
+    const keyValue = readRequiredEnv("HOTELBEDS_CLIENT_KEY");
+    return {
+      cert: Buffer.from(certValue, "utf8"),
+      key: Buffer.from(keyValue, "utf8"),
+    };
+  }
+
   return {
     cert: readRequiredCertificateFile("HOTELBEDS_CLIENT_CERT_PATH"),
     key: readRequiredCertificateFile("HOTELBEDS_CLIENT_KEY_PATH"),
