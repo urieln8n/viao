@@ -1,12 +1,13 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CircleCheck, CircleX, Clock, ImageOff } from "lucide-react";
+import { CircleCheck, CircleX, Clock } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState } from "@/components/state/error-state";
+import { PropertyImage } from "@/components/property/property-image";
+import { PageContainer } from "@/components/layout/page-container";
 import { t } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/types";
 
@@ -73,8 +74,11 @@ function BackToSearchLink() {
 
 // Solo los 3 estados reales de `bookings.status` (VIAO_DATABASE.md sección
 // 6) — ninguno inventado. Colores/iconos tomados de los tokens ya
-// existentes del proyecto (`text-primary`/`text-muted-foreground`/
-// `text-destructive`): no se introduce una paleta "success/warning" nueva.
+// existentes del proyecto (Bloque 6, VIAO Design System): `confirmed` usa
+// `text-success` (mismo token que Wallet/Rewards para estados positivos)
+// en vez del `text-primary` (negro) original — decisión visual del Bloque
+// 9, ya que "confirmada" es un estado positivo real, no de máxima
+// jerarquía de marca.
 const STATUS_ICON: Record<BookingStatus, LucideIcon> = {
   pending: Clock,
   confirmed: CircleCheck,
@@ -83,7 +87,7 @@ const STATUS_ICON: Record<BookingStatus, LucideIcon> = {
 
 const STATUS_ICON_CLASS: Record<BookingStatus, string> = {
   pending: "text-muted-foreground",
-  confirmed: "text-primary",
+  confirmed: "text-success",
   cancelled: "text-destructive",
 };
 
@@ -111,31 +115,35 @@ export default async function BookingStatusPage({
 
   if (result.status === "unauthenticated") {
     return (
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
-        <ErrorState
-          title={t("bookingStatus.unauthenticatedTitle")}
-          message={t("bookingStatus.unauthenticatedMessage")}
-          action={
-            <Link
-              href="/login"
-              className={buttonVariants({ variant: "default" })}
-            >
-              {t("bookingStatus.loginCta")}
-            </Link>
-          }
-        />
+      <main className="flex flex-1 flex-col">
+        <PageContainer variant="default" className="flex flex-1 flex-col gap-4 p-6">
+          <ErrorState
+            title={t("bookingStatus.unauthenticatedTitle")}
+            message={t("bookingStatus.unauthenticatedMessage")}
+            action={
+              <Link
+                href="/login"
+                className={buttonVariants({ variant: "default" })}
+              >
+                {t("bookingStatus.loginCta")}
+              </Link>
+            }
+          />
+        </PageContainer>
       </main>
     );
   }
 
   if (result.status === "error") {
     return (
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
-        <ErrorState
-          title={t("bookingStatus.errorTitle")}
-          message={result.message}
-          action={<BackToSearchLink />}
-        />
+      <main className="flex flex-1 flex-col">
+        <PageContainer variant="default" className="flex flex-1 flex-col gap-4 p-6">
+          <ErrorState
+            title={t("bookingStatus.errorTitle")}
+            message={result.message}
+            action={<BackToSearchLink />}
+          />
+        </PageContainer>
       </main>
     );
   }
@@ -150,96 +158,83 @@ export default async function BookingStatusPage({
       : undefined;
 
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
-      <BackToPropertyLink
-        providerPropertyId={booking.property.providerPropertyId}
-      />
+    <main className="flex flex-1 flex-col">
+      <PageContainer variant="default" className="flex flex-1 flex-col gap-6 p-6">
+        <BackToPropertyLink
+          providerPropertyId={booking.property.providerPropertyId}
+        />
 
-      <h1 className="text-xl font-semibold">{t("bookingStatus.pageTitle")}</h1>
+        <h1 className="text-2xl font-semibold">{t("bookingStatus.pageTitle")}</h1>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center gap-2">
+        <div className="flex items-center gap-3 rounded-xl bg-accent p-4">
           <StatusIcon
             className={`size-6 shrink-0 ${STATUS_ICON_CLASS[booking.status]}`}
             aria-hidden="true"
           />
-          <CardTitle>{t(STATUS_TITLE_KEY[booking.status])}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            {t(STATUS_DESCRIPTION_KEY[booking.status])}
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <div className="relative aspect-video w-full overflow-hidden rounded-t-xl bg-muted">
-          {booking.property.mainPhotoUrl ? (
-            <Image
-              src={booking.property.mainPhotoUrl}
-              alt={booking.property.name}
-              fill
-              unoptimized
-              className="object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <ImageOff
-                className="size-6 text-muted-foreground"
-                aria-hidden="true"
-              />
-            </div>
-          )}
-        </div>
-        <CardHeader>
-          <CardTitle className="break-words">{booking.property.name}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-1">
-          {rating && <p className="text-sm text-muted-foreground">★ {rating}</p>}
-          {location && (
-            <p className="text-sm text-muted-foreground break-words">
-              {location}
+          <div className="flex flex-col gap-0.5">
+            <p className="font-semibold">{t(STATUS_TITLE_KEY[booking.status])}</p>
+            <p className="text-sm text-muted-foreground">
+              {t(STATUS_DESCRIPTION_KEY[booking.status])}
             </p>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </div>
 
-      <Card>
-        <CardContent>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <dt className="text-muted-foreground">
-              {t("bookingStatus.checkInLabel")}
-            </dt>
-            <dd>{booking.checkIn}</dd>
-            <dt className="text-muted-foreground">
-              {t("bookingStatus.checkOutLabel")}
-            </dt>
-            <dd>{booking.checkOut}</dd>
-            <dt className="text-muted-foreground">
-              {t("bookingStatus.guestsLabel")}
-            </dt>
-            <dd>{booking.guests}</dd>
-            {booking.providerBookingReference && (
-              <>
-                <dt className="text-muted-foreground">
-                  {t("bookingStatus.referenceLabel")}
-                </dt>
-                <dd className="break-all">
-                  {booking.providerBookingReference}
-                </dd>
-              </>
+        <Card className="overflow-hidden">
+          <PropertyImage
+            src={booking.property.mainPhotoUrl}
+            alt={booking.property.name}
+            className="rounded-t-xl"
+          />
+          <CardHeader>
+            <CardTitle className="break-words">{booking.property.name}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-1">
+            {rating && <p className="text-sm text-muted-foreground">★ {rating}</p>}
+            {location && (
+              <p className="text-sm text-muted-foreground break-words">
+                {location}
+              </p>
             )}
-            {price && (
-              <>
-                <dt className="text-muted-foreground">
-                  {t("bookingStatus.priceLabel")}
-                </dt>
-                <dd>{price}</dd>
-              </>
-            )}
-          </dl>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+              <dt className="text-muted-foreground">
+                {t("bookingStatus.checkInLabel")}
+              </dt>
+              <dd className="font-medium">{booking.checkIn}</dd>
+              <dt className="text-muted-foreground">
+                {t("bookingStatus.checkOutLabel")}
+              </dt>
+              <dd className="font-medium">{booking.checkOut}</dd>
+              <dt className="text-muted-foreground">
+                {t("bookingStatus.guestsLabel")}
+              </dt>
+              <dd className="font-medium">{booking.guests}</dd>
+              {booking.providerBookingReference && (
+                <>
+                  <dt className="text-muted-foreground">
+                    {t("bookingStatus.referenceLabel")}
+                  </dt>
+                  <dd className="break-all font-medium">
+                    {booking.providerBookingReference}
+                  </dd>
+                </>
+              )}
+              {price && (
+                <>
+                  <dt className="text-muted-foreground">
+                    {t("bookingStatus.priceLabel")}
+                  </dt>
+                  <dd className="font-semibold">{price}</dd>
+                </>
+              )}
+            </dl>
+          </CardContent>
+        </Card>
+      </PageContainer>
     </main>
   );
 }

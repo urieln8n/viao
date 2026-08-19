@@ -1,11 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ImageOff } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState } from "@/components/state/error-state";
+import { PropertyImage } from "@/components/property/property-image";
+import { PageContainer } from "@/components/layout/page-container";
 import { t } from "@/lib/i18n";
 
 import { resolveBookingContext } from "./resolve";
@@ -82,12 +82,14 @@ export default async function BookingPage({
 
   if (result.status === "provider_error") {
     return (
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
-        <ErrorState
-          title={t("booking.errorTitle")}
-          message={result.message}
-          action={<BackToPropertyLink propertyId={propertyId} />}
-        />
+      <main className="flex flex-1 flex-col">
+        <PageContainer variant="default" className="flex flex-1 flex-col gap-4 p-6">
+          <ErrorState
+            title={t("booking.errorTitle")}
+            message={result.message}
+            action={<BackToPropertyLink propertyId={propertyId} />}
+          />
+        </PageContainer>
       </main>
     );
   }
@@ -98,66 +100,50 @@ export default async function BookingPage({
   const referencePrice = formatPrice(price);
 
   return (
-    <main
-      className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6"
-      data-search-id={searchId}
-    >
-      <BackToPropertyLink propertyId={propertyId} searchId={searchId} />
+    <main className="flex flex-1 flex-col" data-search-id={searchId}>
+      <PageContainer variant="default" className="flex flex-1 flex-col gap-6 p-6">
+        <BackToPropertyLink propertyId={propertyId} searchId={searchId} />
 
-      <h1 className="text-xl font-semibold">{t("booking.title")}</h1>
+        <h1 className="text-2xl font-semibold">{t("booking.title")}</h1>
 
-      <Card>
-        <div className="relative aspect-video w-full overflow-hidden rounded-t-xl bg-muted">
-          {property.mainPhotoUrl ? (
-            <Image
-              src={property.mainPhotoUrl}
-              alt={property.name}
-              fill
-              unoptimized
-              className="object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <ImageOff
-                className="size-6 text-muted-foreground"
-                aria-hidden="true"
-              />
-            </div>
-          )}
-        </div>
-        <CardHeader>
-          <CardTitle className="break-words">{property.name}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-1">
-          {rating && <p className="text-sm text-muted-foreground">★ {rating}</p>}
-          {location && (
-            <p className="text-sm text-muted-foreground break-words">
-              {location}
-            </p>
-          )}
-          {referencePrice && (
-            <p className="text-sm font-medium">
-              {t("booking.priceLabel")}: {referencePrice}{" "}
-              <span className="font-normal text-muted-foreground">
-                ({t("booking.priceFromSearchNote")})
-              </span>
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("booking.formTitle")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <BookingForm
-            propertyId={propertyId}
-            searchId={searchId}
-            prefill={prefill}
+        <Card className="overflow-hidden">
+          <PropertyImage
+            src={property.mainPhotoUrl}
+            alt={property.name}
+            className="rounded-t-xl"
           />
-        </CardContent>
-      </Card>
+          <CardHeader>
+            <CardTitle className="break-words">{property.name}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              {rating && <span>★ {rating}</span>}
+              {location && <span className="break-words">{location}</span>}
+            </div>
+            {referencePrice && (
+              <p className="text-lg font-semibold">
+                {referencePrice}{" "}
+                <span className="text-sm font-normal text-muted-foreground">
+                  ({t("booking.priceFromSearchNote")})
+                </span>
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("booking.formTitle")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BookingForm
+              propertyId={propertyId}
+              searchId={searchId}
+              prefill={prefill}
+            />
+          </CardContent>
+        </Card>
+      </PageContainer>
     </main>
   );
 }

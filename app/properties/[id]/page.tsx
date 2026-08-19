@@ -1,10 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ImageOff } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { ErrorState } from "@/components/state/error-state";
+import { PropertyImage } from "@/components/property/property-image";
+import { PageContainer } from "@/components/layout/page-container";
 import { t } from "@/lib/i18n";
 
 import { resolvePropertyDetail } from "./resolve";
@@ -93,12 +93,14 @@ export default async function PropertyDetailPage({
 
   if (result.status === "provider_error") {
     return (
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
-        <ErrorState
-          title={t("propertyDetail.errorTitle")}
-          message={result.message}
-          action={<BackToSearchLink />}
-        />
+      <main className="flex flex-1 flex-col">
+        <PageContainer variant="default" className="flex flex-1 flex-col gap-4 p-6">
+          <ErrorState
+            title={t("propertyDetail.errorTitle")}
+            message={result.message}
+            action={<BackToSearchLink />}
+          />
+        </PageContainer>
       </main>
     );
   }
@@ -108,43 +110,26 @@ export default async function PropertyDetailPage({
   const rating = formatRating(property.rating);
 
   return (
-    <main
-      className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6"
-      data-search-id={searchId}
-    >
-      <BackToSearchLink />
+    <main className="flex flex-1 flex-col" data-search-id={searchId}>
+      <PageContainer variant="default" className="flex flex-1 flex-col gap-6 p-6">
+        <BackToSearchLink />
 
-      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-muted">
-        {property.mainPhotoUrl ? (
-          <Image
-            src={property.mainPhotoUrl}
-            alt={property.name}
-            fill
-            unoptimized
-            className="object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <ImageOff
-              className="size-8 text-muted-foreground"
-              aria-hidden="true"
-            />
+        <PropertyImage
+          src={property.mainPhotoUrl}
+          alt={property.name}
+          className="rounded-xl"
+        />
+
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-semibold break-words">{property.name}</h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            {rating && <span>★ {rating}</span>}
+            {location && <span className="break-words">{location}</span>}
           </div>
-        )}
-      </div>
+        </div>
 
-      <h1 className="text-xl font-semibold break-words">{property.name}</h1>
-
-      <div className="flex flex-col gap-1">
-        {rating && <p className="text-sm text-muted-foreground">★ {rating}</p>}
-        {location && (
-          <p className="text-sm text-muted-foreground break-words">
-            {location}
-          </p>
-        )}
-      </div>
-
-      <BookCtaLink propertyId={id} searchId={searchId} />
+        <BookCtaLink propertyId={id} searchId={searchId} />
+      </PageContainer>
     </main>
   );
 }
