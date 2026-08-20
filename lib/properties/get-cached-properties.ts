@@ -19,12 +19,23 @@ import { createServiceRoleClient } from "../supabase/service";
 // caché todavía" — Search no debe romperse ni degradar su resultado
 // dinámico (precio/disponibilidad) por un problema en el enriquecimiento
 // estático. Se devuelve un Map vacío en cualquier caso de error.
+//
+// FASE 3 (bloque "Property detail") — se añaden `name` y `raw` (columna
+// `raw_data`) al select: `mergePropertyWithCache` (lib/hotelbeds/
+// mappers.ts) sigue ignorándolos por completo (Search nunca debe pisar
+// el `name` real que ya trae Availability con el de la caché, ni cargar
+// el JSON completo en cada resultado de búsqueda) — solo los usa
+// `HotelbedsProvider.getDetails()`, que reconstruye un `Property`
+// completo DESDE CERO (sin ningún `Property` de Availability previo al
+// que fusionarse) y sí necesita ambos.
 export interface CachedPropertyContent {
+  name?: string;
   mainPhotoUrl?: string;
   country?: string;
   city?: string;
   latitude?: number;
   longitude?: number;
+  raw?: unknown;
 }
 
 /** Indexado por `provider_property_id` para que el merge de cada resultado sea O(1), no una búsqueda lineal. */
@@ -40,7 +51,7 @@ export async function getCachedProperties(
     const service = createServiceRoleClient();
     const { data, error } = await service
       .from("properties")
-      .select("provider_property_id, main_photo_url, country, city, latitude, longitude")
+      .select("provider_property_id, name, main_photo_url, country, city, latitude, longitude, raw_data")
       .eq("provider_name", providerName)
       .in("provider_property_id", providerPropertyIds);
 
@@ -51,11 +62,13 @@ export async function getCachedProperties(
     const cache = new Map<string, CachedPropertyContent>();
     for (const row of data) {
       cache.set(row.provider_property_id as string, {
+        name: (row.name as string | null) ?? undefined,
         mainPhotoUrl: (row.main_photo_url as string | null) ?? undefined,
         country: (row.country as string | null) ?? undefined,
         city: (row.city as string | null) ?? undefined,
         latitude: row.latitude === null ? undefined : Number(row.latitude),
         longitude: row.longitude === null ? undefined : Number(row.longitude),
+        raw: row.raw_data ?? undefined,
       });
     }
     return cache;

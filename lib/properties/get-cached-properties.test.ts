@@ -37,7 +37,9 @@ test("getCachedProperties: si createServiceRoleClient() falla (credenciales de S
   }
 });
 
-test("getCachedProperties: una sola query trae varios hoteles a la vez, indexados por provider_property_id", async () => {
+test("getCachedProperties: una sola query trae varios hoteles a la vez, indexados por provider_property_id (incluye name y raw)", async () => {
+  const rawA = { images: [{ path: "00/003424/003424a_hb_a_009.jpg", imageTypeCode: "GEN" }], countryCode: "PT" };
+  const rawB = { images: [{ path: "00/000168/000168a_hb_a_036.jpg", imageTypeCode: "GEN" }], countryCode: "ES" };
   const propertyA: Property = {
     providerName: PROVIDER,
     providerPropertyId: "3424",
@@ -47,6 +49,7 @@ test("getCachedProperties: una sola query trae varios hoteles a la vez, indexado
     latitude: 40.6444523509645,
     longitude: -8.64594072098043,
     mainPhotoUrl: "https://photos.hotelbeds.com/giata/bigger/00/003424/003424a_hb_a_009.jpg",
+    raw: rawA,
   };
   const propertyB: Property = {
     providerName: PROVIDER,
@@ -57,6 +60,7 @@ test("getCachedProperties: una sola query trae varios hoteles a la vez, indexado
     latitude: 39.5526831653502,
     longitude: 2.61092998087406,
     mainPhotoUrl: "https://photos.hotelbeds.com/giata/bigger/00/000168/000168a_hb_a_036.jpg",
+    raw: rawB,
   };
   await upsertPropertyCache(propertyA);
   await upsertPropertyCache(propertyB);
@@ -65,20 +69,38 @@ test("getCachedProperties: una sola query trae varios hoteles a la vez, indexado
 
   assert.equal(cache.size, 2);
   assert.deepEqual(cache.get("3424"), {
+    name: "As Americas",
     mainPhotoUrl: propertyA.mainPhotoUrl,
     country: "PT",
     city: "AVEIRO",
     latitude: 40.6444523509645,
     longitude: -8.64594072098043,
+    raw: rawA,
   });
   assert.deepEqual(cache.get("168"), {
+    name: "Eurostars Marivent",
     mainPhotoUrl: propertyB.mainPhotoUrl,
     country: "ES",
     city: "CALA MAYOR",
     latitude: 39.5526831653502,
     longitude: 2.61092998087406,
+    raw: rawB,
   });
   assert.equal(cache.get("no-existe-999"), undefined);
+});
+
+test("getCachedProperties: sin property.raw al cachear, raw vuelve como '{}' (default de la columna, nunca undefined)", async () => {
+  const property: Property = {
+    providerName: PROVIDER,
+    providerPropertyId: "sin-raw",
+    name: "Hotel Sin Raw",
+  };
+  await upsertPropertyCache(property);
+
+  const cache = await getCachedProperties(PROVIDER, ["sin-raw"]);
+
+  assert.deepEqual(cache.get("sin-raw")?.raw, {});
+  assert.equal(cache.get("sin-raw")?.name, "Hotel Sin Raw");
 });
 
 test("getCachedProperties: no mezcla providers distintos (mismo provider_property_id, otro provider_name)", async () => {

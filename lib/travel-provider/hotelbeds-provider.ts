@@ -9,13 +9,15 @@
 // /hotel-api/1.0/checkrates y /hotel-api/1.0/bookings, pero fuera de
 // alcance todavía.
 //
-// `getDetails(propertyId)` tampoco puede implementarse honestamente
-// contra datos reales de Hotelbeds en este bloque: la Availability API
-// exige fechas de estancia (no se puede consultar "este hotel" sin
-// checkIn/checkOut), y el único producto de Hotelbeds que sí expone
-// detalle de un hotel sin fechas es el Content API — explícitamente
-// diferido (decisión ya tomada: fotos/país pendientes). Lanza
-// ProviderError con un mensaje claro en vez de fingir una respuesta.
+// `getDetails(propertyId)`: la Availability API exige fechas de estancia
+// (no se puede consultar "este hotel" sin checkIn/checkOut) y esta ruta
+// no las recibe, así que nunca vuelve a llamar a Hotelbeds — lee
+// directamente de `properties` (bloque "FASE 3 — Property detail"), la
+// misma caché ya poblada por el sync del Content API (lib/hotelbeds/
+// sync-content.ts) y ya usada para enriquecer Search (bloque "Search ↔
+// properties"). Si el hotel no está sincronizado todavía, lanza
+// ProviderUnavailableError — nunca inventa datos ni intenta un fallback
+// a una llamada real al Content API.
 //
 // `SearchParams.destination` → código de destino Hotelbeds: decisión
 // explícita de este bloque — NO se resuelve automáticamente (3
@@ -252,9 +254,30 @@ export class HotelbedsProvider implements HotelProvider<HotelbedsProviderTypes> 
 
   async getDetails(propertyId: string): Promise<Property> {
     parseHotelCode(propertyId);
-    throw new ProviderError(
-      `HotelbedsProvider.getDetails("${propertyId}") no está implementado: requiere el Content API de Hotelbeds (fotos/país), explícitamente fuera de alcance en este bloque.`,
-    );
+
+    const cache = await this.getCachedProperties("hotelbeds", [propertyId]);
+    const cached = cache.get(propertyId);
+    if (!cached) {
+      throw new ProviderUnavailableError(
+        `El alojamiento "${propertyId}" no está disponible en caché/sincronizado todavía.`,
+      );
+    }
+
+    return {
+      providerName: "hotelbeds",
+      providerPropertyId: propertyId,
+      // Fallback al propio id solo para el caso límite de una fila sin
+      // `name` (la columna es NOT NULL, no debería ocurrir en la
+      // práctica) — mismo criterio que mapHotelbedsContentHotelToProperty
+      // (lib/hotelbeds/content-mappers.ts): nunca inventa un nombre.
+      name: cached.name ?? propertyId,
+      city: cached.city,
+      country: cached.country,
+      latitude: cached.latitude,
+      longitude: cached.longitude,
+      mainPhotoUrl: cached.mainPhotoUrl,
+      raw: cached.raw,
+    };
   }
 
   async getPrice(query: PriceQuery): Promise<PriceQuote> {

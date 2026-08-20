@@ -300,15 +300,111 @@ test("checkAvailability: providerPropertyId no numérico lanza ProviderError", a
   );
 });
 
-// ── getDetails() ──
+// ── getDetails() (FASE 3, bloque "Property detail") ──
+// getCachedProperties inyectado (falso) en todos estos tests — nunca
+// Supabase real, nunca Hotelbeds real (ni Availability ni Content API):
+// getDetails() no debe llamar a ninguna de las dos.
 
-test("getDetails: no implementado todavía, lanza ProviderError con mensaje explícito sobre el Content API", async () => {
-  const provider = new HotelbedsProvider();
-  await assert.rejects(() => provider.getDetails("12345"), (error: unknown) => {
-    assert.ok(error instanceof ProviderError);
-    assert.match((error as Error).message, /Content API/);
+test("getDetails('3424'): con el hotel en caché, devuelve As Americas con su mainPhotoUrl real", async () => {
+  const rawContent = { images: [{ path: "00/003424/003424a_hb_a_009.jpg", imageTypeCode: "GEN" }] };
+  let capturedIds: string[] | undefined;
+  const provider = new HotelbedsProvider({
+    getCachedProperties: async (providerName, ids) => {
+      capturedIds = ids;
+      assert.equal(providerName, "hotelbeds");
+      const cache = new Map<string, CachedPropertyContent>();
+      cache.set("3424", {
+        name: "As Americas",
+        city: "AVEIRO",
+        country: "PT",
+        latitude: 40.6444523509645,
+        longitude: -8.64594072098043,
+        mainPhotoUrl: "https://photos.hotelbeds.com/giata/bigger/00/003424/003424a_hb_a_009.jpg",
+        raw: rawContent,
+      });
+      return cache;
+    },
+  });
+
+  const property = await provider.getDetails("3424");
+
+  assert.deepEqual(capturedIds, ["3424"]);
+  assert.equal(property.providerName, "hotelbeds");
+  assert.equal(property.providerPropertyId, "3424");
+  assert.equal(property.name, "As Americas");
+  assert.equal(property.city, "AVEIRO");
+  assert.equal(property.country, "PT");
+  assert.equal(property.mainPhotoUrl, "https://photos.hotelbeds.com/giata/bigger/00/003424/003424a_hb_a_009.jpg");
+  assert.deepEqual(property.raw, rawContent, "raw debe conservar el raw_data completo de la caché");
+});
+
+test("getDetails('168'): con el hotel en caché, devuelve Eurostars Marivent con su mainPhotoUrl real", async () => {
+  const provider = new HotelbedsProvider({
+    getCachedProperties: async () => {
+      const cache = new Map<string, CachedPropertyContent>();
+      cache.set("168", {
+        name: "Eurostars Marivent",
+        city: "CALA MAYOR",
+        country: "ES",
+        latitude: 39.5526831653502,
+        longitude: 2.61092998087406,
+        mainPhotoUrl: "https://photos.hotelbeds.com/giata/bigger/00/000168/000168a_hb_a_036.jpg",
+      });
+      return cache;
+    },
+  });
+
+  const property = await provider.getDetails("168");
+
+  assert.equal(property.name, "Eurostars Marivent");
+  assert.equal(property.mainPhotoUrl, "https://photos.hotelbeds.com/giata/bigger/00/000168/000168a_hb_a_036.jpg");
+});
+
+test("getDetails: hotel inexistente/no sincronizado en la caché lanza ProviderUnavailableError, nunca inventa datos", async () => {
+  const provider = new HotelbedsProvider({
+    getCachedProperties: async () => new Map<string, CachedPropertyContent>(),
+  });
+
+  await assert.rejects(() => provider.getDetails("999999"), (error: unknown) => {
+    assert.ok(error instanceof ProviderUnavailableError);
+    assert.match((error as Error).message, /no está disponible en caché/);
     return true;
   });
+});
+
+test("getDetails: propertyId no numérico sigue rechazándose vía parseHotelCode, sin llegar a consultar la caché", async () => {
+  let called = false;
+  const provider = new HotelbedsProvider({
+    getCachedProperties: async () => {
+      called = true;
+      return new Map<string, CachedPropertyContent>();
+    },
+  });
+
+  await assert.rejects(() => provider.getDetails("mock-001"), ProviderError);
+  assert.equal(called, false);
+});
+
+test("getDetails: getCachedProperties se llama exactamente una vez, con [propertyId]", async () => {
+  let callCount = 0;
+  const provider = new HotelbedsProvider({
+    getCachedProperties: async (_providerName, ids) => {
+      callCount += 1;
+      assert.deepEqual(ids, ["3424"]);
+      const cache = new Map<string, CachedPropertyContent>();
+      cache.set("3424", { name: "As Americas" });
+      return cache;
+    },
+  });
+
+  await provider.getDetails("3424");
+
+  assert.equal(callCount, 1);
+});
+
+test("getDetails: sin getCachedProperties inyectado, usa el real por defecto (no rompe la construcción del provider)", () => {
+  const provider = new HotelbedsProvider();
+  assert.ok(provider instanceof HotelbedsProvider);
 });
 
 // ── getPrice() ──
