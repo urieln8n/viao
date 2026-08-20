@@ -24,6 +24,14 @@ import type { Property } from "../../types/travel";
 // si el alojamiento ya está cacheado, se refresca con los datos actuales
 // del provider en vez de duplicarlo — coherente con "caché", no un log de
 // solo-inserción.
+//
+// `raw_data`: hallazgo del bloque "FASE 1 — Sync Content API" — esta
+// función nunca había escrito esta columna (se quedaba en su default
+// `'{}'::jsonb` de la migración de creación de la tabla), pese a que
+// `Property.raw` (types/travel.ts) existe desde F4-02 precisamente para
+// esto. No afecta a ningún llamador existente que no informe `raw`
+// (booking/actions.ts, tests): `property.raw ?? {}` reproduce
+// exactamente el mismo `{}` que ya se guardaba antes por omisión.
 export async function upsertPropertyCache(property: Property): Promise<string> {
   const service = createServiceRoleClient();
 
@@ -40,6 +48,7 @@ export async function upsertPropertyCache(property: Property): Promise<string> {
         longitude: property.longitude ?? null,
         main_photo_url: property.mainPhotoUrl ?? null,
         rating: property.rating ?? null,
+        raw_data: property.raw ?? {},
       },
       { onConflict: "provider_name,provider_property_id" },
     )

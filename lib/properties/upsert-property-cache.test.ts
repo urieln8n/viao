@@ -64,6 +64,37 @@ test("upsertPropertyCache: crea una fila nueva y devuelve su id", async () => {
   await cleanup(TEST_PROPERTY.providerPropertyId);
 });
 
+// FASE 1 — Sync Content API: hallazgo de este bloque — raw_data nunca se
+// escribía (se quedaba en su default '{}'::jsonb) pese a que
+// Property.raw existe desde F4-02. Cubre tanto el caso "se informa raw"
+// como el caso "no se informa" (mismo '{}' que ya se guardaba antes).
+test("upsertPropertyCache: guarda raw_data completo cuando property.raw viene informado", async () => {
+  const rawPayload = { images: [{ path: "a.jpg", imageTypeCode: "GEN" }], countryCode: "ES" };
+  const property: Property = { ...TEST_PROPERTY, raw: rawPayload };
+
+  const id = await upsertPropertyCache(property);
+
+  const service = createServiceRoleClient();
+  const { data, error } = await service.from("properties").select("raw_data").eq("id", id).single();
+
+  assert.equal(error, null);
+  assert.deepEqual(data.raw_data, rawPayload);
+
+  await cleanup(TEST_PROPERTY.providerPropertyId);
+});
+
+test("upsertPropertyCache: sin property.raw, raw_data queda '{}' (mismo comportamiento que antes de este bloque)", async () => {
+  const id = await upsertPropertyCache(TEST_PROPERTY);
+
+  const service = createServiceRoleClient();
+  const { data, error } = await service.from("properties").select("raw_data").eq("id", id).single();
+
+  assert.equal(error, null);
+  assert.deepEqual(data.raw_data, {});
+
+  await cleanup(TEST_PROPERTY.providerPropertyId);
+});
+
 test("upsertPropertyCache: la misma (provider_name, provider_property_id) se refresca, no se duplica", async () => {
   const first = await upsertPropertyCache(TEST_PROPERTY);
 
