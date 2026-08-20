@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 
 import type { HotelbedsAvailabilityRequest, HotelbedsAvailabilityResponse, HotelbedsRawHotel } from "../hotelbeds/availability";
 import type { HotelbedsHttpResult } from "../hotelbeds/http";
+import type { CachedPropertyContent } from "../properties/get-cached-properties";
 import { ProviderError, ProviderUnavailableError } from "./errors";
 import {
   HotelbedsProvider,
@@ -124,6 +125,138 @@ test("search: fixedHotelCodes vacío ([]) se trata como ausente — sigue intent
     fetchAvailability: async () => ({ outcome: "success", httpStatus: 200, body: { hotels: { hotels: [] } } }),
   });
   await assert.rejects(() => provider.search(VALID_SEARCH_PARAMS), ProviderError);
+});
+
+// ── search() con enriquecimiento de properties (FASE 2, bloque "Search ↔ properties") ──
+// getCachedProperties inyectado (falso) en todos estos tests — nunca
+// Supabase real, nunca Hotelbeds real, nunca Content API.
+
+test("search: hotel 3424 (As Americas) recibe mainPhotoUrl de la caché de properties", async () => {
+  let calls = 0;
+  const provider = new HotelbedsProvider({
+    fixedHotelCodes: [3424],
+    fetchAvailability: fakeFetchAvailability([makeHotel({ code: 3424, name: "As Americas" })]),
+    getCachedProperties: async (providerName, ids) => {
+      calls += 1;
+      assert.equal(providerName, "hotelbeds");
+      assert.deepEqual(ids, ["3424"]);
+      const cache = new Map<string, CachedPropertyContent>();
+      cache.set("3424", {
+        mainPhotoUrl: "https://photos.hotelbeds.com/giata/bigger/00/003424/003424a_hb_a_009.jpg",
+        country: "PT",
+      });
+      return cache;
+    },
+  });
+
+  const [property] = await provider.search(VALID_SEARCH_PARAMS);
+
+  assert.equal(calls, 1);
+  assert.equal(property.mainPhotoUrl, "https://photos.hotelbeds.com/giata/bigger/00/003424/003424a_hb_a_009.jpg");
+  assert.equal(property.country, "PT");
+});
+
+test("search: hotel 168 (Eurostars Marivent) recibe mainPhotoUrl de la caché de properties", async () => {
+  const provider = new HotelbedsProvider({
+    fixedHotelCodes: [168],
+    fetchAvailability: fakeFetchAvailability([makeHotel({ code: 168, name: "Eurostars Marivent" })]),
+    getCachedProperties: async () => {
+      const cache = new Map<string, CachedPropertyContent>();
+      cache.set("168", {
+        mainPhotoUrl: "https://photos.hotelbeds.com/giata/bigger/00/000168/000168a_hb_a_036.jpg",
+        country: "ES",
+      });
+      return cache;
+    },
+  });
+
+  const [property] = await provider.search(VALID_SEARCH_PARAMS);
+
+  assert.equal(property.mainPhotoUrl, "https://photos.hotelbeds.com/giata/bigger/00/000168/000168a_hb_a_036.jpg");
+  assert.equal(property.country, "ES");
+});
+
+test("search: un hotel sin fila en properties sigue apareciendo en los resultados, sin mainPhotoUrl (nunca se descarta)", async () => {
+  const provider = new HotelbedsProvider({
+    fixedHotelCodes: [3424, 168, 999],
+    fetchAvailability: fakeFetchAvailability([
+      makeHotel({ code: 3424 }),
+      makeHotel({ code: 168 }),
+      makeHotel({ code: 999, name: "Hotel Sin Cache" }),
+    ]),
+    getCachedProperties: async () => {
+      const cache = new Map<string, CachedPropertyContent>();
+      cache.set("3424", { mainPhotoUrl: "https://photos.hotelbeds.com/x/3424.jpg" });
+      cache.set("168", { mainPhotoUrl: "https://photos.hotelbeds.com/x/168.jpg" });
+      // 999 deliberadamente ausente de la caché.
+      return cache;
+    },
+  });
+
+  const results = await provider.search(VALID_SEARCH_PARAMS);
+
+  assert.equal(results.length, 3, "los 3 hoteles de Availability deben seguir apareciendo, con o sin caché");
+  const uncached = results.find((property) => property.providerPropertyId === "999");
+  assert.equal(uncached?.name, "Hotel Sin Cache");
+  assert.equal(uncached?.mainPhotoUrl, undefined);
+});
+
+test("search: varios resultados usan UNA sola llamada a getCachedProperties, nunca una por hotel (sin N+1)", async () => {
+  let callCount = 0;
+  let receivedIds: string[] = [];
+  const provider = new HotelbedsProvider({
+    fixedHotelCodes: [3424, 168],
+    fetchAvailability: fakeFetchAvailability([makeHotel({ code: 3424 }), makeHotel({ code: 168 })]),
+    getCachedProperties: async (_providerName, ids) => {
+      callCount += 1;
+      receivedIds = ids;
+      return new Map<string, CachedPropertyContent>();
+    },
+  });
+
+  const results = await provider.search(VALID_SEARCH_PARAMS);
+
+  assert.equal(results.length, 2);
+  assert.equal(callCount, 1, "getCachedProperties debe llamarse exactamente una vez por búsqueda, no una por hotel");
+  assert.deepEqual(receivedIds.sort(), ["168", "3424"]);
+});
+
+test("search: los datos dinámicos de Availability (name/providerPropertyId) no son sobrescritos por la caché estática", async () => {
+  const provider = new HotelbedsProvider({
+    fixedHotelCodes: [3424],
+    fetchAvailability: fakeFetchAvailability([makeHotel({ code: 3424, name: "Nombre real de Availability" })]),
+    getCachedProperties: async () => {
+      const cache = new Map<string, CachedPropertyContent>();
+      // La caché nunca trae "name" (CachedPropertyContent no lo tiene) —
+      // esto comprueba que mergePropertyWithCache no toca ese campo.
+      cache.set("3424", { mainPhotoUrl: "https://photos.hotelbeds.com/x.jpg" });
+      return cache;
+    },
+  });
+
+  const [property] = await provider.search(VALID_SEARCH_PARAMS);
+
+  assert.equal(property.name, "Nombre real de Availability");
+  assert.equal(property.providerPropertyId, "3424");
+});
+
+test("search: si getCachedProperties devuelve Map vacío (p. ej. Supabase caído), Search sigue funcionando con los datos de Availability", async () => {
+  const provider = new HotelbedsProvider({
+    fixedHotelCodes: [3424],
+    fetchAvailability: fakeFetchAvailability([makeHotel({ code: 3424, name: "As Americas" })]),
+    getCachedProperties: async () => new Map<string, CachedPropertyContent>(),
+  });
+
+  const results = await provider.search(VALID_SEARCH_PARAMS);
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].name, "As Americas");
+  assert.equal(results[0].mainPhotoUrl, undefined);
+});
+
+test("search: sin getCachedProperties inyectado, usa el real por defecto (no rompe la construcción del provider)", () => {
+  const provider = new HotelbedsProvider({ fixedHotelCodes: [3424] });
+  assert.ok(provider instanceof HotelbedsProvider);
 });
 
 // ── checkAvailability() ──

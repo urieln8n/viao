@@ -7,12 +7,15 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import type { HotelbedsRawHotel } from "./availability";
+import type { CachedPropertyContent } from "../properties/get-cached-properties";
+import type { Property } from "../../types/travel";
 import {
   findCheapestRate,
   mapHotelbedsHotelToAvailability,
   mapHotelbedsHotelToConditions,
   mapHotelbedsHotelToPriceQuote,
   mapHotelbedsHotelToProperty,
+  mergePropertyWithCache,
 } from "./mappers";
 
 function makeHotel(overrides: Partial<HotelbedsRawHotel> = {}): HotelbedsRawHotel {
@@ -69,6 +72,87 @@ test("mapHotelbedsHotelToProperty: conserva el hotel crudo en 'raw'", () => {
   const hotel = makeHotel();
   const property = mapHotelbedsHotelToProperty(hotel);
   assert.deepEqual(property.raw, hotel);
+});
+
+// ── mergePropertyWithCache (FASE 2, bloque "Search ↔ properties") ──
+
+function makeProperty(overrides: Partial<Property> = {}): Property {
+  return {
+    providerName: "hotelbeds",
+    providerPropertyId: "12345",
+    name: "Hotel de Prueba",
+    city: "Madrid",
+    country: undefined,
+    latitude: 40.4168,
+    longitude: -3.7038,
+    mainPhotoUrl: undefined,
+    rating: undefined,
+    ...overrides,
+  };
+}
+
+// Casos A/B del bloque: valores reales de los 2 hoteles ya sincronizados.
+test("mergePropertyWithCache: hotel 3424 (As Americas) recibe mainPhotoUrl de la caché", () => {
+  const property = makeProperty({ providerPropertyId: "3424", name: "As Americas", city: "AVEIRO" });
+  const cache: CachedPropertyContent = {
+    mainPhotoUrl: "https://photos.hotelbeds.com/giata/bigger/00/003424/003424a_hb_a_009.jpg",
+    country: "PT",
+    city: "AVEIRO",
+    latitude: 40.6444523509645,
+    longitude: -8.64594072098043,
+  };
+
+  const merged = mergePropertyWithCache(property, cache);
+
+  assert.equal(merged.mainPhotoUrl, "https://photos.hotelbeds.com/giata/bigger/00/003424/003424a_hb_a_009.jpg");
+  assert.equal(merged.country, "PT");
+});
+
+test("mergePropertyWithCache: hotel 168 (Eurostars Marivent) recibe mainPhotoUrl de la caché", () => {
+  const property = makeProperty({ providerPropertyId: "168", name: "Eurostars Marivent", city: "CALA MAYOR" });
+  const cache: CachedPropertyContent = {
+    mainPhotoUrl: "https://photos.hotelbeds.com/giata/bigger/00/000168/000168a_hb_a_036.jpg",
+    country: "ES",
+    city: "CALA MAYOR",
+    latitude: 39.5526831653502,
+    longitude: 2.61092998087406,
+  };
+
+  const merged = mergePropertyWithCache(property, cache);
+
+  assert.equal(merged.mainPhotoUrl, "https://photos.hotelbeds.com/giata/bigger/00/000168/000168a_hb_a_036.jpg");
+  assert.equal(merged.country, "ES");
+});
+
+// Caso C: sin caché para este hotel, el Property de Availability sigue funcionando tal cual.
+test("mergePropertyWithCache: cache=undefined devuelve el property de Availability sin ningún cambio", () => {
+  const property = makeProperty();
+  assert.deepEqual(mergePropertyWithCache(property, undefined), property);
+});
+
+// Caso G: el merge nunca borra un dato real de Availability con un campo ausente en la caché.
+test("mergePropertyWithCache: un campo ausente en la caché (undefined) NUNCA sobrescribe el valor ya presente en Availability", () => {
+  const property = makeProperty({ city: "Madrid (Availability)", latitude: 40.4168, longitude: -3.7038 });
+  const cache: CachedPropertyContent = { mainPhotoUrl: "https://photos.hotelbeds.com/x.jpg" };
+
+  const merged = mergePropertyWithCache(property, cache);
+
+  assert.equal(merged.city, "Madrid (Availability)");
+  assert.equal(merged.latitude, 40.4168);
+  assert.equal(merged.longitude, -3.7038);
+  assert.equal(merged.mainPhotoUrl, "https://photos.hotelbeds.com/x.jpg");
+});
+
+test("mergePropertyWithCache: no toca ningún campo fuera de mainPhotoUrl/country/city/latitude/longitude (name/providerPropertyId/rating intactos)", () => {
+  const property = makeProperty({ rating: undefined });
+  const cache: CachedPropertyContent = { mainPhotoUrl: "https://photos.hotelbeds.com/x.jpg" };
+
+  const merged = mergePropertyWithCache(property, cache);
+
+  assert.equal(merged.providerName, property.providerName);
+  assert.equal(merged.providerPropertyId, property.providerPropertyId);
+  assert.equal(merged.name, property.name);
+  assert.equal(merged.rating, property.rating);
 });
 
 // ── findCheapestRate ──

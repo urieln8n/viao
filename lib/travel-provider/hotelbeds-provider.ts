@@ -60,7 +60,9 @@ import {
   mapHotelbedsHotelToConditions,
   mapHotelbedsHotelToPriceQuote,
   mapHotelbedsHotelToProperty,
+  mergePropertyWithCache,
 } from "../hotelbeds/mappers";
+import { getCachedProperties } from "../properties/get-cached-properties";
 
 export interface HotelbedsProviderTypes extends HotelProviderTypes {
   searchParams: SearchParams;
@@ -102,6 +104,13 @@ export interface HotelbedsProviderDependencies {
    * fuentes: o hay códigos fijos, o se intenta resolver el destino).
    */
   fixedHotelCodes?: number[];
+  /**
+   * FASE 2 (bloque "Search ↔ properties") — inyectable solo para tests,
+   * mismo criterio que `fetchAvailability`: por defecto,
+   * `getCachedProperties` real (Supabase `service_role`, ver
+   * lib/properties/get-cached-properties.ts).
+   */
+  getCachedProperties?: typeof getCachedProperties;
 }
 
 function parseHotelCode(providerPropertyId: string): number {
@@ -137,6 +146,7 @@ export class HotelbedsProvider implements HotelProvider<HotelbedsProviderTypes> 
   private readonly destinationResolver: HotelbedsDestinationResolver;
   private readonly fetchAvailability: typeof fetchHotelbedsAvailability;
   private readonly fixedHotelCodes: number[] | undefined;
+  private readonly getCachedProperties: typeof getCachedProperties;
 
   constructor(dependencies: HotelbedsProviderDependencies = {}) {
     this.destinationResolver =
@@ -146,6 +156,7 @@ export class HotelbedsProvider implements HotelProvider<HotelbedsProviderTypes> 
       dependencies.fixedHotelCodes && dependencies.fixedHotelCodes.length > 0
         ? dependencies.fixedHotelCodes
         : undefined;
+    this.getCachedProperties = dependencies.getCachedProperties ?? getCachedProperties;
   }
 
   /** `search()` usa códigos fijos si los hay; si no, intenta resolver el destino (nunca ambos, nunca inventa). */
@@ -203,7 +214,23 @@ export class HotelbedsProvider implements HotelProvider<HotelbedsProviderTypes> 
       guests: params.guests,
       scope,
     });
-    return hotels.map(mapHotelbedsHotelToProperty);
+    const properties = hotels.map(mapHotelbedsHotelToProperty);
+
+    // FASE 2 (bloque "Search ↔ properties") — UNA sola consulta a
+    // `properties` para toda la tanda de resultados (nunca 1 por hotel).
+    // Content API NUNCA se llama desde aquí: solo se lee lo que ya
+    // sincronizó lib/hotelbeds/sync-content.ts de antemano. Si un hotel
+    // no está todavía en caché, `cache.get(...)` devuelve `undefined` y
+    // `mergePropertyWithCache` deja ese `Property` exactamente como lo
+    // dejó `mapHotelbedsHotelToProperty` — la búsqueda nunca falla ni
+    // pierde resultados por falta de caché.
+    const cache = await this.getCachedProperties(
+      "hotelbeds",
+      properties.map((property) => property.providerPropertyId),
+    );
+    return properties.map((property) =>
+      mergePropertyWithCache(property, cache.get(property.providerPropertyId)),
+    );
   }
 
   async checkAvailability(query: AvailabilityQuery): Promise<AvailabilityResult> {

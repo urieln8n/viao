@@ -17,6 +17,7 @@
 //   types/travel.ts lo documente así.
 import type { AvailabilityResult, Conditions, PriceQuote, Property } from "../../types/travel";
 import type { HotelbedsRawHotel, HotelbedsRawRate } from "./availability";
+import type { CachedPropertyContent } from "../properties/get-cached-properties";
 
 export function mapHotelbedsHotelToProperty(hotel: HotelbedsRawHotel): Property {
   return {
@@ -30,6 +31,32 @@ export function mapHotelbedsHotelToProperty(hotel: HotelbedsRawHotel): Property 
     mainPhotoUrl: undefined,
     rating: undefined,
     raw: hotel,
+  };
+}
+
+// FASE 2 (bloque "Search ↔ properties") — fusiona el Property recién
+// construido desde Availability (verdad dinámica: lo que ve
+// mapHotelbedsHotelToProperty arriba) con lo que ya tengamos sincronizado
+// en `properties` vía el Content API (verdad estática/cacheada,
+// lib/hotelbeds/sync-content.ts). Regla explícita de este bloque: el dato
+// cacheado gana SOLO cuando existe (`cache.X ?? property.X`) — nunca
+// puede borrar con `undefined` un dato que Availability sí trajo. Sin
+// `cache` (hotel todavía no sincronizado), devuelve `property` tal cual,
+// sin ninguna copia/objeto nuevo innecesario.
+export function mergePropertyWithCache(
+  property: Property,
+  cache: CachedPropertyContent | undefined,
+): Property {
+  if (!cache) {
+    return property;
+  }
+  return {
+    ...property,
+    mainPhotoUrl: cache.mainPhotoUrl ?? property.mainPhotoUrl,
+    country: cache.country ?? property.country,
+    city: cache.city ?? property.city,
+    latitude: cache.latitude ?? property.latitude,
+    longitude: cache.longitude ?? property.longitude,
   };
 }
 
