@@ -55,6 +55,20 @@ export class ProviderUnavailableError extends TravelProviderError {}
 export class ProviderError extends TravelProviderError {}
 
 /**
+ * FPR-04.9 — el proveedor recibió una operación con efectos reales (p.
+ * ej. una reserva) pero no se pudo confirmar su resultado: timeout o
+ * error de red DESPUÉS de enviarla, o una respuesta que no se puede
+ * interpretar con certeza. A diferencia de `ProviderError`, aquí NO es
+ * seguro asumir que la operación no tuvo efecto — el proveedor podría
+ * haberla completado igualmente aunque la respuesta se perdiera. Quien
+ * reciba este error nunca debe reintentar automáticamente la misma
+ * operación ni tratarla como un simple fallo: debe dejar constancia de un
+ * estado "en curso, resultado desconocido" para que una reconciliación
+ * posterior (fuera de alcance aquí) lo resuelva.
+ */
+export class ProviderAmbiguousError extends TravelProviderError {}
+
+/**
  * El proveedor activo no implementa esta capacidad. Corresponde a las
  * capacidades opcionales de `HotelProvider` (F4-01): reserva,
  * cancelación, comisión — "si el proveedor lo permite/expone"

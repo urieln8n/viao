@@ -67,6 +67,16 @@ test("postHotelbeds: con credenciales pero sin certificado configurado, devuelve
   );
 });
 
+// FPR-04.11 — `method`/`requestBody` opcionales (DELETE sin body, ver
+// lib/hotelbeds/cancel.ts): mismo camino de fallo rápido, prueba de que
+// la sobrecarga nueva no rompe la comprobación de credenciales existente.
+test("postHotelbeds: con method='DELETE' y requestBody undefined, sigue devolviendo 'missing_credentials' sin intentar red", async () => {
+  await withEnvValues({}, async () => {
+    const result = await postHotelbeds("/hotel-api/1.0/bookings/1-123", undefined, "DELETE");
+    assert.equal(result.outcome, "missing_credentials");
+  });
+});
+
 test("postHotelbeds: con certificado configurado pero apuntando a un archivo inexistente, devuelve outcome 'missing_certificate' sin intentar red", async () => {
   await withEnvValues(
     {

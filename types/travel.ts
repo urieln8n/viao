@@ -118,9 +118,42 @@ export interface Conditions {
   requirements?: string;
 }
 
+/** Titular de la reserva (FPR-04.3 — diseño del contrato de Booking). Ambos campos obligatorios en sí mismos: Hotelbeds exige `holder.name`/`holder.surname` para reservar. */
+export interface BookingHolder {
+  name: string;
+  surname: string;
+}
+
+/**
+ * Un huésped dentro de una reserva (FPR-04.3). `roomId` es puramente
+ * posicional dentro de ESTA reserva (1..`BookingRequest.rooms`), nunca un
+ * id persistente — agrupa qué huéspedes comparten habitación, igual que
+ * el `roomId` que espera Hotelbeds en su propio `paxes[]`. `name`/
+ * `surname` quedan opcionales a nivel de tipo (Hotelbeds los trata como
+ * opcionales en su schema); `age` solo es obligatorio en la práctica
+ * cuando `type === "CH"` — esa regla se valida en el mapper
+ * (lib/hotelbeds/booking.ts), no aquí: este tipo describe la forma del
+ * dato, no sus reglas de negocio.
+ */
+export interface BookingPax {
+  roomId: number;
+  type: "AD" | "CH";
+  name?: string;
+  surname?: string;
+  age?: number;
+}
+
 /**
  * Reserva solicitada al proveedor (arquitectura sección 9: "iniciar/
  * confirmar una reserva", si el proveedor lo permite).
+ *
+ * `holder`/`paxes` (FPR-04.3): opcionales a propósito, aunque Hotelbeds
+ * los exija de verdad — `MockHotelProvider.book()` (F4-04) no los
+ * necesita y ya tiene decenas de llamadas reales en tests que construyen
+ * un `BookingRequest` sin ellos; hacerlos obligatorios aquí rompería ese
+ * contrato ya probado. La obligatoriedad real para Hotelbeds se exige en
+ * el mapper específico de Hotelbeds (`lib/hotelbeds/booking.ts`), no en
+ * este tipo de dominio compartido por todos los providers.
  */
 export interface BookingRequest {
   providerPropertyId: string;
@@ -128,21 +161,32 @@ export interface BookingRequest {
   checkOut: ISODateString;
   guests: number;
   rooms: number;
+  holder?: BookingHolder;
+  paxes?: BookingPax[];
 }
 
-/** Mismos valores que `bookings.status` (VIAO_DATABASE.md sección 6, CHECK constraint). */
+/** Mismos valores que `bookings.status` (VIAO_DATABASE.md sección 6, CHECK constraint). Deliberadamente NUNCA se añade "preconfirmed" u otro valor de Hotelbeds aquí (FPR-04.3) — el mapper de Hotelbeds debe traducir a uno de estos 3 o fallar explícitamente, nunca ampliar este dominio compartido por todos los providers. */
 export type BookingStatus = "pending" | "confirmed" | "cancelled";
 
 /**
  * Resultado de una reserva (VIAO_DATABASE.md sección 6:
  * `provider_booking_reference`, `status`, `booking_value`/`currency` —
  * ambos nullable "hasta tener esa información").
+ *
+ * `providerCancellationReference`/`providerCost` (FPR-04.3): `amount`
+ * sigue representando el precio VIAO (`booking_value`); `providerCost` es
+ * el coste real del proveedor (`totalNet` de Hotelbeds), separado a
+ * propósito para no mezclar "lo que cuesta" con "lo que se cobra" — sin
+ * que exista todavía ningún markup real (`amount === providerCost`
+ * mientras no se decida lo contrario, ver lib/hotelbeds/booking.ts).
  */
 export interface BookingResult {
   status: BookingStatus;
   providerBookingReference?: string;
+  providerCancellationReference?: string;
   amount?: number;
   currency?: string;
+  providerCost?: number;
 }
 
 /** Solicitud de cancelación de una reserva existente (arquitectura sección 9). */
@@ -150,9 +194,22 @@ export interface CancellationRequest {
   providerBookingReference: string;
 }
 
-/** Resultado de cancelar una reserva existente. */
+/**
+ * Resultado de cancelar una reserva existente. `cancellationReference`/
+ * `status`/`cancellationAmount` (FPR-04.11) son opcionales a propósito:
+ * ningún proveedor está obligado a informarlos (el mock, por ejemplo, solo
+ * necesita `cancelled`), pero Hotelbeds sí los expone en su respuesta real
+ * de `DELETE /bookings/{bookingId}` — mismo criterio que
+ * `BookingResult.providerCancellationReference`/`providerCost` (FPR-04.3).
+ * `status` reutiliza `BookingStatus` (nunca un valor nuevo): tras cancelar
+ * con éxito será `"cancelled"`, el mismo dominio compartido por todos los
+ * providers.
+ */
 export interface CancellationResult {
   cancelled: boolean;
+  cancellationReference?: string;
+  status?: BookingStatus;
+  cancellationAmount?: number;
 }
 
 /**

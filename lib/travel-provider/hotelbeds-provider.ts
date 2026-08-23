@@ -4,10 +4,49 @@
 // tipos de dominio de types/travel.ts, mismo modelo de errores
 // (lib/travel-provider/errors.ts).
 //
-// Deliberadamente NO implementa `book`/`cancelBooking`/`getCommission`
-// (opcionales en HotelProvider) — identificados en este bloque como
-// /hotel-api/1.0/checkrates y /hotel-api/1.0/bookings, pero fuera de
-// alcance todavía.
+// `book()` (FPR-04.8, conectado en FPR-04.9): resuelve un rateKey FRESCO
+// (nunca uno de una búsqueda anterior, ver resolve-booking-rate.ts,
+// FPR-04.5), construye el bookingRQ real
+// (mapBookingRequestToHotelbedsBookingRQ, FPR-04.4) y llama a
+// POST /hotel-api/1.0/bookings (fetchHotelbedsBooking, lib/hotelbeds/
+// book.ts). `clientReference` (FPR-04.9): YA NO se genera aquí — llega
+// como segundo parámetro, exactamente el `booking_intents.client_reference`
+// que resolvió la capa de aplicación (app/booking/actions.ts); `book()`
+// nunca lo regenera ni lo trunca de nuevo, y lanza `ProviderError` si no
+// se le pasa uno (nunca reserva sin un ancla de idempotencia real). Sigue
+// SIN conectar con `booking_intents`/persistencia/Puntos/referidos/Trip/
+// reconciliación directamente — eso vive en app/booking/actions.ts, que
+// orquesta el intent alrededor de esta llamada.
+//
+// Ambigüedad tras enviar /bookings (FPR-04.9, "regla crítica"): un
+// `network_error` de `fetchBooking` (la conexión pudo fallar DESPUÉS de
+// que Hotelbeds ya recibiera la petición) o una respuesta 2xx que no se
+// puede interpretar (sin `booking`, o con un status desconocido) NUNCA se
+// tratan como un rechazo — Hotelbeds podría haber creado la reserva
+// igualmente. Estos casos lanzan `ProviderAmbiguousError` (en vez de
+// `ProviderError`), específicamente para que quien orquesta la llamada
+// (actions.ts) pueda distinguirlos y NUNCA reintentar automáticamente.
+// `missing_credentials`/`missing_certificate` NO son ambiguos: fallan
+// dentro de `postHotelbeds()` antes de abrir ninguna conexión (nada se
+// envió nunca) — igual que `http_error`, que confirma que Hotelbeds SÍ
+// respondió (un rechazo claro), no que la respuesta se perdiera.
+//
+// `cancelBooking()` (FPR-04.11): DELETE /hotel-api/1.0/bookings/
+// {bookingId} (fetchHotelbedsCancellation, lib/hotelbeds/cancel.ts) con
+// `cancellationFlag=CANCELLATION` (nunca `SIMULATION`). Mismo modelo de
+// ambigüedad que `book()`: `network_error`/respuesta 2xx no interpretable
+// -> `ProviderAmbiguousError`; `missing_credentials`/`missing_certificate`/
+// `http_error` -> `ProviderError`. Bloque deliberadamente aislado, igual
+// que `book()` lo estuvo entre FPR-04.8 y FPR-04.9: NO actualiza
+// `bookings.status`/`provider_cancellation_reference` ni conecta con
+// `booking_intents` — eso queda para un bloque futuro que orqueste esta
+// llamada desde una Server Action, tal como `app/booking/actions.ts` ya
+// hace con `book()`.
+//
+// Deliberadamente NO implementa `getCommission` (opcional en
+// HotelProvider) — FPR-05 (VIAO_ROADMAP.md), fase separada y posterior a
+// FPR-04; además FPR-04.1 ya confirmó empíricamente que esta cuenta no
+// expone comisión (modelo de tarifa neta).
 //
 // `getDetails(propertyId)`: la Availability API exige fechas de estancia
 // (no se puede consultar "este hotel" sin checkIn/checkOut) y esta ruta
@@ -50,7 +89,12 @@ import type {
   Property,
   SearchParams,
 } from "../../types/travel";
-import { ProviderError, ProviderUnavailableError } from "./errors";
+import {
+  ProviderAmbiguousError,
+  ProviderError,
+  ProviderUnavailableError,
+  type TravelProviderError,
+} from "./errors";
 import {
   fetchHotelbedsAvailability,
   type HotelbedsAvailabilityRequest,
@@ -65,6 +109,17 @@ import {
   mergePropertyWithCache,
 } from "../hotelbeds/mappers";
 import { getCachedProperties } from "../properties/get-cached-properties";
+import {
+  resolveBookableRate,
+  type ResolveBookableRateResult,
+} from "../hotelbeds/resolve-booking-rate";
+import {
+  mapBookingRequestToHotelbedsBookingRQ,
+  mapHotelbedsBookingResponseToBookingResult,
+} from "../hotelbeds/booking";
+import { fetchHotelbedsBooking } from "../hotelbeds/book";
+import { mapHotelbedsCancellationResponseToCancellationResult } from "../hotelbeds/cancellation";
+import { fetchHotelbedsCancellation } from "../hotelbeds/cancel";
 
 export interface HotelbedsProviderTypes extends HotelProviderTypes {
   searchParams: SearchParams;
@@ -113,6 +168,23 @@ export interface HotelbedsProviderDependencies {
    * lib/properties/get-cached-properties.ts).
    */
   getCachedProperties?: typeof getCachedProperties;
+  /**
+   * FPR-04.8 — inyectable solo para tests, por defecto `resolveBookableRate`
+   * real (Availability fresca + CheckRates si `RECHECK`, FPR-04.5). `book()`
+   * nunca reutiliza un rateKey externo: siempre pasa por aquí.
+   */
+  resolveRate?: typeof resolveBookableRate;
+  /**
+   * FPR-04.8 — inyectable solo para tests, por defecto `fetchHotelbedsBooking`
+   * real (POST /hotel-api/1.0/bookings, lib/hotelbeds/book.ts).
+   */
+  fetchBooking?: typeof fetchHotelbedsBooking;
+  /**
+   * FPR-04.11 — inyectable solo para tests, por defecto
+   * `fetchHotelbedsCancellation` real (DELETE /hotel-api/1.0/bookings/
+   * {bookingId}, lib/hotelbeds/cancel.ts).
+   */
+  fetchCancellation?: typeof fetchHotelbedsCancellation;
 }
 
 function parseHotelCode(providerPropertyId: string): number {
@@ -149,6 +221,9 @@ export class HotelbedsProvider implements HotelProvider<HotelbedsProviderTypes> 
   private readonly fetchAvailability: typeof fetchHotelbedsAvailability;
   private readonly fixedHotelCodes: number[] | undefined;
   private readonly getCachedProperties: typeof getCachedProperties;
+  private readonly resolveRate: typeof resolveBookableRate;
+  private readonly fetchBooking: typeof fetchHotelbedsBooking;
+  private readonly fetchCancellation: typeof fetchHotelbedsCancellation;
 
   constructor(dependencies: HotelbedsProviderDependencies = {}) {
     this.destinationResolver =
@@ -159,6 +234,9 @@ export class HotelbedsProvider implements HotelProvider<HotelbedsProviderTypes> 
         ? dependencies.fixedHotelCodes
         : undefined;
     this.getCachedProperties = dependencies.getCachedProperties ?? getCachedProperties;
+    this.resolveRate = dependencies.resolveRate ?? resolveBookableRate;
+    this.fetchBooking = dependencies.fetchBooking ?? fetchHotelbedsBooking;
+    this.fetchCancellation = dependencies.fetchCancellation ?? fetchHotelbedsCancellation;
   }
 
   /** `search()` usa códigos fijos si los hay; si no, intenta resolver el destino (nunca ambos, nunca inventa). */
@@ -200,6 +278,42 @@ export class HotelbedsProvider implements HotelProvider<HotelbedsProviderTypes> 
       );
     }
     return hotel;
+  }
+
+  /**
+   * Traduce cada outcome de fallo de `resolveBookableRate` (FPR-04.5) al
+   * modelo de errores de HotelProvider (FPR-04.3/errors.ts) — mismo
+   * criterio que `requestHotels()` ya aplica a los outcomes de
+   * `fetchHotelbedsAvailability`: nunca se duplica esa jerarquía, solo se
+   * traduce. `no_rate_found`/`not_bookable_after_checkrate` son
+   * respuestas válidas del proveedor ("esto no se puede reservar ahora
+   * mismo") -> ProviderUnavailableError; el resto son fallos técnicos o
+   * datos inesperados de Hotelbeds -> ProviderError.
+   */
+  private mapResolveRateFailureToProviderError(
+    result: Exclude<ResolveBookableRateResult, { outcome: "success" }>,
+  ): TravelProviderError {
+    switch (result.outcome) {
+      case "no_rate_found":
+      case "not_bookable_after_checkrate":
+        return new ProviderUnavailableError(result.message);
+      case "availability_missing_credentials":
+      case "availability_missing_certificate":
+      case "availability_network_error":
+      case "checkrate_missing_credentials":
+      case "checkrate_missing_certificate":
+      case "checkrate_network_error":
+      case "invalid_rate_key":
+      case "unknown_rate_type":
+      case "checkrate_no_rate_in_response":
+        return new ProviderError(result.message);
+      case "availability_http_error":
+      case "checkrate_http_error":
+        return new ProviderError(
+          `Hotelbeds devolvió un error HTTP ${result.httpStatus} al resolver la tarifa.`,
+          { cause: result.body },
+        );
+    }
   }
 
   async search(params: SearchParams): Promise<Property[]> {
@@ -320,5 +434,154 @@ export class HotelbedsProvider implements HotelProvider<HotelbedsProviderTypes> 
     });
     const hotel = this.requireHotel(hotels, query.providerPropertyId);
     return mapHotelbedsHotelToConditions(hotel);
+  }
+
+  /**
+   * FPR-04.8/04.9: resuelve un rateKey FRESCO (resolveBookableRate, nunca
+   * uno externo/reutilizado), construye el bookingRQ real
+   * (mapBookingRequestToHotelbedsBookingRQ) con el `clientReference` YA
+   * resuelto por la capa de aplicación y llama a
+   * POST /hotel-api/1.0/bookings. Sigue sin conectar con
+   * `booking_intents`, persistencia, Puntos, referidos, Trip ni
+   * reconciliación directamente (ver cabecera del archivo) — orquestado
+   * por app/booking/actions.ts.
+   */
+  async book(request: BookingRequest, clientReference?: string): Promise<BookingResult> {
+    assertValidDateRange(request.checkIn, request.checkOut);
+    assertPositive(request.guests, "El número de huéspedes");
+    assertPositive(request.rooms, "El número de habitaciones");
+    parseHotelCode(request.providerPropertyId);
+
+    if (!clientReference) {
+      throw new ProviderError(
+        "HotelbedsProvider.book() requiere un clientReference (booking_intents.client_reference, resuelto por la capa de aplicación) — nunca genera uno internamente (FPR-04.9).",
+      );
+    }
+
+    const rateResult = await this.resolveRate({
+      providerPropertyId: request.providerPropertyId,
+      checkIn: request.checkIn,
+      checkOut: request.checkOut,
+      guests: request.guests,
+      rooms: request.rooms,
+    });
+
+    if (rateResult.outcome !== "success") {
+      throw this.mapResolveRateFailureToProviderError(rateResult);
+    }
+
+    const mappingResult = mapBookingRequestToHotelbedsBookingRQ(
+      request,
+      rateResult.rateKey,
+      clientReference,
+    );
+    if (mappingResult.outcome !== "success") {
+      throw new ProviderError(mappingResult.error.message);
+    }
+
+    const httpResult = await this.fetchBooking(mappingResult.body);
+    switch (httpResult.outcome) {
+      case "missing_credentials":
+      case "missing_certificate":
+        // Falla dentro de postHotelbeds() ANTES de abrir ninguna conexión
+        // — nunca se llegó a enviar nada, seguro tratarlo como un fallo
+        // claro (nunca ambiguo).
+        throw new ProviderError(httpResult.message);
+      case "network_error":
+        // FPR-04.9, regla crítica: la conexión pudo fallar DESPUÉS de que
+        // Hotelbeds ya recibiera la petición — nunca se sabe con certeza.
+        throw new ProviderAmbiguousError(
+          `Error de red al llamar a POST /bookings — no se puede confirmar si Hotelbeds procesó la reserva: ${httpResult.message}`,
+        );
+      case "http_error":
+        // Hotelbeds SÍ respondió (un rechazo claro), no una ambigüedad.
+        throw new ProviderError(
+          `Hotelbeds devolvió un error HTTP ${httpResult.httpStatus} al reservar.`,
+          { cause: httpResult.body },
+        );
+      case "success":
+        break;
+    }
+
+    const booking = httpResult.body.booking;
+    if (!booking) {
+      // Respuesta 2xx pero sin datos interpretables: Hotelbeds procesó
+      // ALGO, pero no se puede confirmar qué — mismo criterio de
+      // ambigüedad que un network_error tras el envío.
+      throw new ProviderAmbiguousError(
+        "Hotelbeds devolvió una respuesta 2xx sin ningún dato de booking — no se puede confirmar el resultado de la reserva.",
+      );
+    }
+
+    const resultMapping = mapHotelbedsBookingResponseToBookingResult(booking);
+    if (resultMapping.outcome === "unknown_status") {
+      throw new ProviderAmbiguousError(
+        `Hotelbeds devolvió un status de reserva no reconocido ("${resultMapping.rawStatus}") — no se puede confirmar el resultado de la reserva.`,
+      );
+    }
+
+    return resultMapping.result;
+  }
+
+  /**
+   * FPR-04.11 — bloque aislado, mismo criterio exacto que `book()`
+   * (FPR-04.8): llama a DELETE /hotel-api/1.0/bookings/{bookingId} con
+   * `providerBookingReference` (nunca `rateKey`/`clientReference`, que no
+   * pertenecen a esta operación) y traduce la respuesta real. Sigue SIN
+   * conectar con `bookings`/`booking_intents` (la fila persistida no se
+   * actualiza a `status='cancelled'` aquí) — eso queda para un bloque
+   * posterior, igual que `book()` quedó aislado de `actions.ts` entre
+   * FPR-04.8 y FPR-04.9.
+   */
+  async cancelBooking(request: CancellationRequest): Promise<CancellationResult> {
+    if (!request.providerBookingReference || request.providerBookingReference.trim() === "") {
+      throw new ProviderError(
+        "cancelBooking() requiere un providerBookingReference no vacío.",
+      );
+    }
+
+    const httpResult = await this.fetchCancellation(request.providerBookingReference);
+    switch (httpResult.outcome) {
+      case "missing_credentials":
+      case "missing_certificate":
+        // Falla dentro de postHotelbeds() ANTES de abrir ninguna conexión
+        // — nunca se llegó a enviar nada, seguro tratarlo como un fallo
+        // claro (nunca ambiguo).
+        throw new ProviderError(httpResult.message);
+      case "network_error":
+        // Mismo criterio exacto que book() (FPR-04.9, regla crítica): la
+        // conexión pudo fallar DESPUÉS de que Hotelbeds ya recibiera la
+        // petición de cancelación — nunca se sabe con certeza si canceló.
+        throw new ProviderAmbiguousError(
+          `Error de red al llamar a DELETE /bookings/{bookingId} — no se puede confirmar si Hotelbeds procesó la cancelación: ${httpResult.message}`,
+        );
+      case "http_error":
+        // Hotelbeds SÍ respondió (un rechazo claro), no una ambigüedad.
+        throw new ProviderError(
+          `Hotelbeds devolvió un error HTTP ${httpResult.httpStatus} al cancelar.`,
+          { cause: httpResult.body },
+        );
+      case "success":
+        break;
+    }
+
+    const booking = httpResult.body.booking;
+    if (!booking) {
+      // Respuesta 2xx pero sin datos interpretables: Hotelbeds procesó
+      // ALGO, pero no se puede confirmar qué — mismo criterio de
+      // ambigüedad que un network_error tras el envío.
+      throw new ProviderAmbiguousError(
+        "Hotelbeds devolvió una respuesta 2xx sin ningún dato de booking al cancelar — no se puede confirmar el resultado.",
+      );
+    }
+
+    const resultMapping = mapHotelbedsCancellationResponseToCancellationResult(booking);
+    if (resultMapping.outcome === "unknown_status") {
+      throw new ProviderAmbiguousError(
+        `Hotelbeds devolvió un status de cancelación no reconocido ("${resultMapping.rawStatus}") — no se puede confirmar el resultado.`,
+      );
+    }
+
+    return resultMapping.result;
   }
 }

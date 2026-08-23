@@ -117,6 +117,7 @@
 
 import { getTravelProvider } from "../../lib/travel-provider";
 import {
+  ProviderAmbiguousError,
   ProviderNotSupportedError,
   ProviderUnavailableError,
   TravelProviderError,
@@ -125,6 +126,12 @@ import { createClient as createSessionClient } from "../../lib/supabase/server";
 import { upsertPropertyCache } from "../../lib/properties/upsert-property-cache";
 import { createBookingRecord } from "../../lib/bookings/create-booking-record";
 import { updateBookingStatus } from "../../lib/bookings/update-booking-status";
+import { createBookingIntent } from "../../lib/bookings/create-booking-intent";
+import {
+  markBookingIntentCompleted,
+  markBookingIntentFailed,
+  markBookingIntentProviderConfirmedOrphaned,
+} from "../../lib/bookings/update-booking-intent-status";
 import { logAnalyticsEvent } from "../../lib/analytics/log-event";
 import { createRewardTransaction } from "../../lib/rewards/create-reward-transaction";
 import { calculateHotelBookingRewardPoints } from "../../lib/rewards/rules";
@@ -161,7 +168,17 @@ export type BookingActionResult =
   | { status: "not_found" }
   | { status: "unavailable"; message: string }
   | { status: "provider_error"; message: string }
-  | { status: "persistence_error"; message: string };
+  | { status: "persistence_error"; message: string }
+  // FPR-04.9 — ya existe un booking intent "in_progress" para esta misma
+  // tupla (usuario+alojamiento+fechas+ocupación): Hotelbeds NUNCA se llega
+  // a llamar para este request (ver lib/bookings/create-booking-intent.ts).
+  | { status: "duplicate_booking_intent" }
+  // FPR-04.9 — regla crítica: timeout/error de red DESPUÉS de enviar
+  // /bookings, o una respuesta 2xx no interpretable. Hotelbeds podría haber
+  // creado la reserva igualmente — nunca se reintenta automáticamente, el
+  // booking intent queda "in_progress" a la espera de una reconciliación
+  // posterior (fuera de alcance aquí).
+  | { status: "pending_confirmation"; message: string };
 
 // Mismos principios que F5-02 (`app/search/actions.ts`): comprobaciones
 // de `typeof` defensivas (el cliente no es de confianza en este límite),
@@ -277,20 +294,69 @@ export async function createBookingAction(
     searchId = ownSearch ? rawSearchId : undefined;
   }
 
+  // FPR-04.9 — ancla de idempotencia: se crea ANTES de tocar el provider
+  // (nunca al revés). El índice único parcial `booking_intents_dedup`
+  // (FPR-04.6) es quien decide de forma atómica si esta misma tupla
+  // (usuario+alojamiento+fechas+ocupación) ya tiene una intención en
+  // curso — un segundo request concurrente para la misma reserva obtiene
+  // `duplicate_booking_intent` y jamás llega a llamar a `provider.book()`.
+  const intentResult = await createBookingIntent({
+    userId: user.id,
+    providerName: property.providerName,
+    providerPropertyId: propertyId,
+    checkIn,
+    checkOut,
+    guests,
+    rooms,
+  });
+  if (intentResult.outcome === "duplicate_booking_intent") {
+    return { status: "duplicate_booking_intent" };
+  }
+  if (intentResult.outcome === "persistence_error") {
+    return { status: "persistence_error", message: intentResult.message };
+  }
+  const intent = intentResult.intent;
+
+  // Declarado fuera del try de book() (FPR-04.10): `holder` (todavía
+  // siempre `undefined`, ver más abajo) hace falta también en el bloque de
+  // persistencia, más adelante en esta misma función.
+  const bookingRequest: BookingRequest = {
+    providerPropertyId: propertyId,
+    checkIn,
+    checkOut,
+    guests,
+    rooms,
+  };
+
   let bookingResult: BookingResult;
   try {
     if (!provider.book) {
       throw new ProviderNotSupportedError("book");
     }
-    const bookingRequest: BookingRequest = {
-      providerPropertyId: propertyId,
-      checkIn,
-      checkOut,
-      guests,
-      rooms,
-    };
-    bookingResult = await provider.book(bookingRequest);
+    bookingResult = await provider.book(bookingRequest, intent.clientReference);
   } catch (error) {
+    if (error instanceof ProviderAmbiguousError) {
+      // FPR-04.9, regla crítica: Hotelbeds podría haber creado la reserva
+      // igualmente (timeout/error de red tras enviar /bookings, o una
+      // respuesta no interpretable) — el intent NUNCA se marca "failed"
+      // aquí, ni se reintenta automáticamente: queda "in_progress" tal
+      // cual, a la espera de una reconciliación posterior (bloque futuro).
+      return { status: "pending_confirmation", message: error.message };
+    }
+    // Cualquier otro fallo aquí (rechazo claro del provider, o un error
+    // inesperado antes de que Hotelbeds pudiera haber recibido nada)
+    // significa que la reserva NUNCA se creó en el provider — seguro
+    // liberar el intent para que un reintento futuro pueda crear uno
+    // nuevo. Best-effort: un fallo al marcarlo no debe ocultar el error
+    // real del provider que se devuelve más abajo.
+    try {
+      await markBookingIntentFailed(intent.id);
+    } catch (intentError) {
+      console.error(
+        `[bookings] No se pudo marcar el booking intent "${intent.id}" como failed:`,
+        intentError,
+      );
+    }
     if (error instanceof ProviderUnavailableError) {
       return { status: "unavailable", message: error.message };
     }
@@ -309,10 +375,32 @@ export async function createBookingAction(
       checkIn,
       checkOut,
       guests,
+      rooms,
       providerBookingReference: bookingResult.providerBookingReference,
+      providerCancellationReference: bookingResult.providerCancellationReference,
       bookingValue: bookingResult.amount,
+      providerCost: bookingResult.providerCost,
       currency: bookingResult.currency,
+      // FPR-04.10: `holder` todavía no se recoge en la UI de esta Action
+      // (fuera de alcance) — queda `undefined` -> NULL hasta que exista
+      // ese dato real, nunca un valor inventado.
+      holderName: bookingRequest.holder?.name,
+      holderSurname: bookingRequest.holder?.surname,
     });
+
+    // FPR-04.9 — el provider confirmó Y la persistencia tuvo éxito: el
+    // intent queda "completed", vinculado al booking real recién creado.
+    // Best-effort, igual que el resto de transiciones secundarias de este
+    // flujo (ver statusUpdateSucceeded más abajo): un fallo aquí no debe
+    // deshacer ni ocultar una reserva ya persistida correctamente.
+    try {
+      await markBookingIntentCompleted(intent.id, bookingId);
+    } catch (intentError) {
+      console.error(
+        `[bookings] Reserva "${bookingId}" creada correctamente pero no se pudo marcar el booking intent "${intent.id}" como completed:`,
+        intentError,
+      );
+    }
 
     // F6-03 (VIAO_ROADMAP.md) — transiciona la fila recién creada de
     // "pending" al estado real que devolvió el provider. Ver la nota de
@@ -462,6 +550,21 @@ export async function createBookingAction(
       "[bookings] Error inesperado persistiendo una reserva ya aceptada por el provider:",
       error,
     );
+    // FPR-04.9 — el provider YA confirmó pero Supabase falló al crear/
+    // cachear la reserva: nunca "failed" (liberar el intent para un
+    // reintento crearía una reserva DUPLICADA en Hotelbeds, ya que la
+    // primera sí se creó). Queda "provider_confirmed_orphaned",
+    // preservando la referencia del provider intacta en `booking_intents`
+    // para una reconciliación posterior (bloque futuro) — best-effort,
+    // igual que el resto de transiciones secundarias de este flujo.
+    try {
+      await markBookingIntentProviderConfirmedOrphaned(intent.id);
+    } catch (intentError) {
+      console.error(
+        `[bookings] No se pudo marcar el booking intent "${intent.id}" como provider_confirmed_orphaned:`,
+        intentError,
+      );
+    }
     return {
       status: "persistence_error",
       message:

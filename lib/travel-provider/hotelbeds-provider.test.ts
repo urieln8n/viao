@@ -9,7 +9,12 @@ import assert from "node:assert/strict";
 import type { HotelbedsAvailabilityRequest, HotelbedsAvailabilityResponse, HotelbedsRawHotel } from "../hotelbeds/availability";
 import type { HotelbedsHttpResult } from "../hotelbeds/http";
 import type { CachedPropertyContent } from "../properties/get-cached-properties";
-import { ProviderError, ProviderUnavailableError } from "./errors";
+import type { ResolveBookableRateResult } from "../hotelbeds/resolve-booking-rate";
+import type { HotelbedsBookingRQ } from "../hotelbeds/booking";
+import type { HotelbedsBookingResponseEnvelope } from "../hotelbeds/book";
+import type { HotelbedsCancellationResponseEnvelope } from "../hotelbeds/cancel";
+import type { BookingRequest } from "../../types/travel";
+import { ProviderAmbiguousError, ProviderError, ProviderUnavailableError } from "./errors";
 import {
   HotelbedsProvider,
   UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER,
@@ -505,4 +510,430 @@ test("requestHotels: http_error del transport se traduce a ProviderError con el 
     assert.match((error as Error).message, /401/);
     return true;
   });
+});
+
+// ── book() (FPR-04.8/04.9) — resolveRate/fetchBooking FALSOS inyectados, nunca resolveBookableRate/fetchHotelbedsBooking reales. ──
+
+const VALID_BOOKING_REQUEST: BookingRequest = {
+  providerPropertyId: "12345",
+  checkIn: "2026-09-01",
+  checkOut: "2026-09-03",
+  guests: 1,
+  rooms: 1,
+  holder: { name: "Juan", surname: "Perez" },
+  paxes: [{ roomId: 1, type: "AD" }],
+};
+
+// FPR-04.9 — clientReference SIEMPRE llega como segundo argumento externo
+// (nunca lo genera HotelbedsProvider): se usa el mismo valor fijo en todos
+// los tests salvo los que prueban explícitamente su ausencia/paso exacto.
+const VALID_CLIENT_REFERENCE = "test-client-ref-1";
+
+function fakeResolveRate(
+  result: ResolveBookableRateResult,
+): (...args: unknown[]) => Promise<ResolveBookableRateResult> {
+  return async () => result;
+}
+
+function fakeFetchBooking(
+  outcome: HotelbedsHttpResult<HotelbedsBookingResponseEnvelope>,
+): (bookingRQ: HotelbedsBookingRQ) => Promise<HotelbedsHttpResult<HotelbedsBookingResponseEnvelope>> {
+  return async () => outcome;
+}
+
+test("book: fechas inválidas (checkOut <= checkIn) lanza ProviderError sin llamar a resolveRate", async () => {
+  let resolveRateCalled = false;
+  const provider = new HotelbedsProvider({
+    resolveRate: async () => {
+      resolveRateCalled = true;
+      return { outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" };
+    },
+  });
+  await assert.rejects(
+    () =>
+      provider.book(
+        { ...VALID_BOOKING_REQUEST, checkIn: "2026-09-05", checkOut: "2026-09-01" },
+        VALID_CLIENT_REFERENCE,
+      ),
+    ProviderError,
+  );
+  assert.equal(resolveRateCalled, false);
+});
+
+test("book: guests <= 0 lanza ProviderError sin llamar a resolveRate", async () => {
+  let resolveRateCalled = false;
+  const provider = new HotelbedsProvider({
+    resolveRate: async () => {
+      resolveRateCalled = true;
+      return { outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" };
+    },
+  });
+  await assert.rejects(
+    () => provider.book({ ...VALID_BOOKING_REQUEST, guests: 0 }, VALID_CLIENT_REFERENCE),
+    ProviderError,
+  );
+  assert.equal(resolveRateCalled, false);
+});
+
+test("book: rooms <= 0 lanza ProviderError sin llamar a resolveRate", async () => {
+  let resolveRateCalled = false;
+  const provider = new HotelbedsProvider({
+    resolveRate: async () => {
+      resolveRateCalled = true;
+      return { outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" };
+    },
+  });
+  await assert.rejects(
+    () => provider.book({ ...VALID_BOOKING_REQUEST, rooms: 0 }, VALID_CLIENT_REFERENCE),
+    ProviderError,
+  );
+  assert.equal(resolveRateCalled, false);
+});
+
+test("book: providerPropertyId no numérico lanza ProviderError sin llamar a resolveRate", async () => {
+  let resolveRateCalled = false;
+  const provider = new HotelbedsProvider({
+    resolveRate: async () => {
+      resolveRateCalled = true;
+      return { outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" };
+    },
+  });
+  await assert.rejects(
+    () =>
+      provider.book(
+        { ...VALID_BOOKING_REQUEST, providerPropertyId: "no-es-un-codigo" },
+        VALID_CLIENT_REFERENCE,
+      ),
+    ProviderError,
+  );
+  assert.equal(resolveRateCalled, false);
+});
+
+test("book: sin clientReference -> ProviderError, sin llamar a resolveRate (nunca genera uno internamente, FPR-04.9)", async () => {
+  let resolveRateCalled = false;
+  const provider = new HotelbedsProvider({
+    resolveRate: async () => {
+      resolveRateCalled = true;
+      return { outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" };
+    },
+  });
+  await assert.rejects(() => provider.book(VALID_BOOKING_REQUEST), (error: unknown) => {
+    assert.ok(error instanceof ProviderError);
+    assert.match((error as Error).message, /clientReference/);
+    return true;
+  });
+  assert.equal(resolveRateCalled, false);
+});
+
+test("book: resolveRate se llama con exactamente los mismos checkIn/checkOut/guests/rooms/providerPropertyId de la request, sin transformarlos", async () => {
+  let captured: unknown;
+  const provider = new HotelbedsProvider({
+    resolveRate: async (request) => {
+      captured = request;
+      return { outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" };
+    },
+    fetchBooking: fakeFetchBooking({ outcome: "success", httpStatus: 200, body: { booking: { status: "CONFIRMED" } } }),
+  });
+  await provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE);
+  assert.deepEqual(captured, {
+    providerPropertyId: "12345",
+    checkIn: "2026-09-01",
+    checkOut: "2026-09-03",
+    guests: 1,
+    rooms: 1,
+  });
+});
+
+test("book: rateType BOOKABLE (Availability directa) — usa ESE rateKey al llamar a fetchBooking, exactamente una vez", async () => {
+  let capturedRQ: HotelbedsBookingRQ | undefined;
+  let callCount = 0;
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({ outcome: "success", rateKey: "rk-bookable", rateType: "BOOKABLE" }),
+    fetchBooking: async (bookingRQ) => {
+      capturedRQ = bookingRQ;
+      callCount += 1;
+      return { outcome: "success", httpStatus: 200, body: { booking: { status: "CONFIRMED" } } };
+    },
+  });
+  await provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE);
+  assert.equal(callCount, 1);
+  assert.equal(capturedRQ?.rooms[0]?.rateKey, "rk-bookable");
+});
+
+test("book: rateType RECHECK ya resuelto por resolveRate (rateKey FINAL de CheckRates, distinto del original) — fetchBooking recibe ESE rateKey final", async () => {
+  let capturedRQ: HotelbedsBookingRQ | undefined;
+  const provider = new HotelbedsProvider({
+    // resolveBookableRate (FPR-04.5) ya devuelve el rateKey FINAL tras
+    // CheckRates cuando la tarifa original era RECHECK — book() no sabe
+    // ni necesita saber que hubo un CheckRates de por medio.
+    resolveRate: fakeResolveRate({ outcome: "success", rateKey: "rk-final-tras-checkrate", rateType: "BOOKABLE" }),
+    fetchBooking: async (bookingRQ) => {
+      capturedRQ = bookingRQ;
+      return { outcome: "success", httpStatus: 200, body: { booking: { status: "CONFIRMED" } } };
+    },
+  });
+  await provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE);
+  assert.equal(capturedRQ?.rooms[0]?.rateKey, "rk-final-tras-checkrate");
+});
+
+test("book: resolveRate devuelve not_bookable_after_checkrate -> ProviderUnavailableError, fetchBooking NUNCA se llama", async () => {
+  let fetchBookingCalled = false;
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({
+      outcome: "not_bookable_after_checkrate",
+      rateType: "RECHECK",
+      message: "CheckRates devolvió rateType \"RECHECK\" — no reservable.",
+    }),
+    fetchBooking: async () => {
+      fetchBookingCalled = true;
+      return { outcome: "success", httpStatus: 200, body: { booking: { status: "CONFIRMED" } } };
+    },
+  });
+  await assert.rejects(() => provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE), ProviderUnavailableError);
+  assert.equal(fetchBookingCalled, false);
+});
+
+test("book: resolveRate devuelve no_rate_found -> ProviderUnavailableError", async () => {
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({ outcome: "no_rate_found", message: "Sin tarifas disponibles." }),
+  });
+  await assert.rejects(() => provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE), ProviderUnavailableError);
+});
+
+test("book: resolveRate devuelve un fallo técnico de Availability (availability_missing_credentials) -> ProviderError, fetchBooking NUNCA se llama", async () => {
+  let fetchBookingCalled = false;
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({ outcome: "availability_missing_credentials", message: "Credenciales no disponibles." }),
+    fetchBooking: async () => {
+      fetchBookingCalled = true;
+      return { outcome: "success", httpStatus: 200, body: { booking: { status: "CONFIRMED" } } };
+    },
+  });
+  await assert.rejects(() => provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE), ProviderError);
+  assert.equal(fetchBookingCalled, false);
+});
+
+test("book: resolveRate devuelve un fallo técnico de CheckRates (checkrate_http_error) -> ProviderError con el status en el mensaje", async () => {
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({ outcome: "checkrate_http_error", httpStatus: 500, body: { error: "internal" } }),
+  });
+  await assert.rejects(() => provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE), (error: unknown) => {
+    assert.ok(error instanceof ProviderError);
+    assert.match((error as Error).message, /500/);
+    return true;
+  });
+});
+
+test("book: BookingRequest sin holder/paxes falla la validación del mapper -> ProviderError, fetchBooking NUNCA se llama", async () => {
+  let fetchBookingCalled = false;
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({ outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" }),
+    fetchBooking: async () => {
+      fetchBookingCalled = true;
+      return { outcome: "success", httpStatus: 200, body: { booking: { status: "CONFIRMED" } } };
+    },
+  });
+  const withoutHolder: BookingRequest = { ...VALID_BOOKING_REQUEST, holder: undefined };
+  await assert.rejects(() => provider.book(withoutHolder, VALID_CLIENT_REFERENCE), ProviderError);
+  assert.equal(fetchBookingCalled, false);
+});
+
+test("book: el clientReference recibido como argumento llega EXACTAMENTE igual al bookingRQ.clientReference, sin regenerarlo ni truncarlo (FPR-04.9)", async () => {
+  let capturedRQ: HotelbedsBookingRQ | undefined;
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({ outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" }),
+    fetchBooking: async (bookingRQ) => {
+      capturedRQ = bookingRQ;
+      return { outcome: "success", httpStatus: 200, body: { booking: { status: "CONFIRMED" } } };
+    },
+  });
+  await provider.book(VALID_BOOKING_REQUEST, "custom-clientref-01");
+  assert.equal(capturedRQ?.clientReference, "custom-clientref-01");
+});
+
+test("book: éxito completo (CONFIRMED) -> BookingResult con status/providerBookingReference/providerCost/amount/currency correctos", async () => {
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({ outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" }),
+    fetchBooking: fakeFetchBooking({
+      outcome: "success",
+      httpStatus: 200,
+      body: { booking: { reference: "REF-123", cancellationReference: "CAN-123", status: "CONFIRMED", totalNet: "243.32", currency: "EUR" } },
+    }),
+  });
+  const result = await provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE);
+  assert.deepEqual(result, {
+    status: "confirmed",
+    providerBookingReference: "REF-123",
+    providerCancellationReference: "CAN-123",
+    providerCost: 243.32,
+    amount: 243.32,
+    currency: "EUR",
+  });
+});
+
+test("book: éxito con status PRECONFIRMED -> BookingResult.status es \"pending\" (FPR-04.3)", async () => {
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({ outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" }),
+    fetchBooking: fakeFetchBooking({
+      outcome: "success",
+      httpStatus: 200,
+      body: { booking: { reference: "REF-123", status: "PRECONFIRMED", totalNet: "100.00", currency: "EUR" } },
+    }),
+  });
+  const result = await provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE);
+  assert.equal(result.status, "pending");
+});
+
+test("book: fetchBooking devuelve missing_certificate -> ProviderError (falla antes de enviar nada, nunca ambiguo)", async () => {
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({ outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" }),
+    fetchBooking: fakeFetchBooking({ outcome: "missing_certificate", message: "Certificado cliente de Hotelbeds no disponible." }),
+  });
+  await assert.rejects(() => provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE), (error: unknown) => {
+    assert.ok(error instanceof ProviderError);
+    assert.ok(!(error instanceof ProviderAmbiguousError));
+    return true;
+  });
+});
+
+test("book: fetchBooking devuelve http_error -> ProviderError con el status en el mensaje (Hotelbeds SÍ respondió, rechazo claro)", async () => {
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({ outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" }),
+    fetchBooking: fakeFetchBooking({ outcome: "http_error", httpStatus: 400, body: { error: "RATE_STALE" } }),
+  });
+  await assert.rejects(() => provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE), (error: unknown) => {
+    assert.ok(error instanceof ProviderError);
+    assert.ok(!(error instanceof ProviderAmbiguousError));
+    assert.match((error as Error).message, /400/);
+    return true;
+  });
+});
+
+test("book: fetchBooking devuelve network_error -> ProviderAmbiguousError (FPR-04.9, regla crítica: Hotelbeds pudo recibir la petición aunque se perdiera la respuesta)", async () => {
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({ outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" }),
+    fetchBooking: fakeFetchBooking({ outcome: "network_error", message: "socket hang up" }),
+  });
+  await assert.rejects(() => provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE), ProviderAmbiguousError);
+});
+
+test("book: respuesta de fetchBooking sin campo booking -> ProviderAmbiguousError (respuesta 2xx no interpretable, nunca un rechazo claro)", async () => {
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({ outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" }),
+    fetchBooking: fakeFetchBooking({ outcome: "success", httpStatus: 200, body: {} }),
+  });
+  await assert.rejects(() => provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE), ProviderAmbiguousError);
+});
+
+test("book: status de reserva no reconocido -> ProviderAmbiguousError (Hotelbeds respondió 2xx pero no se puede confirmar el resultado)", async () => {
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({ outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" }),
+    fetchBooking: fakeFetchBooking({ outcome: "success", httpStatus: 200, body: { booking: { status: "ALGO_NUNCA_VISTO" } } }),
+  });
+  await assert.rejects(() => provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE), ProviderAmbiguousError);
+});
+
+// ── cancelBooking() (FPR-04.11) — fetchCancellation FALSO inyectado, nunca fetchHotelbedsCancellation real. ──
+
+function fakeFetchCancellation(
+  outcome: HotelbedsHttpResult<HotelbedsCancellationResponseEnvelope>,
+): (providerBookingReference: string) => Promise<HotelbedsHttpResult<HotelbedsCancellationResponseEnvelope>> {
+  return async () => outcome;
+}
+
+test("cancelBooking: providerBookingReference vacío lanza ProviderError sin llamar a fetchCancellation", async () => {
+  let called = false;
+  const provider = new HotelbedsProvider({
+    fetchCancellation: async () => {
+      called = true;
+      return { outcome: "success", httpStatus: 200, body: { booking: { status: "CANCELLED" } } };
+    },
+  });
+  await assert.rejects(() => provider.cancelBooking({ providerBookingReference: "" }), ProviderError);
+  assert.equal(called, false);
+});
+
+test("cancelBooking: providerBookingReference solo espacios lanza ProviderError sin llamar a fetchCancellation", async () => {
+  let called = false;
+  const provider = new HotelbedsProvider({
+    fetchCancellation: async () => {
+      called = true;
+      return { outcome: "success", httpStatus: 200, body: { booking: { status: "CANCELLED" } } };
+    },
+  });
+  await assert.rejects(() => provider.cancelBooking({ providerBookingReference: "   " }), ProviderError);
+  assert.equal(called, false);
+});
+
+test("cancelBooking: se llama a fetchCancellation con el providerBookingReference exacto de la request, sin transformarlo", async () => {
+  let captured: string | undefined;
+  const provider = new HotelbedsProvider({
+    fetchCancellation: async (providerBookingReference) => {
+      captured = providerBookingReference;
+      return { outcome: "success", httpStatus: 200, body: { booking: { status: "CANCELLED" } } };
+    },
+  });
+  await provider.cancelBooking({ providerBookingReference: "1-3816248" });
+  assert.equal(captured, "1-3816248");
+});
+
+test("cancelBooking: éxito completo (CANCELLED) -> CancellationResult con cancelled/cancellationReference/status/cancellationAmount correctos", async () => {
+  const provider = new HotelbedsProvider({
+    fetchCancellation: fakeFetchCancellation({
+      outcome: "success",
+      httpStatus: 200,
+      body: { booking: { cancellationReference: "PPFPPJXXVZ", status: "CANCELLED", hotel: { cancellationAmount: 15 } } },
+    }),
+  });
+  const result = await provider.cancelBooking({ providerBookingReference: "1-3816248" });
+  assert.deepEqual(result, {
+    cancelled: true,
+    cancellationReference: "PPFPPJXXVZ",
+    status: "cancelled",
+    cancellationAmount: 15,
+  });
+});
+
+test("cancelBooking: fetchCancellation devuelve missing_credentials -> ProviderError (falla antes de enviar nada, nunca ambiguo)", async () => {
+  const provider = new HotelbedsProvider({
+    fetchCancellation: fakeFetchCancellation({ outcome: "missing_credentials", message: "HOTELBEDS_API_KEY no está configurada." }),
+  });
+  await assert.rejects(() => provider.cancelBooking({ providerBookingReference: "1-3816248" }), (error: unknown) => {
+    assert.ok(error instanceof ProviderError);
+    assert.ok(!(error instanceof ProviderAmbiguousError));
+    return true;
+  });
+});
+
+test("cancelBooking: fetchCancellation devuelve http_error -> ProviderError con el status en el mensaje (Hotelbeds SÍ respondió, rechazo claro)", async () => {
+  const provider = new HotelbedsProvider({
+    fetchCancellation: fakeFetchCancellation({ outcome: "http_error", httpStatus: 404, body: { error: "BOOKING_NOT_FOUND" } }),
+  });
+  await assert.rejects(() => provider.cancelBooking({ providerBookingReference: "does-not-exist" }), (error: unknown) => {
+    assert.ok(error instanceof ProviderError);
+    assert.ok(!(error instanceof ProviderAmbiguousError));
+    assert.match((error as Error).message, /404/);
+    return true;
+  });
+});
+
+test("cancelBooking: fetchCancellation devuelve network_error -> ProviderAmbiguousError (Hotelbeds pudo recibir la petición aunque se perdiera la respuesta)", async () => {
+  const provider = new HotelbedsProvider({
+    fetchCancellation: fakeFetchCancellation({ outcome: "network_error", message: "socket hang up" }),
+  });
+  await assert.rejects(() => provider.cancelBooking({ providerBookingReference: "1-3816248" }), ProviderAmbiguousError);
+});
+
+test("cancelBooking: respuesta sin campo booking -> ProviderAmbiguousError (respuesta 2xx no interpretable)", async () => {
+  const provider = new HotelbedsProvider({
+    fetchCancellation: fakeFetchCancellation({ outcome: "success", httpStatus: 200, body: {} }),
+  });
+  await assert.rejects(() => provider.cancelBooking({ providerBookingReference: "1-3816248" }), ProviderAmbiguousError);
+});
+
+test("cancelBooking: status no reconocido -> ProviderAmbiguousError", async () => {
+  const provider = new HotelbedsProvider({
+    fetchCancellation: fakeFetchCancellation({ outcome: "success", httpStatus: 200, body: { booking: { status: "ALGO_NUNCA_VISTO" } } }),
+  });
+  await assert.rejects(() => provider.cancelBooking({ providerBookingReference: "1-3816248" }), ProviderAmbiguousError);
 });

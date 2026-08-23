@@ -65,8 +65,18 @@ export interface HotelProvider<
   /** Condiciones: políticas relevantes (cancelación, requisitos) tal como las exponga el proveedor. */
   getConditions(query: T["conditionsQuery"]): Promise<T["conditions"]>;
 
-  /** Reserva (opcional, "si el proveedor lo permite"): iniciar/confirmar una reserva. */
-  book?(request: T["bookingRequest"]): Promise<T["bookingResult"]>;
+  /**
+   * Reserva (opcional, "si el proveedor lo permite"): iniciar/confirmar
+   * una reserva. `clientReference` (FPR-04.9, opcional a nivel de
+   * contrato para no romper implementaciones/consumidores existentes que
+   * no lo necesitan, p. ej. MockHotelProvider): referencia de
+   * idempotencia ya resuelta por la capa de aplicación (el
+   * `booking_intents.client_reference` real) — un proveedor que la
+   * requiera para operar de forma segura (como HotelbedsProvider) debe
+   * exigirla en su propia implementación, nunca generar una por su
+   * cuenta.
+   */
+  book?(request: T["bookingRequest"], clientReference?: string): Promise<T["bookingResult"]>;
 
   /** Cancelación (opcional, "si el proveedor lo permite"): cancelar una reserva existente. */
   cancelBooking?(

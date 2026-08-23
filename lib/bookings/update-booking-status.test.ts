@@ -110,6 +110,71 @@ test("updateBookingStatus: transiciona pending → confirmed sin crear otra fila
   }
 });
 
+// ── FPR-04.12 — providerCancellationReference opcional ──
+test("updateBookingStatus: con providerCancellationReference, transiciona a cancelled y persiste la referencia real", async () => {
+  const { userId } = await createConfirmedTestUser();
+  const propertyRowId = await createTestPropertyRow();
+
+  try {
+    const bookingId = await createBookingRecord({
+      userId,
+      propertyRowId,
+      checkIn: "2026-10-01",
+      checkOut: "2026-10-04",
+      guests: 1,
+    });
+
+    await updateBookingStatus({
+      bookingId,
+      userId,
+      status: "cancelled",
+      providerCancellationReference: "PPFPPJXXVZ",
+    });
+
+    const service = createServiceRoleClient();
+    const { data, error } = await service
+      .from("bookings")
+      .select("status, provider_cancellation_reference")
+      .eq("id", bookingId)
+      .single();
+    assert.equal(error, null);
+    assert.equal(data.status, "cancelled");
+    assert.equal(data.provider_cancellation_reference, "PPFPPJXXVZ");
+  } finally {
+    await deleteTestUser(userId);
+  }
+});
+
+test("updateBookingStatus: sin providerCancellationReference, provider_cancellation_reference queda intacto (nunca se borra un valor por omisión)", async () => {
+  const { userId } = await createConfirmedTestUser();
+  const propertyRowId = await createTestPropertyRow();
+
+  try {
+    const bookingId = await createBookingRecord({
+      userId,
+      propertyRowId,
+      checkIn: "2026-10-01",
+      checkOut: "2026-10-04",
+      guests: 1,
+      providerCancellationReference: "ALREADY-SET",
+    });
+
+    await updateBookingStatus({ bookingId, userId, status: "confirmed" });
+
+    const service = createServiceRoleClient();
+    const { data, error } = await service
+      .from("bookings")
+      .select("status, provider_cancellation_reference")
+      .eq("id", bookingId)
+      .single();
+    assert.equal(error, null);
+    assert.equal(data.status, "confirmed");
+    assert.equal(data.provider_cancellation_reference, "ALREADY-SET");
+  } finally {
+    await deleteTestUser(userId);
+  }
+});
+
 // ── 5. Usuario autenticado no puede afectar una reserva ajena ──
 test("updateBookingStatus: rechaza actualizar una reserva perteneciente a otro usuario (ownership)", async () => {
   const { userId: ownerId } = await createConfirmedTestUser();

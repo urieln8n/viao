@@ -20,6 +20,7 @@ import {
   deleteIntegrationUser,
   runFullBookingFlow,
 } from "./test-helpers";
+import { createServiceRoleClient } from "../supabase/service";
 
 const STAY = {
   checkIn: "2026-11-01",
@@ -98,6 +99,57 @@ test("F14-03: una reserva sin disponibilidad suficiente no crea ninguna fila en 
 
     const { data: bookings } = await authedClient.from("bookings").select("id");
     assert.equal((bookings ?? []).length, 0, "no debe haberse persistido ninguna reserva rechazada por falta de disponibilidad");
+  } finally {
+    await deleteIntegrationUser(userId);
+  }
+});
+
+// ── FPR-04.10 — 9/11: runFullBookingFlow ahora pasa por booking_intents, igual que la Action real ──
+test("FPR-04.10.9/11: runFullBookingFlow crea un booking intent real y lo completa tras persistir la reserva (booking_id vinculado)", async () => {
+  const { userId, authedClient } = await signUpIntegrationUser("fpr0410-intent-completed");
+  try {
+    const result = await runFullBookingFlow({
+      userId,
+      authedClient,
+      destination: "Madrid",
+      ...STAY,
+    });
+
+    const service = createServiceRoleClient();
+    const { data: intentRow, error } = await service
+      .from("booking_intents")
+      .select("status, booking_id, client_reference")
+      .eq("id", result.intentId)
+      .single();
+
+    assert.equal(error, null);
+    assert.ok(intentRow);
+    assert.equal(intentRow.status, "completed", "el intent debe quedar completed tras una reserva persistida con éxito (9)");
+    assert.equal(intentRow.booking_id, result.bookingId);
+    assert.ok(intentRow.client_reference, "el helper de integración usa de verdad booking_intents, no un flujo distinto (11)");
+  } finally {
+    await deleteIntegrationUser(userId);
+  }
+});
+
+// ── FPR-04.10 — 12: una reserva duplicada concurrente solo produce UNA fila real en bookings ──
+test("FPR-04.10.12: dos runFullBookingFlow concurrentes con la misma tupla -> solo uno tiene éxito, book() efectivamente se ejecuta una sola vez (una única fila en bookings)", async () => {
+  const { userId, authedClient } = await signUpIntegrationUser("fpr0410-concurrent");
+  try {
+    const [settledA, settledB] = await Promise.allSettled([
+      runFullBookingFlow({ userId, authedClient, destination: "Madrid", ...STAY, withSearchRecord: false }),
+      runFullBookingFlow({ userId, authedClient, destination: "Madrid", ...STAY, withSearchRecord: false }),
+    ]);
+
+    const outcomes = [settledA.status, settledB.status].sort();
+    assert.deepEqual(outcomes, ["fulfilled", "rejected"], "exactamente uno debe tener éxito y el otro debe fallar (duplicate_booking_intent)");
+
+    const rejected = settledA.status === "rejected" ? settledA : (settledB as PromiseRejectedResult);
+    assert.match(String((rejected as PromiseRejectedResult).reason?.message ?? rejected.reason), /duplicate_booking_intent/);
+
+    const service = createServiceRoleClient();
+    const { data: bookings } = await service.from("bookings").select("id").eq("user_id", userId);
+    assert.equal((bookings ?? []).length, 1, "book() y la persistencia solo deben completarse una vez para la tupla concurrente");
   } finally {
     await deleteIntegrationUser(userId);
   }

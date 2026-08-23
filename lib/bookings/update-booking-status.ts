@@ -43,6 +43,15 @@ import type { BookingStatus } from "../../types/travel";
 // llegue después, así que no se reescriben aquí (evita duplicar lógica
 // entre `create-booking-record.ts` y este archivo).
 //
+// `providerCancellationReference` (FPR-04.12, opcional): única excepción
+// a "solo status" — la transición `confirmed -> cancelled` SÍ trae un dato
+// nuevo del provider en ese mismo momento (`CancellationResult.
+// cancellationReference`, lib/hotelbeds/cancellation.ts), que no existía
+// en el momento de crear la fila. Se omite la clave (nunca se envía
+// `null`) cuando no se informa, igual que el resto de campos opcionales
+// de create-booking-record.ts — nunca se borra un valor ya persistido por
+// no haberlo vuelto a informar.
+//
 // RLS/GRANT: `bookings` (Patrón B) no concede UPDATE a `authenticated` ni
 // a `anon` bajo ninguna circunstancia (VIAO_DATABASE.md sección 6:
 // "nadie desde el cliente"). `service_role` bypassa RLS pero necesitaba un
@@ -58,18 +67,26 @@ export interface UpdateBookingStatusInput {
   bookingId: string;
   userId: string;
   status: BookingStatus;
+  providerCancellationReference?: string;
 }
 
 export async function updateBookingStatus({
   bookingId,
   userId,
   status,
+  providerCancellationReference,
 }: UpdateBookingStatusInput): Promise<void> {
   const service = createServiceRoleClient();
 
   const { data, error } = await service
     .from("bookings")
-    .update({ status, updated_at: new Date().toISOString() })
+    .update({
+      status,
+      updated_at: new Date().toISOString(),
+      ...(providerCancellationReference
+        ? { provider_cancellation_reference: providerCancellationReference }
+        : {}),
+    })
     .eq("id", bookingId)
     .eq("user_id", userId)
     .select("id")

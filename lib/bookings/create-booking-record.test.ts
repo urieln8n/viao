@@ -69,9 +69,13 @@ test("createBookingRecord: crea la fila con status=pending, datos correctos y ca
       checkIn: "2026-10-01",
       checkOut: "2026-10-04",
       guests: 2,
+      rooms: 1,
       providerBookingReference: "mock-booking-test-1",
       bookingValue: 270,
+      providerCost: 250,
       currency: "EUR",
+      holderName: "Juan",
+      holderSurname: "Perez",
     });
 
     const service = createServiceRoleClient();
@@ -89,26 +93,26 @@ test("createBookingRecord: crea la fila con status=pending, datos correctos y ca
     assert.equal(data.guests, 2); // 12. guests correcto
     assert.equal(data.status, "pending"); // 9. status inicial
     assert.equal(data.provider_booking_reference, "mock-booking-test-1");
-    assert.equal(Number(data.booking_value), 270); // económico real, conocido en este punto
+    assert.equal(Number(data.booking_value), 270); // 2. amount/booking_value real (FPR-04.10)
+    assert.equal(Number(data.provider_cost), 250); // 1. provider_cost real (FPR-04.10)
     assert.equal(data.currency, "EUR");
     assert.equal(data.provider_commission, null); // económico NULL: no se llama a getCommission()
     assert.equal(data.viao_revenue, null);
     assert.equal(data.reward_cost, null);
     assert.equal(data.search_id, null);
-    // 13. rooms según el esquema real: la tabla no tiene esa columna en
-    // absoluto (auditado en VIAO_DATABASE.md sección 6 y en el esquema
-    // real de Supabase) — no puede aparecer en la fila.
-    assert.ok(
-      !Object.prototype.hasOwnProperty.call(data, "rooms"),
-      "bookings no debe tener columna rooms (discrepancia auditada en el reporte de F6-02)",
-    );
+    // 13. rooms (FPR-04.10 — la migración 20260823130000 añadió la
+    // columna, resolviendo la discrepancia que F6-02 había documentado).
+    assert.equal(data.rooms, 1);
+    // 3/4. holder_name/holder_surname (FPR-04.10).
+    assert.equal(data.holder_name, "Juan");
+    assert.equal(data.holder_surname, "Perez");
   } finally {
     await deleteTestUser(userId);
   }
 });
 
-// ── Campos económicos NULL cuando el provider no los informa ──
-test("createBookingRecord: sin bookingValue/currency, booking_value queda NULL y currency usa el default de la columna", async () => {
+// ── Campos económicos/nuevos NULL cuando el provider no los informa ──
+test("createBookingRecord: sin bookingValue/currency/rooms/holder/providerCost/providerCancellationReference, todos quedan NULL (nunca inventados)", async () => {
   const { userId } = await createConfirmedTestUser();
   const propertyRowId = await createTestPropertyRow();
 
@@ -124,7 +128,9 @@ test("createBookingRecord: sin bookingValue/currency, booking_value queda NULL y
     const service = createServiceRoleClient();
     const { data, error } = await service
       .from("bookings")
-      .select("booking_value, currency, provider_booking_reference, search_id")
+      .select(
+        "booking_value, currency, provider_booking_reference, provider_cancellation_reference, provider_cost, holder_name, holder_surname, rooms, search_id",
+      )
       .eq("id", bookingId)
       .single();
 
@@ -132,7 +138,87 @@ test("createBookingRecord: sin bookingValue/currency, booking_value queda NULL y
     assert.equal(data.booking_value, null);
     assert.equal(data.currency, "EUR"); // default de la columna, VIAO_DATABASE.md sección 6
     assert.equal(data.provider_booking_reference, null);
+    assert.equal(data.provider_cancellation_reference, null);
+    assert.equal(data.provider_cost, null);
+    assert.equal(data.holder_name, null);
+    assert.equal(data.holder_surname, null);
+    assert.equal(data.rooms, null);
     assert.equal(data.search_id, null);
+  } finally {
+    await deleteTestUser(userId);
+  }
+});
+
+// ── 6. providerCancellationReference solo aparece cuando el provider la informa ──
+test("createBookingRecord: providerCancellationReference se persiste cuando se informa, NULL cuando no", async () => {
+  const { userId } = await createConfirmedTestUser();
+  const propertyRowId = await createTestPropertyRow();
+
+  try {
+    const withCancellationRef = await createBookingRecord({
+      userId,
+      propertyRowId,
+      checkIn: "2026-10-01",
+      checkOut: "2026-10-04",
+      guests: 1,
+      providerCancellationReference: "HB-CANCEL-123",
+    });
+    const withoutCancellationRef = await createBookingRecord({
+      userId,
+      propertyRowId,
+      checkIn: "2026-10-05",
+      checkOut: "2026-10-08",
+      guests: 1,
+    });
+
+    const service = createServiceRoleClient();
+    const { data: rows, error } = await service
+      .from("bookings")
+      .select("id, provider_cancellation_reference")
+      .in("id", [withCancellationRef, withoutCancellationRef]);
+
+    assert.equal(error, null);
+    const withRow = rows!.find((r) => r.id === withCancellationRef);
+    const withoutRow = rows!.find((r) => r.id === withoutCancellationRef);
+    assert.equal(withRow?.provider_cancellation_reference, "HB-CANCEL-123");
+    assert.equal(withoutRow?.provider_cancellation_reference, null);
+  } finally {
+    await deleteTestUser(userId);
+  }
+});
+
+// ── 7/8. Nunca se persiste paymentData ni datos de tarjeta/CVV: la propia tabla no tiene esas columnas ──
+test("createBookingRecord: la fila persistida nunca contiene paymentData ni datos de tarjeta/CVV (esas columnas no existen en bookings)", async () => {
+  const { userId } = await createConfirmedTestUser();
+  const propertyRowId = await createTestPropertyRow();
+
+  try {
+    const bookingId = await createBookingRecord({
+      userId,
+      propertyRowId,
+      checkIn: "2026-10-01",
+      checkOut: "2026-10-04",
+      guests: 1,
+    });
+
+    const service = createServiceRoleClient();
+    const { data, error } = await service.from("bookings").select("*").eq("id", bookingId).single();
+
+    assert.equal(error, null);
+    for (const forbiddenKey of [
+      "payment_data",
+      "card_number",
+      "cvv",
+      "card_cvv",
+      "card_expiry",
+      "rate_key",
+      "client_reference",
+    ]) {
+      assert.ok(
+        !Object.prototype.hasOwnProperty.call(data, forbiddenKey),
+        `bookings no debe tener ninguna columna de pago/tarjeta/CVV ni rateKey/clientReference — encontrada "${forbiddenKey}"`,
+      );
+    }
   } finally {
     await deleteTestUser(userId);
   }

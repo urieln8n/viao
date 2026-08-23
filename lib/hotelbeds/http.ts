@@ -29,14 +29,25 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 /**
- * POST autenticado contra `${HOTELBEDS_BASE_URL}${path}`. `path` debe
- * empezar por "/" (p. ej. "/hotel-api/1.0/hotels"). `requestBody` se
+ * POST/DELETE autenticado contra `${HOTELBEDS_BASE_URL}${path}`. `path`
+ * debe empezar por "/" (p. ej. "/hotel-api/1.0/hotels"). `requestBody` se
  * serializa como JSON tal cual — la forma exacta del cuerpo es
  * responsabilidad de quien llama (p. ej. lib/hotelbeds/availability.ts).
+ *
+ * `method` (FPR-04.11, aditivo — nunca cambia el comportamiento de una
+ * llamada existente: por defecto sigue siendo "POST"): la cancelación de
+ * Hotelbeds (`DELETE /bookings/{bookingId}`, lib/hotelbeds/cancel.ts) no
+ * lleva cuerpo, solo query params ya incluidos en `path` — por eso
+ * `requestBody` puede ser `undefined`, en cuyo caso no se envían
+ * `Content-Type`/`Content-Length` ni un body. Se generaliza esta única
+ * función (en vez de duplicar toda la lógica de auth/mTLS/firma, ya
+ * verificada contra Hotelbeds real) siguiendo el mismo criterio de "nunca
+ * duplicar" ya aplicado en el resto de lib/hotelbeds/.
  */
 export async function postHotelbeds<TBody = unknown>(
   path: string,
   requestBody: unknown,
+  method: "POST" | "DELETE" = "POST",
 ): Promise<HotelbedsHttpResult<TBody>> {
   let credentials;
   try {
@@ -66,7 +77,7 @@ export async function postHotelbeds<TBody = unknown>(
   });
 
   const target = new URL(`${credentials.baseUrl}${path}`);
-  const payload = JSON.stringify(requestBody);
+  const payload = requestBody === undefined ? undefined : JSON.stringify(requestBody);
 
   try {
     const response = await new Promise<{ httpStatus: number; rawText: string }>(
@@ -76,15 +87,16 @@ export async function postHotelbeds<TBody = unknown>(
             hostname: target.hostname,
             port: target.port || 443,
             path: `${target.pathname}${target.search}`,
-            method: "POST",
+            method,
             cert: certificate.cert,
             key: certificate.key,
             headers: {
               "Api-key": credentials.apiKey,
               "X-Signature": signature,
               Accept: "application/json",
-              "Content-Type": "application/json",
-              "Content-Length": Buffer.byteLength(payload),
+              ...(payload !== undefined
+                ? { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) }
+                : {}),
             },
           },
           (res) => {
@@ -94,7 +106,9 @@ export async function postHotelbeds<TBody = unknown>(
           },
         );
         req.on("error", reject);
-        req.write(payload);
+        if (payload !== undefined) {
+          req.write(payload);
+        }
         req.end();
       },
     );
