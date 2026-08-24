@@ -18,6 +18,18 @@ import { completeMission } from "../missions/complete-mission";
 // (WHERE status='active') es quien decide atómicamente si ya existe uno
 // — por eso esta función nunca hace un SELECT previo para comprobarlo
 // (mismo criterio que `create-booking-intent.ts`/F7-01).
+//
+// Bloque Goals V1 (VIAO_GOALS_V1_DECISION_LOCK.md, auto-cancelación
+// aprobada) — un trigger `BEFORE INSERT` adicional
+// (`20260824110000_goals_auto_cancel_active_on_create.sql`) cancela
+// automáticamente el Goal `active` anterior del mismo usuario, si
+// existe, justo antes de este INSERT — esta función no necesita ningún
+// cambio para soportarlo: sigue haciendo el mismo `.insert()` plano de
+// siempre. `already_has_active_goal` (23505) sigue siendo posible, pero
+// ahora solo en el caso residual de dos creaciones concurrentes cuando
+// el usuario todavía no tenía ningún Goal previo (nada que el trigger
+// pueda cancelar de antemano) — ver el propio Decision Lock para el
+// análisis de concurrencia completo.
 export interface CreateGoalInput {
   title: string;
   targetPoints: number;

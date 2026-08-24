@@ -10,13 +10,16 @@ import { t } from "@/lib/i18n";
 
 import { createGoalAction, cancelGoalAction } from "./goals/actions";
 import type { ActiveGoal } from "../lib/goals/get-goal";
+import { calculateGoalProgressPercent } from "../lib/goals/calculate-progress";
 
-// Bloque 1 (VIAO_V1_LOOP_DECISION.md) — sección mínima de Goal en Home.
-// Regla explícita del bloque: SIEMPRE dos cifras separadas, nunca
-// presentadas como si fueran lo mismo — "Ganado para tu objetivo"
-// (`goal.earnedTowardGoal`, solo avanza) vs "Disponible ahora"
-// (`walletBalance`, el saldo real gastable, que SÍ puede bajar al
-// canjear un Reward).
+// Bloque Goals V1 (VIAO_GOALS_V1_DECISION_LOCK.md, GOAL_PROGRESS_MODEL=
+// WALLET_BALANCE) — sección mínima de Goal en Home. Una única cifra de
+// progreso: `walletBalance` (Points disponibles ahora) sobre
+// `goal.targetPoints` — ya NO se muestran dos cifras separadas ("Ganado
+// para tu objetivo" vs "Disponible ahora"), porque bajo este modelo son
+// literalmente el mismo número. Canjear un Reward SÍ reduce visiblemente
+// este progreso (consecuencia real de la bifurcación GUARDAR/REDEEM del
+// loop V1); un refund lo devuelve, sin ningún caso especial.
 interface GoalCardProps {
   goal: ActiveGoal | undefined;
   walletBalance: number;
@@ -51,7 +54,7 @@ function ActiveGoalCard({
   const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
-  const progressPercent = Math.min(100, Math.round((goal.earnedTowardGoal / goal.targetPoints) * 100));
+  const progressPercent = calculateGoalProgressPercent(walletBalance, goal.targetPoints);
 
   async function handleCancel() {
     setIsCancelling(true);
@@ -78,9 +81,9 @@ function ActiveGoalCard({
 
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">{t("goals.earnedLabel")}</span>
-            <span className="font-medium">
-              {goal.earnedTowardGoal} / {goal.targetPoints} {t("rewards.pointsUnit")}
+            <span className="text-muted-foreground">{t("goals.availableLabel")}</span>
+            <span className="font-medium text-success">
+              {walletBalance} / {goal.targetPoints} {t("rewards.pointsUnit")}
             </span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -89,13 +92,6 @@ function ActiveGoalCard({
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">{t("goals.availableLabel")}</span>
-          <span className="font-medium text-success">
-            {walletBalance} {t("rewards.pointsUnit")}
-          </span>
         </div>
 
         {confirmingCancel ? (
@@ -142,10 +138,6 @@ function ActiveGoalCard({
 
 function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [targetPoints, setTargetPoints] = useState("");
-  const [error, setError] = useState<string | undefined>();
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) {
     return (
@@ -162,6 +154,30 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
     );
   }
 
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("goals.createCta")}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <GoalForm onCreated={onCreated} />
+      </CardContent>
+    </Card>
+  );
+}
+
+// Fase 1 (onboarding del Goal) — extraído de `CreateGoalForm` para que
+// Home (arriba) y `app/onboarding/page.tsx` compartan exactamente la
+// misma lógica de creación (validación, llamada a `createGoalAction`,
+// manejo de errores) — nunca una segunda implementación. Sin `Card`
+// propia: cada contexto decide su propio envoltorio visual.
+export function GoalForm({ onCreated, submitLabel }: { onCreated: () => void; submitLabel?: string }) {
+  const [title, setTitle] = useState("");
+  const [targetPoints, setTargetPoints] = useState("");
+  const [targetDate, setTargetDate] = useState("");
+  const [error, setError] = useState<string | undefined>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError(undefined);
@@ -174,7 +190,11 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
 
     setIsSubmitting(true);
     try {
-      const result = await createGoalAction({ title: title.trim(), targetPoints: parsedTarget });
+      const result = await createGoalAction({
+        title: title.trim(),
+        targetPoints: parsedTarget,
+        targetDate: targetDate || undefined,
+      });
       if (result.outcome === "success") {
         onCreated();
       } else if (result.outcome === "already_has_active_goal") {
@@ -188,30 +208,30 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("goals.createCta")}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <Input
-            placeholder={t("goals.titlePlaceholder")}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <Input
-            type="number"
-            min={1}
-            placeholder={t("goals.targetPlaceholder")}
-            value={targetPoints}
-            onChange={(e) => setTargetPoints(e.target.value)}
-          />
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? t("goals.creating") : t("goals.createCta")}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <Input
+        placeholder={t("goals.titlePlaceholder")}
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+      />
+      <Input
+        type="number"
+        min={1}
+        placeholder={t("goals.targetPlaceholder")}
+        value={targetPoints}
+        onChange={(e) => setTargetPoints(e.target.value)}
+      />
+      <Input
+        type="date"
+        aria-label={t("onboarding.dateOptional")}
+        placeholder={t("onboarding.dateOptional")}
+        value={targetDate}
+        onChange={(e) => setTargetDate(e.target.value)}
+      />
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <Button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? t("goals.creating") : (submitLabel ?? t("goals.createCta"))}
+      </Button>
+    </form>
   );
 }

@@ -1,25 +1,34 @@
 import { createClient as createSessionClient } from "../supabase/server";
 
-// Bloque 1 (VIAO_V1_LOOP_DECISION.md) — lectura del Goal activo y su
-// progreso. Modelo híbrido (Decision Lock del bloque): "Ganado para tu
-// objetivo" (`earnedTowardGoal`) es `points_at_goal_creation + SUM de
-// transacciones 'earned' desde la creación del Goal` — SOLO avanza,
-// nunca baja al canjear un Reward. El saldo real gastable (`Wallet`,
-// `get-wallet-balance.ts`) es una cifra DISTINTA que este módulo no
-// calcula — quien consuma esto debe mostrar ambas por separado, nunca
-// presentarlas como si fueran lo mismo (regla explícita del bloque).
+// Bloque Goals V1 (VIAO_GOALS_V1_DECISION_LOCK.md, GOAL_PROGRESS_MODEL=
+// WALLET_BALANCE, aprobado por el propietario) — lectura del Goal
+// activo. El progreso hacia el objetivo ya NO se calcula aquí: es
+// `min(100, round(wallet_balance / target_points * 100))`
+// (`calculateGoalProgressPercent()`, más abajo), donde `wallet_balance`
+// es el saldo real del usuario (`get-wallet-balance.ts`/
+// `rewards_wallets`) — la MISMA cifra que "Points disponibles ahora".
+// Este módulo deja de leer `rewards_transactions` por completo: ya no
+// necesita `points_at_goal_creation` ni ninguna suma histórica de
+// earnings para nada del cálculo de progreso (la columna
+// `points_at_goal_creation` se conserva en la tabla sin usarse aquí —
+// ver Decision Lock, "no eliminar todavía").
 //
-// Cálculo en lectura, sin columna almacenada de progreso — mismo
-// principio ya aplicado en `rewards_wallets` (vista derivada del
-// ledger, nunca una copia que alguien deba mantener sincronizada).
+// Sustituye al modelo híbrido anterior (`points_at_goal_creation + SUM
+// de earned desde la creación, excluyendo redemption_refund`) — ese
+// modelo no fue un error, fue una decisión de producto previa, superada
+// por la decisión V1 (ver Decision Lock, sección "Historical Decision").
 export interface ActiveGoal {
   id: string;
   title: string;
   targetPoints: number;
   targetDate?: string;
-  earnedTowardGoal: number;
   createdAt: string;
 }
+
+// `calculateGoalProgressPercent()` vive en `./calculate-progress.ts`
+// (función pura, sin `next/headers`) — nunca aquí, para que un Client
+// Component pueda importarla sin arrastrar `createSessionClient` (más
+// abajo) a su bundle. Ver el comentario de cabecera de ese archivo.
 
 export async function getActiveGoal(): Promise<ActiveGoal | undefined> {
   try {
@@ -34,7 +43,7 @@ export async function getActiveGoal(): Promise<ActiveGoal | undefined> {
 
     const { data: goal, error: goalError } = await sessionClient
       .from("goals")
-      .select("id, title, target_points, target_date, points_at_goal_creation, created_at")
+      .select("id, title, target_points, target_date, created_at")
       .eq("status", "active")
       .maybeSingle();
 
@@ -42,47 +51,11 @@ export async function getActiveGoal(): Promise<ActiveGoal | undefined> {
       return undefined;
     }
 
-    // Fase F (auditoría independiente del Bloque 1, hallazgo HIGH) —
-    // excluye explícitamente `reason='redemption_refund'`: un refund de
-    // `cancel_redemption()` (20260823152000_*.sql) se inserta como
-    // `type='earned'` (así lo exige `rewards_transactions_amount_sign_check`
-    // — no hay otro `type` posible para un monto positivo), pero NO
-    // representa Points genuinamente ganados — es simplemente devolver
-    // Points que un canje cancelado nunca debió restar del progreso en
-    // primer lugar. Sin esta exclusión, el ciclo canjear→cancelar
-    // inflaba "Ganado para tu objetivo" sin ningún Point nuevo real.
-    //
-    // Denylist (excluir 'redemption_refund') en vez de allowlist de
-    // razones "genuinas" (registration/booking/referral, ver
-    // `lib/rewards/create-reward-transaction.ts`) — `reason` es texto
-    // abierto en todo el proyecto, sin ningún enum cerrado; una allowlist
-    // aquí infra-contaría silenciosamente cualquier razón de ganancia
-    // genuina futura que no se añadiera a la lista a mano. `reason` es
-    // `not null` en el schema (`\d rewards_transactions`), así que no
-    // existe el caso NULL que pudiera hacer que `.neq(...)` se comporte
-    // de forma inesperada.
-    const { data: earnedRows, error: earnedError } = await sessionClient
-      .from("rewards_transactions")
-      .select("amount")
-      .eq("type", "earned")
-      .neq("reason", "redemption_refund")
-      .gte("created_at", goal.created_at as string);
-
-    if (earnedError) {
-      return undefined;
-    }
-
-    const earnedSinceCreation = (earnedRows ?? []).reduce(
-      (sum, row) => sum + (row.amount as number),
-      0,
-    );
-
     return {
       id: goal.id as string,
       title: goal.title as string,
       targetPoints: goal.target_points as number,
       targetDate: (goal.target_date as string | null) ?? undefined,
-      earnedTowardGoal: (goal.points_at_goal_creation as number) + earnedSinceCreation,
       createdAt: goal.created_at as string,
     };
   } catch {
