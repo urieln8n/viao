@@ -4,7 +4,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { createServiceRoleClient } from "../supabase/service";
 
@@ -25,6 +25,11 @@ async function signUpUser() {
 async function deleteTestUser(userId: string) {
   const service = createServiceRoleClient();
   await service.auth.admin.deleteUser(userId);
+}
+
+async function getBalance(sessionClient: SupabaseClient, userId: string): Promise<number> {
+  const { data } = await sessionClient.from("rewards_transactions").select("amount").eq("user_id", userId);
+  return (data ?? []).reduce((sum, row) => sum + (row.amount as number), 0);
 }
 
 test("goals: cancelar el Goal activo lo transiciona a 'cancelled' y libera el hueco para uno nuevo", async () => {
@@ -132,6 +137,46 @@ test("goals: status solo puede transicionar de active a cancelled — nunca a co
       .update({ status: "active" })
       .eq("id", goalId);
     assert.ok(reactivateError, "cancelled -> active debe rechazarse: un Goal cancelado nunca se reactiva por UPDATE directo");
+  } finally {
+    await deleteTestUser(userId);
+  }
+});
+
+// Mini-fix (checkpoint post-Bloque 1, gap de UI) — la UI ahora invoca
+// cancelGoalAction() -> cancelGoal(), que hace exactamente el mismo
+// UPDATE ya probado arriba. Lo que faltaba por probar explícitamente:
+// (1) tras cancelar, una consulta que filtre status='active' (la misma
+// forma en la que getActiveGoal() encuentra el Goal activo) ya no
+// encuentra ninguno; (2) cancelar un Goal no genera ningún movimiento en
+// el ledger — cancelGoal() nunca toca rewards_transactions.
+test("goals: tras cancelar no queda ningún Goal activo, y el saldo de Points no cambia", async () => {
+  const { userId, sessionClient } = await signUpUser();
+  try {
+    const balanceBefore = await getBalance(sessionClient, userId);
+
+    const { data: goal } = await sessionClient
+      .from("goals")
+      .insert({ user_id: userId, title: "Roma", target_points: 1000, points_at_goal_creation: 0 })
+      .select("id")
+      .single();
+
+    const { error: cancelError } = await sessionClient
+      .from("goals")
+      .update({ status: "cancelled" })
+      .eq("id", goal!.id as string)
+      .eq("status", "active");
+    assert.equal(cancelError, null, cancelError?.message);
+
+    const { data: activeGoal, error: activeGoalError } = await sessionClient
+      .from("goals")
+      .select("id")
+      .eq("status", "active")
+      .maybeSingle();
+    assert.equal(activeGoalError, null, activeGoalError?.message);
+    assert.equal(activeGoal, null, "no debe quedar ningún Goal con status='active' tras cancelar");
+
+    const balanceAfter = await getBalance(sessionClient, userId);
+    assert.equal(balanceAfter, balanceBefore, "cancelar un Goal no debe generar ninguna transacción de Points");
   } finally {
     await deleteTestUser(userId);
   }

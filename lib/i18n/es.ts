@@ -248,6 +248,13 @@ export const es = {
   "goals.validationError": "Indica un destino y un objetivo de Points mayor que cero.",
   "goals.alreadyHasActiveGoal": "Ya tienes un objetivo activo.",
   "goals.createError": "No se pudo crear el objetivo. Inténtalo de nuevo.",
+  "goals.cancelCta": "Cancelar objetivo",
+  "goals.cancelConfirmTitle": "¿Cancelar este objetivo?",
+  "goals.cancelConfirmMessage": "Podrás crear otro objetivo después. Tus Points no se perderán.",
+  "goals.cancelConfirmCta": "Cancelar objetivo",
+  "goals.cancelBackCta": "Volver",
+  "goals.cancelling": "Cancelando…",
+  "goals.cancelError": "No se pudo cancelar el objetivo. Inténtalo de nuevo.",
   "aiRecommendation.title": "VIAO AI",
   "aiRecommendation.tagline":
     "Tu compañero para decidir qué opción encaja mejor contigo.",
