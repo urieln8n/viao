@@ -2,6 +2,7 @@
 
 import { useId, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +42,7 @@ function mapSignUpError(error: { message: string; code?: string }): string {
 }
 
 export default function RegisterPage() {
+  const router = useRouter();
   const emailId = useId();
   const passwordId = useId();
   const referralCodeId = useId();
@@ -105,7 +107,20 @@ export default function RegisterPage() {
         return;
       }
 
-      setSuccessKind(data.session ? "confirmed" : "pending-confirmation");
+      // Fase 1 (Prompt Maestro 24/08/2026) — con sesión activa (siempre
+      // el caso en este proyecto: `enable_confirmations = false` en
+      // supabase/config.toml), el registro exitoso lleva directamente a
+      // "¿Para qué quieres usar VIAO?" (app/onboarding/), nunca a un
+      // mensaje estático en esta misma página. Sin sesión inmediata
+      // (confirmación de email pendiente — no ocurre hoy con la config
+      // actual, pero se conserva como fallback correcto si cambiara),
+      // se mantiene el mensaje existente: no hay sesión todavía para
+      // poder crear un Goal.
+      if (data.session) {
+        router.push("/onboarding");
+        return;
+      }
+      setSuccessKind("pending-confirmation");
       setStatus("success");
     } catch {
       setSubmitError(t("register.errorUnexpected"));
