@@ -1,7 +1,9 @@
 import Link from "next/link";
 
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/state/empty-state";
+import { ErrorState } from "@/components/state/error-state";
 import { t } from "@/lib/i18n";
 
 import { getUserTrips } from "../../lib/trips/get-user-trips";
@@ -10,12 +12,32 @@ import { CreateTripForm } from "./create-trip-form";
 // F11-01 (VIAO_ROADMAP.md) — Lista de viajes propios + formulario de
 // creación. Mismo patrón que app/rewards/page.tsx (F7-03): Server
 // Component, datos exclusivamente vía lib/trips/, sin lógica de Supabase
-// aquí. `getUserTrips()` usa el cliente de sesión — sin sesión real,
-// devuelve lista vacía (mismo criterio best-effort que el resto del
-// proyecto); un usuario anónimo que intente crear un viaje recibe
-// `unauthenticated` desde `createTripAction` en el propio formulario.
+// aquí.
+//
+// Bloque Claridad de producto V1 — `getUserTrips()` ahora distingue
+// explícitamente "sin sesión" (`undefined`) de "con sesión, sin viajes
+// todavía" (`[]`), mismo criterio que `getWalletBalance()` en
+// `app/rewards/page.tsx`: antes, un usuario anónimo y uno real sin
+// viajes veían exactamente el mismo "no tienes viajes todavía", lo que
+// no dejaba claro que hacía falta iniciar sesión.
 export default async function TripsPage() {
   const trips = await getUserTrips();
+
+  if (trips === undefined) {
+    return (
+      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
+        <ErrorState
+          title={t("trips.unauthenticatedTitle")}
+          message={t("trips.unauthenticatedMessage")}
+          action={
+            <Link href="/login" className={buttonVariants({ variant: "default" })}>
+              {t("trips.loginCta")}
+            </Link>
+          }
+        />
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">

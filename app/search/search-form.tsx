@@ -82,6 +82,15 @@ export function SearchForm({ destinations }: SearchFormProps) {
   const [guests, setGuests] = useState(1);
   const [rooms, setRooms] = useState(1);
   const [errors, setErrors] = useState<SearchFormErrors>({});
+  // Bloque Claridad de producto V1 — mismo patrón `isSubmitting` ya usado
+  // en el resto de formularios del proyecto (Register, Login, GoalForm,
+  // BookingForm...): este era el único formulario interactivo sin
+  // protección contra doble envío. No hay ninguna llamada async aquí
+  // (`router.push` es una navegación, no una Server Action), así que
+  // basta con fijar el estado de forma síncrona antes de navegar —el
+  // componente se desmonta con el cambio de ruta, sin necesidad de
+  // resetearlo después.
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -100,6 +109,8 @@ export function SearchForm({ destinations }: SearchFormProps) {
     if (hasErrors) {
       return;
     }
+
+    setIsSubmitting(true);
 
     // F5-03: validado client-side (feedback inmediato, igual que F5-01),
     // navega al listado de resultados con la búsqueda como query params.
@@ -264,7 +275,9 @@ export function SearchForm({ destinations }: SearchFormProps) {
               </div>
             </div>
 
-            <Button type="submit">{t("search.submitButton")}</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {t("search.submitButton")}
+            </Button>
           </form>
         </CardContent>
       </Card>

@@ -100,6 +100,8 @@ export const es = {
   "profile.localeSpanishOption": "Español",
   "profile.localeEnglishOption": "English",
   "profile.referralCodeLabel": "Código de referido",
+  "profile.referralCodeExplainer":
+    "Comparte tu código. Cuando la persona invitada complete su primera reserva, los dos ganáis Points.",
   "profile.saveButton": "Guardar cambios",
   "profile.saveButtonLoading": "Guardando...",
   "profile.saveSuccessMessage": "Perfil actualizado correctamente.",
@@ -198,6 +200,8 @@ export const es = {
   "rewards.pageTitle": "Wallet",
   "rewards.balanceLabel": "Saldo actual",
   "rewards.pointsUnit": "Points",
+  "rewards.pointsExplainer":
+    "Ganas Points reservando, completando Missions o invitando a otras personas. Se usan para conseguir Rewards dentro de VIAO.",
   "rewards.provisionalNote":
     "Los Points son provisionales y no representan ningún valor definitivo en euros.",
   "rewards.historyTitle": "Historial de transacciones",
@@ -239,6 +243,8 @@ export const es = {
   "rewards.redeem.errorPoolExhausted":
     "Este Reward no está disponible por ahora — vuelve a intentarlo el mes que viene.",
   "goals.myGoalTitle": "Mi objetivo",
+  "goals.createDescription":
+    "Elige un destino y cuántos Points quieres reunir. Verás tu progreso aquí.",
   "goals.earnedLabel": "Ganado para tu objetivo",
   "goals.availableLabel": "Disponible ahora",
   "goals.createCta": "Crear objetivo de viaje",
@@ -255,6 +261,9 @@ export const es = {
   "goals.cancelBackCta": "Volver",
   "goals.cancelling": "Cancelando…",
   "goals.cancelError": "No se pudo cancelar el objetivo. Inténtalo de nuevo.",
+  // Micro-bloque 2 (Home Beta) — línea corta bajo el progreso: solo copy,
+  // no participa en ningún cálculo (progressPercent no cambia).
+  "goals.progressMotivation": "Cada Point que ganas te acerca a este viaje.",
   "onboarding.title": "¿Para qué quieres usar VIAO?",
   "onboarding.subtitle": "Convierte parte de lo que ya haces cada día en Points para acercarte a lo que realmente quieres.",
   "onboarding.concept": "Tu próximo viaje puede empezar aquí.",
@@ -262,7 +271,12 @@ export const es = {
   "onboarding.continue": "Crear mi objetivo",
   "onboarding.skip": "Ahora no",
   "onboarding.dateOptional": "Fecha del viaje (opcional)",
-  "missions.sectionTitle": "Missions de la semana",
+  // Micro-bloque 2 (Home Beta) — mismo dato/mismas 4 Missions, solo cambia
+  // el título de la sección: menos "gamificación", más conexión directa
+  // con el Goal de arriba ("así avanzas hacia tu objetivo").
+  "missions.sectionTitle": "Cómo avanzar esta semana",
+  "missions.sectionDescription":
+    "Acciones sencillas dentro de VIAO. Complétalas y suman Points automáticamente.",
   "missions.completedLabel": "Completada",
   "missions.pendingLabel": "Pendiente",
   "missions.weeklyBadge": "Semanal",
@@ -318,6 +332,9 @@ export const es = {
     "Has alcanzado el límite de escaneos. Inténtalo más tarde.",
   "vision.errorInvalidImage": "La imagen no es válida.",
   "trips.title": "Mi viaje",
+  "trips.unauthenticatedTitle": "Inicia sesión para ver Mi viaje",
+  "trips.unauthenticatedMessage": "Necesitas iniciar sesión para ver y crear tus viajes.",
+  "trips.loginCta": "Iniciar sesión",
   "trips.emptyTitle": "Todavía no tienes ningún viaje",
   "trips.emptyMessage": "Crea tu primer viaje para agrupar reservas, fotos y escaneos.",
   "trips.createTitle": "Crear viaje",
@@ -366,14 +383,27 @@ export const es = {
   "trips.summaryBookingPlural": "reservas",
   "trips.summaryMemorySingular": "recuerdo",
   "trips.summaryMemoryPlural": "recuerdos",
-  "home.greetingTitle": "Tu compañero de viaje antes, durante y después.",
+  // Micro-bloque 2 (Home Beta) — título/subtítulo del Hero sin viaje ya no
+  // describen VIAO institucionalmente: afirman la tesis de producto
+  // ("tu actividad cotidiana te acerca a tu próximo viaje") en vez de
+  // presentar un formulario de búsqueda como primer contacto.
+  "home.greetingTitle": "Tu actividad cotidiana te acerca a tu próximo viaje.",
   "home.greetingSubtitle":
-    "No solo te ayudamos a reservar. Te acompañamos durante el viaje, guardamos tus recuerdos y cada viaje genera valor para el próximo.",
+    "Elige un objetivo, gana Points con lo que ya haces y avanza hacia él.",
   "home.createAccountCta": "Crear cuenta",
+  // Micro-bloque 2 — CTA del Hero según estado: sin sesión ("Crear
+  // cuenta", clave de arriba), con sesión sin Goal, con sesión con Goal.
+  // Ambas enlazan por ancla (#goal) a la sección Goal de la misma Home —
+  // nunca a una ruta nueva.
+  "home.heroCreateGoalCta": "Crear mi objetivo",
+  "home.heroViewGoalCta": "Ver mi objetivo",
   "home.pointsTeaserTitle": "Tus Points",
   "home.pointsTeaserCta": "Ver Wallet",
   "home.pointsTeaserSignedOut": "Inicia sesión para ver tu saldo.",
   "home.visionTeaserCta": "Abrir Vision",
+  // Micro-bloque 2 — línea de conexión bajo el saldo de Points: mismo
+  // `walletBalance`, solo enlaza narrativamente con el Goal de arriba.
+  "home.pointsGoalConnection": "Estos Points ya cuentan para tu objetivo.",
   "home.heroUpcomingEyebrow": "Tu próximo viaje",
   "home.heroPreparingEyebrow": "Preparando tu viaje",
   "home.heroReturnedEyebrow": "Bienvenido de vuelta",
@@ -398,4 +428,14 @@ export const es = {
     "Los VIAO Points no son dinero ni se pueden retirar. Se utilizan para reducir compras elegibles dentro de VIAO según las condiciones del programa.",
   "home.closingTagline": "Planifica. Viaja. Guarda tus recuerdos. Gana para el próximo.",
   "home.startTripCta": "Empezar mi viaje",
+  // Fase C (rediseño Home V1) — sección Discovery e invitación de cierre
+  // de Trips. Las claves "home.intro*"/"home.rewardsIntro*"/
+  // "home.rewardsExample"/"home.rewardsDisclaimer"/"home.closingTagline"
+  // de arriba dejan de usarse en Home tras esta fase, pero se conservan
+  // sin borrar (no forman parte del alcance autorizado de este bloque).
+  // Micro-bloque 2 — antes solo titulaba los chips de Discovery; ahora
+  // titula la sección completa "Search + Discovery" fusionada (mismos
+  // chips + botón "Buscar" hacia /search, mismo dato/misma ruta).
+  "home.discoveryTitle": "Cuando estés listo para viajar",
+  "home.tripsClosingTitle": "Tu próximo viaje empieza aquí.",
 } as const;

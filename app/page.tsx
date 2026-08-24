@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { Search, ScanEye, Eye, Heart } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatCard } from "@/components/ui/stat-card";
 import { PageContainer } from "@/components/layout/page-container";
 import { t } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/types";
@@ -11,11 +9,9 @@ import type { TranslationKey } from "@/lib/i18n/types";
 import { getUserTrips } from "../lib/trips/get-user-trips";
 import { getTripDetail, type TripDetail } from "../lib/trips/get-trip-detail";
 import { getWalletBalance } from "../lib/rewards/get-wallet-balance";
-import { pointsToEuroValue } from "../lib/rewards/rules";
 import { getCachedDestinations } from "../lib/destinations/get-cached-destinations";
 import { getActiveGoal } from "../lib/goals/get-goal";
 import { getMissionsStatus } from "../lib/missions/get-missions-status";
-import { HomeSearchForm } from "./home-search-form";
 import { GoalCard } from "./goal-card";
 import { MissionsSummary } from "./missions-summary";
 
@@ -132,7 +128,14 @@ function TripHero({ kind, detail }: { kind: FeaturedTripKind; detail: TripDetail
 }
 
 export default async function Home() {
-  const trips = await getUserTrips();
+  // Bloque Claridad de producto V1 — `getUserTrips()` ahora distingue
+  // "sin sesión" (`undefined`) de "con sesión, sin viajes" (`[]`) para
+  // que `app/trips/page.tsx` pueda mostrar un estado de "inicia sesión"
+  // real. Home ya resuelve su propio estado anónimo por separado (`balance
+  // === undefined`, más abajo) — no necesita esta distinción, así que
+  // `undefined` se trata igual que `[]`, sin cambiar el comportamiento ya
+  // existente de esta página.
+  const trips = (await getUserTrips()) ?? [];
 
   const details =
     trips.length > 0
@@ -154,177 +157,160 @@ export default async function Home() {
   // consulta innecesaria cuando ya se sabe que no hay sesión.
   const missions = balance !== undefined ? await getMissionsStatus() : undefined;
   // FPR-HOTELS-02 — mismo catálogo real que app/search/page.tsx, nunca
-  // MockHotelProvider.listKnownDestinations(). Solo se necesita cuando no
-  // hay viaje destacado (única rama que renderiza HomeSearchForm) — se
-  // resuelve siempre para no bifurcar el orden de los `await` de esta
-  // página, y `getCachedDestinations` nunca lanza ni es costosa (una
-  // única consulta ya indexada).
+  // MockHotelProvider.listKnownDestinations(). `getCachedDestinations`
+  // nunca lanza ni es costosa (una única consulta ya indexada).
+  // Micro-bloque 2 (Home Beta) — ya no alimenta un `HomeSearchForm`
+  // embebido en el Hero (retirado de Home, ver más abajo): ahora solo
+  // alimenta los chips de la sección "Cuando estés listo para viajar".
   const destinations = await getCachedDestinations("hotelbeds");
 
   return (
     <main className="flex flex-1 flex-col">
       <PageContainer
         variant="wide"
-        className="flex flex-1 flex-col gap-8 px-4 py-8 lg:gap-12 lg:px-8"
+        className="flex flex-1 flex-col gap-10 px-4 py-8 lg:gap-14 lg:px-8"
       >
+        {/* Micro-bloque 2 (Home Beta) — Hero consciente del contexto: con
+            viaje destacado, `TripHero` (sin cambios de lógica ni diseño)
+            sigue siendo la única pieza protagonista. Sin viaje, el Hero
+            deja de contener `HomeSearchForm` (retirado de aquí, el
+            componente sigue existiendo sin uso — limpieza/eliminación
+            queda para otro bloque) y pasa a afirmar la tesis de producto
+            ("tu actividad cotidiana te acerca a tu próximo viaje") con un
+            único CTA que depende del estado real del usuario, reutilizando
+            las mismas señales que ya existían (`balance`/`activeGoal`),
+            sin lógica de negocio nueva. Los CTA autenticados enlazan por
+            ancla (`#goal`, ver la sección Goal más abajo) a la misma
+            página — nunca a una ruta nueva. */}
         {featured ? (
           <TripHero kind={featured.kind} detail={featured.detail} />
         ) : (
           <section className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
-              <h1 className="text-3xl font-semibold md:text-4xl">{t("home.greetingTitle")}</h1>
-              <p className="text-sm text-muted-foreground">{t("home.greetingSubtitle")}</p>
+              <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
+                {t("home.greetingTitle")}
+              </h1>
+              <p className="text-sm text-muted-foreground md:text-base">
+                {t("home.greetingSubtitle")}
+              </p>
             </div>
-            <HomeSearchForm destinations={destinations} />
 
-            {/* Bloque 13 ("Pulido final antes del piloto") — CTA
-                secundario de registro, solo para visitantes sin sesión
-                real. Reutiliza la misma señal ya establecida en esta
-                página para distinguir "sin sesión" de "con sesión, sin
-                viajes" (balance === undefined, igual que
-                home.pointsTeaserSignedOut más abajo) — no se añade
-                ninguna comprobación de autenticación nueva. */}
-            {balance === undefined && (
+            {balance === undefined ? (
               <Link
                 href="/register"
-                className={buttonVariants({ variant: "outline" })}
+                className={buttonVariants({ variant: "default", className: "w-fit" })}
               >
                 {t("home.createAccountCta")}
               </Link>
+            ) : (
+              <Link
+                href="#goal"
+                className={buttonVariants({ variant: "default", className: "w-fit" })}
+              >
+                {activeGoal ? t("home.heroViewGoalCta") : t("home.heroCreateGoalCta")}
+              </Link>
             )}
-
-            {/* Bloque "Landing + VIAO Rewards V1" — introducción breve de
-                qué es VIAO y por qué es diferente, y comunicación de la
-                Economía VIAO Rewards V1 (`lib/rewards/rules.ts`). Solo en
-                esta rama (sin viaje destacado): un usuario que ya tiene un
-                viaje en curso no necesita volver a ver la explicación del
-                producto cada vez que abre Home. No sustituye el buscador
-                (arriba, sin tocar) ni crea ningún sistema nuevo de fotos/
-                recuerdos: "Después" enlaza directamente a Mi viaje, que ya
-                los gestiona. */}
-            {/* Bloque 19 ("Identidad visual") — mismo copy exacto de
-                Bloque 15, solo se añade un icono + el acento de color de
-                la pieza dominante de cada fase (Antes=naranja VIAO,
-                decidir/reservar; Durante=azul, Vision; Después=verde,
-                Rewards) para que la progresión se lea de un vistazo, no
-                solo leyendo el texto. */}
-            <section className="flex flex-col gap-8 border-t border-border pt-8">
-              <div className="grid gap-6 sm:grid-cols-3">
-                <div className="flex flex-col gap-1">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-viao-orange">
-                    <Search className="size-3.5" aria-hidden="true" />
-                    {t("home.introBeforeEyebrow")}
-                  </span>
-                  <p className="text-sm font-semibold">{t("home.introBeforeTitle")}</p>
-                  <p className="text-sm text-muted-foreground">{t("home.introBeforeItem1")}</p>
-                  <p className="text-sm text-muted-foreground">{t("home.introBeforeItem2")}</p>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-info">
-                    <Eye className="size-3.5" aria-hidden="true" />
-                    {t("home.introDuringEyebrow")}
-                  </span>
-                  <p className="text-sm font-semibold">{t("home.introDuringTitle")}</p>
-                  <p className="text-sm text-muted-foreground">{t("home.introDuringItem1")}</p>
-                  <p className="text-sm text-muted-foreground">{t("home.introDuringItem2")}</p>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">
-                    <Heart className="size-3.5" aria-hidden="true" />
-                    {t("home.introAfterEyebrow")}
-                  </span>
-                  <p className="text-sm font-semibold">{t("home.introAfterTitle")}</p>
-                  <p className="text-sm text-muted-foreground">{t("home.introAfterItem")}</p>
-                  <Link
-                    href="/trips"
-                    className="w-fit text-sm text-primary underline-offset-4 hover:underline"
-                  >
-                    {t("home.introAfterCta")}
-                  </Link>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2 rounded-xl bg-accent p-6">
-                <p className="text-sm font-semibold">{t("home.rewardsIntroTitle")}</p>
-                <p className="flex items-center gap-1.5 text-lg font-semibold text-success">
-                  <Heart className="size-4" aria-hidden="true" />
-                  {t("home.rewardsExample")}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t("home.rewardsDisclaimer")}
-                </p>
-              </div>
-
-              <div className="flex flex-col items-center gap-3 text-center">
-                <p className="text-sm font-medium">{t("home.closingTagline")}</p>
-                <Link href="/search" className={buttonVariants({ variant: "default" })}>
-                  {t("home.startTripCta")}
-                </Link>
-              </div>
-            </section>
           </section>
         )}
 
-        <div className={`grid gap-4 ${featured ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-          {featured && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Search className="size-4 text-muted-foreground" aria-hidden="true" />
-                  {t("search.title")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Link href="/search" className={buttonVariants({ variant: "outline" })}>
-                  {t("search.submitButton")}
-                </Link>
-              </CardContent>
-            </Card>
-          )}
+        {/* Micro-bloque 2 — Goal ya no comparte fila con Missions (Fase C
+            los emparejaba en `grid md:grid-cols-2`): ahora es su propia
+            sección a ancho completo, inmediatamente después del Hero —
+            "esto es lo que estoy construyendo". `id="goal"` es el destino
+            de los CTA del Hero de arriba. Ningún cambio de lógica: mismo
+            `GoalCard`, mismo `activeGoal`/`balance`. */}
+        {balance !== undefined && (
+          <div id="goal">
+            <GoalCard goal={activeGoal} walletBalance={balance} />
+          </div>
+        )}
 
-          <StatCard
-            label={t("home.pointsTeaserTitle")}
-            value={balance !== undefined ? balance : "—"}
-            caption={
-              balance !== undefined
-                ? `≈ ${pointsToEuroValue(balance).toFixed(2)} € ${t("rewards.valueSuffix")}`
-                : t("home.pointsTeaserSignedOut")
-            }
-            tone={balance !== undefined ? "positive" : "default"}
-            action={
-              <Link
-                href="/rewards"
-                className={buttonVariants({ variant: "outline", size: "sm" })}
-              >
-                {t("home.pointsTeaserCta")}
-              </Link>
-            }
-          />
+        {/* Micro-bloque 2 — Missions pasa a vivir debajo de Goal (antes a
+            su lado), con menor peso visual (`Card size="sm"`, ver
+            app/missions-summary.tsx) — refuerza "Goal es el centro,
+            Missions es cómo avanzar hacia él". Vision sigue sin aparecer
+            en Home (decisión ya tomada, sin cambios). */}
+        {missions !== undefined && <MissionsSummary missions={missions} />}
 
-          {balance !== undefined && <GoalCard goal={activeGoal} walletBalance={balance} />}
-
-          {missions !== undefined && <MissionsSummary missions={missions} />}
-
-          <Card className="border-info/30">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ScanEye className="size-4 text-info" aria-hidden="true" />
-                {t("vision.title")}
-              </CardTitle>
-              <CardDescription>{t("vision.description")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link
-                href="/vision"
-                className={buttonVariants({ variant: "outline", className: "text-info" })}
-              >
-                {t("home.visionTeaserCta")}
-              </Link>
-            </CardContent>
-          </Card>
+        {/* Micro-bloque 2 — Rewards/Points sigue siendo una línea (sin
+            Card grande), sin equivalencia en euros. Se añade una frase de
+            conexión narrativa con Goal — mismo `balance`, ningún cálculo
+            nuevo. */}
+        <div className="flex items-center justify-between gap-4 border-t border-border pt-6">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-muted-foreground">{t("home.pointsTeaserTitle")}</span>
+            <span
+              className={
+                balance !== undefined
+                  ? "text-2xl font-semibold text-success"
+                  : "text-sm text-muted-foreground"
+              }
+            >
+              {balance !== undefined ? `${balance} ${t("rewards.pointsUnit")}` : t("home.pointsTeaserSignedOut")}
+            </span>
+            {balance !== undefined && (
+              <span className="text-xs text-muted-foreground">{t("home.pointsGoalConnection")}</span>
+            )}
+          </div>
+          <Link
+            href="/rewards"
+            className={buttonVariants({ variant: "ghost", size: "sm", className: "gap-1" })}
+          >
+            {t("home.pointsTeaserCta")}
+            <ArrowRight className="size-3.5" aria-hidden="true" />
+          </Link>
         </div>
+
+        {/* Micro-bloque 2 — Search y Discovery se funden visualmente en
+            una única sección secundaria ("Cuando estés listo para
+            viajar"): mismos chips de destinos reales, más un único botón
+            "Buscar" hacia /search (ya no un formulario duplicado dentro
+            de Home). El botón se muestra siempre (Search debe seguir
+            siendo plenamente funcional incluso si el catálogo de
+            destinos está vacío); los chips solo cuando hay datos reales,
+            igual que antes. `/search`, su formulario y su lógica no se
+            tocan.
+            Micro-bloque 3B (Sidebar Beta) — `id="travel"` es únicamente
+            un ancla para la entrada "Explorar" del Sidebar
+            (`components/nav/sidebar.tsx`, `/#travel`). Ningún cambio de
+            contenido/layout/lógica de esta sección. */}
+        <section id="travel" className="flex flex-col gap-3">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            {t("home.discoveryTitle")}
+          </h2>
+          {destinations.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {destinations.slice(0, 12).map((destination) => (
+                <Link
+                  key={destination.code}
+                  href="/search"
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  {destination.name}
+                </Link>
+              ))}
+            </div>
+          )}
+          <Link
+            href="/search"
+            className={buttonVariants({ variant: "default", className: "w-fit" })}
+          >
+            {t("search.submitButton")}
+          </Link>
+        </section>
+
+        {/* Fase C — Trips solo aporta contenido nuevo cuando NO hay ya un
+            viaje protagonizando el Hero (evita duplicar el mismo viaje
+            dos veces en la misma pantalla); con viaje destacado, esta
+            sección se omite por completo. */}
+        {!featured && (
+          <div className="flex flex-col items-center gap-3 rounded-xl bg-accent p-6 text-center">
+            <p className="text-sm font-medium">{t("home.tripsClosingTitle")}</p>
+            <Link href="/search" className={buttonVariants({ variant: "default" })}>
+              {t("home.startTripCta")}
+            </Link>
+          </div>
+        )}
       </PageContainer>
     </main>
   );

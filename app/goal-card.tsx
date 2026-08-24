@@ -3,9 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { t } from "@/lib/i18n";
 
 import { createGoalAction, cancelGoalAction } from "./goals/actions";
@@ -77,21 +78,35 @@ function ActiveGoalCard({
         <CardTitle>{t("goals.myGoalTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <p className="text-lg font-semibold">{goal.title}</p>
+        {/* Bloque Premium Design System V1 (Fase B) — "Goal = propósito":
+            el destino gana peso visual (text-lg -> text-xl,
+            tracking-tight) para ser el protagonista de la card, tal como
+            pide VIAO_PREMIUM_DESIGN_UX_V1.md sección 12. Ningún cambio de
+            dato: sigue siendo `goal.title` tal cual.
+            Micro-bloque 2 (Home Beta) — Goal ya no comparte fila con
+            Missions (ver app/page.tsx): con más espacio propio, el
+            destino sube otro escalón (text-xl -> text-2xl) para reforzar
+            "esto es lo que estoy construyendo". */}
+        <p className="text-2xl font-semibold tracking-tight">{goal.title}</p>
 
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">{t("goals.availableLabel")}</span>
             <span className="font-medium text-success">
               {walletBalance} / {goal.targetPoints} {t("rewards.pointsUnit")}
             </span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
+          {/* Bloque Premium Design System V1 (Fase B) — sustituye el
+              `div` + `width` inline (Fase A) por la primitiva accesible
+              `Progress` (`components/ui/progress.tsx`): mismo lenguaje
+              visual exacto (h-2, rounded-full, bg-muted/bg-success), pero
+              ahora con role="progressbar" + aria-valuenow/min/max reales.
+              `progressPercent` (WALLET_BALANCE, calculateGoalProgressPercent)
+              no cambia — solo cambia la representación visual. */}
+          <Progress value={progressPercent} />
+          {/* Micro-bloque 2 (Home Beta) — línea corta puramente de copy:
+              no participa en `progressPercent` ni en ningún cálculo. */}
+          <p className="text-xs text-muted-foreground">{t("goals.progressMotivation")}</p>
         </div>
 
         {confirmingCancel ? (
@@ -144,6 +159,10 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
       <Card>
         <CardHeader>
           <CardTitle>{t("goals.myGoalTitle")}</CardTitle>
+          {/* Bloque Claridad de producto V1 — mismo patrón que la card de
+              Vision/Missions en Home: explica en una línea qué es un
+              Goal antes de crear uno, para quien saltó el onboarding. */}
+          <CardDescription>{t("goals.createDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button variant="outline" onClick={() => setIsOpen(true)}>

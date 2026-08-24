@@ -94,6 +94,8 @@ export const en = {
   "profile.localeSpanishOption": "Español",
   "profile.localeEnglishOption": "English",
   "profile.referralCodeLabel": "Referral code",
+  "profile.referralCodeExplainer":
+    "Share your code. When the person you invite completes their first booking, you both earn Points.",
   "profile.saveButton": "Save changes",
   "profile.saveButtonLoading": "Saving...",
   "profile.saveSuccessMessage": "Profile updated successfully.",
@@ -187,6 +189,8 @@ export const en = {
   "rewards.pageTitle": "Wallet",
   "rewards.balanceLabel": "Current balance",
   "rewards.pointsUnit": "Points",
+  "rewards.pointsExplainer":
+    "You earn Points by booking, completing Missions, or inviting others. Use them to get Rewards within VIAO.",
   "rewards.provisionalNote":
     "Points are provisional and do not represent any definitive value in euros.",
   "rewards.historyTitle": "Transaction history",
@@ -227,6 +231,8 @@ export const en = {
   "rewards.redeem.errorInsufficientBalance": "You don't have enough Points for this Reward.",
   "rewards.redeem.errorPoolExhausted": "This Reward isn't available right now — try again next month.",
   "goals.myGoalTitle": "My goal",
+  "goals.createDescription":
+    "Pick a destination and how many Points you want to reach. You'll see your progress here.",
   "goals.earnedLabel": "Earned toward your goal",
   "goals.availableLabel": "Available now",
   "goals.createCta": "Create a travel goal",
@@ -243,6 +249,9 @@ export const en = {
   "goals.cancelBackCta": "Back",
   "goals.cancelling": "Cancelling…",
   "goals.cancelError": "The goal could not be cancelled. Please try again.",
+  // Micro-bloque 2 (Home Beta) — short line under the progress bar: copy
+  // only, no calculation changes (progressPercent stays the same).
+  "goals.progressMotivation": "Every Point you earn brings you closer to this trip.",
   "onboarding.title": "What do you want to use VIAO for?",
   "onboarding.subtitle": "Turn part of what you already do every day into Points that bring you closer to what you actually want.",
   "onboarding.concept": "Your next trip can start here.",
@@ -250,7 +259,12 @@ export const en = {
   "onboarding.continue": "Create my goal",
   "onboarding.skip": "Not now",
   "onboarding.dateOptional": "Trip date (optional)",
-  "missions.sectionTitle": "This week's Missions",
+  // Micro-bloque 2 (Home Beta) — same data/same 4 Missions, only the
+  // section title changes: less "gamification", more direct connection
+  // to the Goal above ("this is how you move toward it").
+  "missions.sectionTitle": "How to move forward this week",
+  "missions.sectionDescription":
+    "Simple actions within VIAO. Complete them and Points add up automatically.",
   "missions.completedLabel": "Completed",
   "missions.pendingLabel": "Pending",
   "missions.weeklyBadge": "Weekly",
@@ -305,6 +319,9 @@ export const en = {
   "vision.errorRateLimited": "You've reached the scan limit. Try again later.",
   "vision.errorInvalidImage": "The image is not valid.",
   "trips.title": "My trip",
+  "trips.unauthenticatedTitle": "Sign in to see My Trip",
+  "trips.unauthenticatedMessage": "You need to sign in to view and create your trips.",
+  "trips.loginCta": "Sign in",
   "trips.emptyTitle": "You don't have any trips yet",
   "trips.emptyMessage": "Create your first trip to group bookings, photos, and scans.",
   "trips.createTitle": "Create trip",
@@ -353,14 +370,26 @@ export const en = {
   "trips.summaryBookingPlural": "bookings",
   "trips.summaryMemorySingular": "memory",
   "trips.summaryMemoryPlural": "memories",
-  "home.greetingTitle": "Your travel companion before, during, and after.",
+  // Micro-bloque 2 (Home Beta) — see the matching es.ts comment: the
+  // no-trip Hero title/subtitle now state the product thesis instead of
+  // presenting a search form as the first touchpoint.
+  "home.greetingTitle": "Your everyday activity gets you closer to your next trip.",
   "home.greetingSubtitle":
-    "We don't just help you book. We're with you during the trip, we keep your memories, and every trip builds value for the next one.",
+    "Set a goal, earn Points for what you already do, and get closer to it.",
   "home.createAccountCta": "Create account",
+  // Micro-bloque 2 — Hero CTA by state: signed out ("Create account",
+  // above), signed in without a Goal, signed in with a Goal. Both link
+  // via anchor (#goal) to the Goal section on this same Home — never a
+  // new route.
+  "home.heroCreateGoalCta": "Create my goal",
+  "home.heroViewGoalCta": "View my goal",
   "home.pointsTeaserTitle": "Your Points",
   "home.pointsTeaserCta": "View Wallet",
   "home.pointsTeaserSignedOut": "Sign in to see your balance.",
   "home.visionTeaserCta": "Open Vision",
+  // Micro-bloque 2 — connecting line under the Points balance: same
+  // `walletBalance`, only ties it narratively to the Goal above.
+  "home.pointsGoalConnection": "These Points already count toward your goal.",
   "home.heroUpcomingEyebrow": "Your next trip",
   "home.heroPreparingEyebrow": "Preparing your trip",
   "home.heroReturnedEyebrow": "Welcome back",
@@ -385,4 +414,14 @@ export const en = {
     "VIAO Points are not money and cannot be withdrawn. They're used to reduce eligible purchases within VIAO, subject to the program's terms.",
   "home.closingTagline": "Plan. Travel. Save your memories. Earn for the next one.",
   "home.startTripCta": "Start my trip",
+  // Fase C (Home V1 redesign) — Discovery section + Trips closing
+  // invitation. The "home.intro*"/"home.rewardsIntro*"/
+  // "home.rewardsExample"/"home.rewardsDisclaimer"/"home.closingTagline"
+  // keys above stop being used in Home after this phase, but are kept
+  // without deleting them (outside this block's authorized scope).
+  // Micro-bloque 2 — used to title only the Discovery chips; now titles
+  // the merged "Search + Discovery" section (same chips + a "Search"
+  // button to /search, same data/same route).
+  "home.discoveryTitle": "When you're ready to travel",
+  "home.tripsClosingTitle": "Your next trip starts here.",
 } satisfies Dictionary;

@@ -327,6 +327,14 @@ export default function ProfilePage() {
                   disabled
                   readOnly
                 />
+                {/* Bloque Claridad de producto V1 — el código ya se
+                    mostraba, pero sin ninguna explicación de qué hace ni
+                    qué gana el usuario. Deliberadamente sin cifras: los
+                    montos siguen provisionales (lib/referrals/rules.ts,
+                    sin tocar en este bloque). */}
+                <p className="text-xs text-muted-foreground">
+                  {t("profile.referralCodeExplainer", activeLocale)}
+                </p>
               </div>
 
               <Button type="submit" disabled={isSaving}>

@@ -77,6 +77,18 @@ export async function createGoal(input: CreateGoalInput): Promise<CreateGoalResu
     if (error.code === "23505") {
       return { outcome: "already_has_active_goal" };
     }
+    // Bloque diagnóstico Goal (VIAO — micro-bloque autorizado) — hasta
+    // ahora, cualquier error no-23505 se devolvía a la UI (que además
+    // descarta `message`, ver app/goal-card.tsx) sin dejar ningún rastro
+    // server-side. Este log es la única forma de conocer `code`/
+    // `details`/`hint` reales la próxima vez que esto ocurra — no cambia
+    // el outcome devuelto ni ningún otro comportamiento.
+    console.error("[goals] createGoal failed", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
     return { outcome: "error", message: error.message };
   }
   if (!data) {

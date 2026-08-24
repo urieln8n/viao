@@ -86,6 +86,15 @@ export default async function RewardsPage() {
               {t("rewards.pointsUnit")}
             </span>
           </p>
+          {/* Bloque Claridad de producto V1 — el disclaimer "no son
+              dinero" ya existía en Home (`home.rewardsDisclaimer`), pero
+              solo se muestra a usuarios sin ningún viaje todavía. La
+              Wallet es el lugar durable donde siempre se puede consultar
+              qué son los Points y cómo se ganan — complementa esa
+              explicación, no la duplica. */}
+          <p className="text-xs text-muted-foreground">
+            {t("rewards.pointsExplainer")}
+          </p>
           <p className="text-xs text-muted-foreground">
             {t("rewards.provisionalNote")}
           </p>

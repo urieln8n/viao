@@ -17,9 +17,15 @@ import { cn } from "@/lib/utils";
 // items en la barra inferior. `isNavItemActive` se exporta para que
 // `Sidebar` reutilice exactamente la misma lógica de ruta activa en vez de
 // duplicarla.
+//
+// Micro-bloque 3B (Sidebar Beta) — solo la etiqueta cambia ("Buscar" ->
+// "Explorar"), por consistencia de naming con el Sidebar de escritorio.
+// El href sigue siendo /search sin cambios: a diferencia de la Sidebar
+// (que usa /#travel), aquí no se introduce ancla ni scroll-spy — mismos
+// 5 destinos reales de siempre, mismo comportamiento.
 const NAV_ITEMS = [
   { href: "/", label: "Inicio", icon: Home },
-  { href: "/search", label: "Buscar", icon: Search },
+  { href: "/search", label: "Explorar", icon: Search },
   { href: "/trips", label: "Mi viaje", icon: Luggage },
   { href: "/rewards", label: "Wallet", icon: Wallet },
   { href: "/profile", label: "Perfil", icon: User },
