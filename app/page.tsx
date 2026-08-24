@@ -12,7 +12,10 @@ import { getUserTrips } from "../lib/trips/get-user-trips";
 import { getTripDetail, type TripDetail } from "../lib/trips/get-trip-detail";
 import { getWalletBalance } from "../lib/rewards/get-wallet-balance";
 import { pointsToEuroValue } from "../lib/rewards/rules";
+import { getCachedDestinations } from "../lib/destinations/get-cached-destinations";
+import { getActiveGoal } from "../lib/goals/get-goal";
 import { HomeSearchForm } from "./home-search-form";
+import { GoalCard } from "./goal-card";
 
 // F11-04 (VIAO_ROADMAP.md) ya expone `getTripDetail()` — no existe hoy
 // ninguna otra fuente de "¿el viaje tiene reserva?" salvo llamarla, así
@@ -138,6 +141,18 @@ export default async function Home() {
 
   const featured = selectFeaturedTrip(details);
   const balance = await getWalletBalance();
+  // Bloque 1 (VIAO_V1_LOOP_DECISION.md) — solo tiene sentido resolverlo
+  // con sesión real (mismo criterio que `balance`); sin sesión,
+  // `getActiveGoal()` ya devuelve `undefined` de forma segura, pero se
+  // evita la consulta innecesaria cuando ya se sabe que no hay sesión.
+  const activeGoal = balance !== undefined ? await getActiveGoal() : undefined;
+  // FPR-HOTELS-02 — mismo catálogo real que app/search/page.tsx, nunca
+  // MockHotelProvider.listKnownDestinations(). Solo se necesita cuando no
+  // hay viaje destacado (única rama que renderiza HomeSearchForm) — se
+  // resuelve siempre para no bifurcar el orden de los `await` de esta
+  // página, y `getCachedDestinations` nunca lanza ni es costosa (una
+  // única consulta ya indexada).
+  const destinations = await getCachedDestinations("hotelbeds");
 
   return (
     <main className="flex flex-1 flex-col">
@@ -153,7 +168,7 @@ export default async function Home() {
               <h1 className="text-3xl font-semibold md:text-4xl">{t("home.greetingTitle")}</h1>
               <p className="text-sm text-muted-foreground">{t("home.greetingSubtitle")}</p>
             </div>
-            <HomeSearchForm />
+            <HomeSearchForm destinations={destinations} />
 
             {/* Bloque 13 ("Pulido final antes del piloto") — CTA
                 secundario de registro, solo para visitantes sin sesión
@@ -280,6 +295,8 @@ export default async function Home() {
               </Link>
             }
           />
+
+          {balance !== undefined && <GoalCard goal={activeGoal} walletBalance={balance} />}
 
           <Card className="border-info/30">
             <CardHeader>

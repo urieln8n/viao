@@ -54,3 +54,49 @@ export function pointsToEuroValue(points: number): number {
  * registro.
  */
 export const REGISTRATION_REWARD_POINTS_PROVISIONAL = 100;
+
+// Bloque 1 (VIAO_V1_LOOP_DECISION.md) — Economía de Rewards/canje.
+//
+// `POINTS_PERCENTAGE_OF_COMMISSION` (25%, no 50%): decisión explícita del
+// Decision Lock del bloque tras el análisis de sensibilidad de la fase
+// económica — deja margen de seguridad mientras no hay datos reales de
+// breakage ni de coste real de los primeros Rewards canjeados.
+// Informativo/documental en este bloque: todavía no existe ningún flujo
+// de earning ligado a comisión de Partner (eso es el bloque de
+// Partners+QR) — se centraliza aquí desde ya para que, cuando exista,
+// nunca se disperse el número por varios archivos.
+export const POINTS_PERCENTAGE_OF_COMMISSION = 0.25;
+
+/**
+ * Un Reward solo se aprueba (decisión manual al crear la fila del
+ * catálogo, `rewards_catalog.real_cost_eur` — nunca calculado
+ * automáticamente en V1) si su coste real no supera este porcentaje del
+ * valor nominal en Points.
+ *
+ * Fase D (auditoría independiente del Bloque 1) — DEBE mantenerse
+ * sincronizado manualmente con la constraint
+ * `rewards_catalog_viao_real_cost_within_30_percent` en
+ * `supabase/migrations/20260824091000_add_rewards_catalog_real_cost_limit.sql`
+ * (mismo criterio ya aceptado en el proyecto para
+ * `REGISTRATION_REWARD_POINTS_PROVISIONAL`/`VIAO_REWARD_POOL_MONTHLY_LIMIT_EUR`:
+ * SQL no puede importar una constante de TypeScript). A diferencia de
+ * antes de Fase D, esto SÍ se aplica técnicamente — solo para
+ * `funding_type='viao'` — vía CHECK constraint sobre `rewards_catalog`,
+ * comparando contra el mismo `POINTS_PER_EURO` de este archivo. Para
+ * `funding_type='partner'` sigue siendo, como siempre, criterio del
+ * propio Partner.
+ */
+export const MAX_REWARD_REAL_COST_PERCENT = 0.30;
+
+/**
+ * Techo mensual del pool de Rewards financiados por VIAO
+ * (`rewards_catalog.funding_type='viao'`) — DEBE mantenerse sincronizado
+ * manualmente con `v_monthly_pool_limit_eur` en
+ * `supabase/migrations/20260823152000_create_redeem_reward_rpc.sql`
+ * (mismo criterio ya aceptado en el proyecto para
+ * `REGISTRATION_REWARD_POINTS_PROVISIONAL`: SQL no puede importar una
+ * constante de TypeScript). Este valor es solo para mostrar/documentar
+ * en TypeScript — el valor que realmente aplica el kill-switch es el de
+ * la función SQL, no este.
+ */
+export const VIAO_REWARD_POOL_MONTHLY_LIMIT_EUR = 100.0;

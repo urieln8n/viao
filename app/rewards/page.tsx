@@ -11,6 +11,8 @@ import type { TranslationKey } from "@/lib/i18n/types";
 
 import { getWalletBalance } from "../../lib/rewards/get-wallet-balance";
 import { getRewardTransactions } from "../../lib/rewards/get-reward-transactions";
+import { getRewardsCatalog } from "../../lib/rewards/get-rewards-catalog";
+import { RewardCatalog } from "./reward-catalog";
 
 // F7-03 (VIAO_ROADMAP.md) — UI de Wallet. Server Component, mismo patrón
 // que app/booking/[propertyId]/status/page.tsx (F6-05): obtiene los datos
@@ -30,6 +32,8 @@ const REASON_LABEL_KEY: Record<string, TranslationKey> = {
   registration: "rewards.reasonRegistration",
   booking: "rewards.reasonBooking",
   referral: "rewards.reasonReferral",
+  redemption: "rewards.reasonRedemption",
+  redemption_refund: "rewards.reasonRedemptionRefund",
 };
 
 /** Reutiliza la etiqueta amigable si el `reason` es uno de los documentados (VIAO_DATABASE.md sección 7); si no, muestra el valor real tal cual — nunca oculta un motivo desconocido. */
@@ -61,10 +65,15 @@ export default async function RewardsPage() {
   }
 
   const transactions = await getRewardTransactions();
+  const catalog = await getRewardsCatalog();
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 p-6">
       <h1 className="text-xl font-semibold">{t("rewards.pageTitle")}</h1>
+
+      {/* Bloque 1 (VIAO_V1_LOOP_DECISION.md) — catálogo + canje, antes
+          del historial: cierra el loop "Points -> Elige -> Reward". */}
+      <RewardCatalog catalog={catalog} walletBalance={balance} />
 
       <Card>
         <CardHeader>
