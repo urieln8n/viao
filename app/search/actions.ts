@@ -57,10 +57,29 @@ import { getTravelProvider } from "../../lib/travel-provider";
 import { TravelProviderError } from "../../lib/travel-provider/errors";
 import { logAnalyticsEvent } from "../../lib/analytics/log-event";
 import { createSearchRecord } from "../../lib/searches/create-search-record";
+import { completeMissionForCurrentSession } from "../../lib/missions/complete-mission-for-current-session";
 import { t } from "../../lib/i18n";
 import type { PriceQuote, Property, SearchParams } from "../../types/travel";
 
 export type SearchFieldErrors = Partial<Record<keyof SearchParams, string>>;
+
+// FPR-HOTELS-03: con `destinationCode` real, un destino puede devolver
+// cientos de propiedades (Barcelona ~308) — sin este límite, `getPrice()`
+// (una llamada real de Availability a Hotelbeds por propiedad, ver
+// HotelbedsProvider.getPrice) se dispararía sin límite de concurrencia
+// para cada resultado, y la página de resultados renderizaría todas las
+// tarjetas sin paginar. Solo limita qué se cotiza/muestra — `resultsCount`
+// (searches/analytics) sigue reflejando el total real devuelto por el
+// provider, nunca este límite de presentación.
+const MAX_PRICED_RESULTS = 12;
+
+// FPR-HOTELS-03: incluso con MAX_PRICED_RESULTS, pedir todos los precios a
+// la vez (Promise.all sin agrupar) demostró en una prueba real contra
+// Production disparar HTTP 429/403 de Hotelbeds (rate limiting) para
+// Madrid/Valencia justo después de una ráfaga de 24 llamadas paralelas
+// para Barcelona. Se piden en lotes pequeños, en serie entre lotes, para
+// mantener baja la concurrencia real de picos hacia Hotelbeds.
+const PRICE_BATCH_SIZE = 4;
 
 /** `Property` (F4-02) con el precio de esta búsqueda concreta compuesto aparte (ver nota F5-03 arriba). */
 export interface PropertyResult extends Property {
@@ -129,6 +148,12 @@ export async function searchAction(
   const provider = getTravelProvider();
   const validatedParams: SearchParams = {
     destination: input.destination.trim(),
+    // FPR-HOTELS-02: aditivo, opcional — solo viaja si la UI ya lo
+    // resolvió en el momento de la selección (ver
+    // components/search/destination-input.tsx). `MockHotelProvider` lo
+    // ignora por completo; `HotelbedsProvider` lo usa directo, sin
+    // volver a resolver por nombre.
+    ...(input.destinationCode ? { destinationCode: input.destinationCode } : {}),
     checkIn: input.checkIn,
     checkOut: input.checkOut,
     guests: input.guests,
@@ -136,34 +161,44 @@ export async function searchAction(
   };
 
   await logAnalyticsEvent("search_started", { ...validatedParams });
+  // Bloque Missions (Prompt Maestro 24/08/2026) — "Buscar tu próximo
+  // destino". Best-effort (ver complete-mission-for-current-session.ts):
+  // `/search` es una ruta pública, puede no haber sesión.
+  await completeMissionForCurrentSession("search_started");
 
   try {
     const properties = await provider.search(validatedParams);
-    const results = await Promise.all(
-      properties.map(async (property): Promise<PropertyResult> => {
-        try {
-          const price = await provider.getPrice({
-            providerPropertyId: property.providerPropertyId,
-            checkIn: validatedParams.checkIn,
-            checkOut: validatedParams.checkOut,
-            guests: validatedParams.guests,
-            rooms: validatedParams.rooms,
-          });
-          return { ...property, price };
-        } catch {
-          return { ...property };
-        }
-      }),
-    );
+    const propertiesToPrice = properties.slice(0, MAX_PRICED_RESULTS);
+    const results: PropertyResult[] = [];
+    for (let i = 0; i < propertiesToPrice.length; i += PRICE_BATCH_SIZE) {
+      const batch = propertiesToPrice.slice(i, i + PRICE_BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map(async (property): Promise<PropertyResult> => {
+          try {
+            const price = await provider.getPrice({
+              providerPropertyId: property.providerPropertyId,
+              checkIn: validatedParams.checkIn,
+              checkOut: validatedParams.checkOut,
+              guests: validatedParams.guests,
+              rooms: validatedParams.rooms,
+            });
+            return { ...property, price };
+          } catch {
+            return { ...property };
+          }
+        }),
+      );
+      results.push(...batchResults);
+    }
 
     const searchId = await createSearchRecord({
       searchParams: validatedParams,
-      resultsCount: results.length,
+      resultsCount: properties.length,
     });
 
     await logAnalyticsEvent("search_completed", {
       ...validatedParams,
-      resultsCount: results.length,
+      resultsCount: properties.length,
     });
 
     return { status: "success", results, searchId };

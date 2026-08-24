@@ -9,13 +9,16 @@
 // mutual-authentication/ exige mTLS explícitamente (availability,
 // checkrate, confirmación/cancelación de reserva, etc.).
 //
-// Sin Accept-Encoding: mismo criterio que postHotelbeds (http.ts), que
-// tampoco lo envía. Pedir "gzip" obligaría a descomprimir la respuesta
-// (zlib) en este helper; sin ese header, Hotelbeds responde sin
-// comprimir — más simple, y el POST equivalente ya funciona así.
+// Accept-Encoding: gzip (FPR-HOTELS-COMMERCIAL-01/02) — requisito de la
+// revisión técnica de certificación de Hotelbeds ("proper use of GZIP
+// compression"), mismo criterio que postHotelbeds (http.ts). La
+// descompresión vive en response-body.ts (compartida por ambos
+// transportes) — Hotelbeds decide si comprime o no según el header, así
+// que ambos casos (con y sin Content-Encoding: gzip) deben soportarse.
 import https from "node:https";
 import { getHotelbedsCredentials } from "./config";
 import { currentTimestampSeconds, generateHotelbedsSignature } from "./signature";
+import { decodeHotelbedsResponseBuffer } from "./response-body";
 
 export type HotelbedsContentHttpResult<TBody> =
   | { outcome: "success"; httpStatus: number; body: TBody }
@@ -58,36 +61,46 @@ export async function getHotelbedsContent<TBody = unknown>(
   const target = new URL(`${credentials.baseUrl}${path}`);
 
   try {
-    const response = await new Promise<{ httpStatus: number; rawText: string }>(
-      (resolve, reject) => {
-        const req = https.request(
-          {
-            hostname: target.hostname,
-            port: target.port || 443,
-            path: `${target.pathname}${target.search}`,
-            method: "GET",
-            headers: {
-              "Api-key": credentials.apiKey,
-              "X-Signature": signature,
-              Accept: "application/json",
-            },
+    const response = await new Promise<{
+      httpStatus: number;
+      rawBuffer: Buffer;
+      contentEncoding: string | undefined;
+    }>((resolve, reject) => {
+      const req = https.request(
+        {
+          hostname: target.hostname,
+          port: target.port || 443,
+          path: `${target.pathname}${target.search}`,
+          method: "GET",
+          headers: {
+            "Api-key": credentials.apiKey,
+            "X-Signature": signature,
+            Accept: "application/json",
+            "Accept-Encoding": "gzip",
           },
-          (res) => {
-            let raw = "";
-            res.on("data", (chunk) => (raw += chunk));
-            res.on("end", () => resolve({ httpStatus: res.statusCode ?? 0, rawText: raw }));
-          },
-        );
-        req.on("error", reject);
-        req.end();
-      },
-    );
+        },
+        (res) => {
+          const chunks: Buffer[] = [];
+          res.on("data", (chunk) => chunks.push(chunk));
+          res.on("end", () =>
+            resolve({
+              httpStatus: res.statusCode ?? 0,
+              rawBuffer: Buffer.concat(chunks),
+              contentEncoding: res.headers["content-encoding"],
+            }),
+          );
+        },
+      );
+      req.on("error", reject);
+      req.end();
+    });
 
+    const rawText = decodeHotelbedsResponseBuffer(response.rawBuffer, response.contentEncoding);
     let body: unknown;
     try {
-      body = response.rawText ? JSON.parse(response.rawText) : undefined;
+      body = rawText ? JSON.parse(rawText) : undefined;
     } catch {
-      body = response.rawText;
+      body = rawText;
     }
 
     if (response.httpStatus >= 200 && response.httpStatus < 300) {

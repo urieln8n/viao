@@ -13,6 +13,19 @@ import { BookingForm } from "./booking-form";
 import { formatLocation, formatPrice, formatRating } from "../../search/results/format";
 import { calculateHotelBookingRewardPoints, pointsToEuroValue } from "../../../lib/rewards/rules";
 
+// FPR-HOTELS-COMMERCIAL-01/02 — Hotelbeds exige (proceso de
+// certificación, developer.hotelbeds.com) que el cliente tolere hasta 60
+// segundos de espera en la confirmación de POST /bookings antes de darla
+// por fallida. `createBookingAction` (../actions.ts) es una Server
+// Action invocada desde `BookingForm` en esta misma página — Next.js
+// solo permite configurar `maxDuration` de una Server Action a nivel de
+// página, nunca en el propio archivo "use server" (confirmado en la
+// documentación oficial de Next.js). 60s cabe sin problema dentro del
+// límite de cualquier plan de Vercel (Hobby/Pro/Enterprise: 300s por
+// defecto con Fluid Compute) — declarado explícitamente aquí para no
+// depender de un valor por defecto de la plataforma que podría cambiar.
+export const maxDuration = 60;
+
 // F6-01 (VIAO_ROADMAP.md) — Pantalla de confirmación/inicio de reserva.
 //
 // Flujo: /properties/[id] (F5-04) → CTA "Reservar" (nuevo en esta fase) →

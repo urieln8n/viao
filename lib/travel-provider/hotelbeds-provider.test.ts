@@ -50,15 +50,25 @@ const VALID_SEARCH_PARAMS = {
 
 // ── UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER (comportamiento por defecto) ──
 
-test("UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER: siempre devuelve undefined, cualquiera sea el destino", () => {
-  assert.equal(UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER("Madrid"), undefined);
-  assert.equal(UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER("cualquier cosa"), undefined);
+test("UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER: siempre devuelve undefined, cualquiera sea el destino", async () => {
+  assert.equal(await UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER("Madrid"), undefined);
+  assert.equal(await UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER("cualquier cosa"), undefined);
 });
 
 // ── search() ──
 
-test("search: sin destinationResolver (por defecto), lanza ProviderError explicando que la resolución destino->código está pendiente", async () => {
-  const provider = new HotelbedsProvider();
+// FPR-HOTELS-02: el resolver por defecto (`resolveHotelbedsDestinationCodeByName`)
+// SÍ consulta Supabase real — por eso estos dos tests inyectan
+// explícitamente `UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER` en vez de
+// dejar el default implícito: mantiene la convención de este archivo
+// ("ninguno de estos tests llama a Hotelbeds ni a Supabase") sin importar
+// qué destinos haya sincronizados de verdad en el entorno donde corra la
+// suite (p. ej. localmente, tras un sync real, "Madrid" SÍ resolvería con
+// el default real). El resolver real ya tiene su propia cobertura
+// dedicada en hotelbeds-destination-resolver.test.ts.
+
+test("search: con un destinationResolver que no resuelve, lanza ProviderError explicando que la resolución destino->código está pendiente", async () => {
+  const provider = new HotelbedsProvider({ destinationResolver: UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER });
   await assert.rejects(() => provider.search(VALID_SEARCH_PARAMS), (error: unknown) => {
     assert.ok(error instanceof ProviderError);
     assert.match((error as Error).message, /Madrid/);
@@ -68,7 +78,7 @@ test("search: sin destinationResolver (por defecto), lanza ProviderError explica
 });
 
 test("search: nunca inventa un código de destino aunque el nombre sea uno de los conocidos del Mock (Madrid/Barcelona/Sevilla/Valencia)", async () => {
-  const provider = new HotelbedsProvider();
+  const provider = new HotelbedsProvider({ destinationResolver: UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER });
   for (const destination of ["Madrid", "Barcelona", "Sevilla", "Valencia"]) {
     await assert.rejects(() => provider.search({ ...VALID_SEARCH_PARAMS, destination }));
   }
@@ -76,7 +86,7 @@ test("search: nunca inventa un código de destino aunque el nombre sea uno de lo
 
 test("search: con un destinationResolver inyectado que sí resuelve, mapea los hoteles devueltos a Property[]", async () => {
   const provider = new HotelbedsProvider({
-    destinationResolver: (destination) => (destination === "Madrid" ? "MAD" : undefined),
+    destinationResolver: async (destination) => (destination === "Madrid" ? "MAD" : undefined),
     fetchAvailability: fakeFetchAvailability([makeHotel()]),
   });
   const results = await provider.search(VALID_SEARCH_PARAMS);
@@ -88,7 +98,7 @@ test("search: con un destinationResolver inyectado que sí resuelve, mapea los h
 test("search: fechas inválidas (checkOut <= checkIn) lanzan ProviderError antes de llamar al transport", async () => {
   let called = false;
   const provider = new HotelbedsProvider({
-    destinationResolver: () => "MAD",
+    destinationResolver: async () => "MAD",
     fetchAvailability: async () => {
       called = true;
       return { outcome: "success", httpStatus: 200, body: { hotels: { hotels: [] } } };
@@ -100,13 +110,65 @@ test("search: fechas inválidas (checkOut <= checkIn) lanzan ProviderError antes
   assert.equal(called, false);
 });
 
+// ── search() con destinationCode (FPR-HOTELS-02) ──
+
+test("search: con destinationCode en SearchParams, lo usa DIRECTAMENTE y NO llama a destinationResolver", async () => {
+  let resolverCalled = false;
+  let capturedRequest: HotelbedsAvailabilityRequest | undefined;
+  const provider = new HotelbedsProvider({
+    destinationResolver: async () => {
+      resolverCalled = true;
+      return "MAD";
+    },
+    fetchAvailability: async (request) => {
+      capturedRequest = request;
+      return { outcome: "success", httpStatus: 200, body: { hotels: { hotels: [makeHotel()] } } };
+    },
+  });
+
+  await provider.search({ ...VALID_SEARCH_PARAMS, destination: "Barcelona", destinationCode: "BCN" });
+
+  assert.equal(resolverCalled, false, "con destinationCode ya resuelto, nunca debe volver a resolverse por nombre");
+  assert.deepEqual(capturedRequest?.scope, { type: "destination", code: "BCN" });
+});
+
+test("search: sin destinationCode, cae al resolver por nombre (compatibilidad con búsquedas antiguas)", async () => {
+  let capturedRequest: HotelbedsAvailabilityRequest | undefined;
+  const provider = new HotelbedsProvider({
+    destinationResolver: async (destination) => (destination === "Barcelona" ? "BCN" : undefined),
+    fetchAvailability: async (request) => {
+      capturedRequest = request;
+      return { outcome: "success", httpStatus: 200, body: { hotels: { hotels: [makeHotel()] } } };
+    },
+  });
+
+  await provider.search({ ...VALID_SEARCH_PARAMS, destination: "Barcelona" });
+
+  assert.deepEqual(capturedRequest?.scope, { type: "destination", code: "BCN" });
+});
+
+test("search: destinationCode vacío se trata como ausente — sigue intentando resolver por nombre", async () => {
+  let resolverCalled = false;
+  const provider = new HotelbedsProvider({
+    destinationResolver: async () => {
+      resolverCalled = true;
+      return "MAD";
+    },
+    fetchAvailability: fakeFetchAvailability([makeHotel()]),
+  });
+
+  await provider.search({ ...VALID_SEARCH_PARAMS, destinationCode: "" });
+
+  assert.equal(resolverCalled, true);
+});
+
 // ── search() con fixedHotelCodes (bloque "conectar HotelbedsProvider de forma controlada") ──
 
 test("search: con fixedHotelCodes, usa scope hotelCodes directamente y NO llama a destinationResolver", async () => {
   let resolverCalled = false;
   let capturedRequest: HotelbedsAvailabilityRequest | undefined;
   const provider = new HotelbedsProvider({
-    destinationResolver: () => {
+    destinationResolver: async () => {
       resolverCalled = true;
       return "MAD";
     },
@@ -127,6 +189,7 @@ test("search: con fixedHotelCodes, usa scope hotelCodes directamente y NO llama 
 test("search: fixedHotelCodes vacío ([]) se trata como ausente — sigue intentando resolver destino", async () => {
   const provider = new HotelbedsProvider({
     fixedHotelCodes: [],
+    destinationResolver: UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER,
     fetchAvailability: async () => ({ outcome: "success", httpStatus: 200, body: { hotels: { hotels: [] } } }),
   });
   await assert.rejects(() => provider.search(VALID_SEARCH_PARAMS), ProviderError);
@@ -494,7 +557,7 @@ test("getConditions: hotel no encontrado en la respuesta lanza ProviderUnavailab
 
 test("requestHotels: cualquier outcome de error del transport se traduce a ProviderError (missing_credentials)", async () => {
   const provider = new HotelbedsProvider({
-    destinationResolver: () => "MAD",
+    destinationResolver: async () => "MAD",
     fetchAvailability: async () => ({ outcome: "missing_credentials", message: "HOTELBEDS_API_KEY no está configurada." }),
   });
   await assert.rejects(() => provider.search(VALID_SEARCH_PARAMS), ProviderError);
@@ -502,7 +565,7 @@ test("requestHotels: cualquier outcome de error del transport se traduce a Provi
 
 test("requestHotels: http_error del transport se traduce a ProviderError con el status en el mensaje", async () => {
   const provider = new HotelbedsProvider({
-    destinationResolver: () => "MAD",
+    destinationResolver: async () => "MAD",
     fetchAvailability: async () => ({ outcome: "http_error", httpStatus: 401, body: { error: "Request signature verification failed" } }),
   });
   await assert.rejects(() => provider.search(VALID_SEARCH_PARAMS), (error: unknown) => {
@@ -510,6 +573,30 @@ test("requestHotels: http_error del transport se traduce a ProviderError con el 
     assert.match((error as Error).message, /401/);
     return true;
   });
+});
+
+// FPR-HOTELS-COMMERCIAL-01/02 — cierra el hueco de FPR-HOTELS-04: un
+// http_error real (403/429/...) debe quedar registrado server-side, no
+// solo convertido en ProviderError. console.error se intercepta aquí, no
+// se deja escribir a stdout de verdad durante el test.
+test("requestHotels: http_error del transport registra un log estructurado (endpoint=availability) antes de lanzar ProviderError", async () => {
+  const provider = new HotelbedsProvider({
+    destinationResolver: async () => "MAD",
+    fetchAvailability: async () => ({ outcome: "http_error", httpStatus: 403, body: { error: "quota exceeded" } }),
+  });
+  const originalConsoleError = console.error;
+  const logs: string[] = [];
+  console.error = (...args: unknown[]) => logs.push(args.map(String).join(" "));
+  try {
+    await assert.rejects(() => provider.search(VALID_SEARCH_PARAMS), ProviderError);
+  } finally {
+    console.error = originalConsoleError;
+  }
+  assert.equal(logs.length, 1);
+  const parsed = JSON.parse(logs[0]);
+  assert.equal(parsed.provider, "hotelbeds");
+  assert.equal(parsed.endpoint, "availability");
+  assert.equal(parsed.httpStatus, 403);
 });
 
 // ── book() (FPR-04.8/04.9) — resolveRate/fetchBooking FALSOS inyectados, nunca resolveBookableRate/fetchHotelbedsBooking reales. ──
@@ -724,6 +811,24 @@ test("book: resolveRate devuelve un fallo técnico de CheckRates (checkrate_http
   });
 });
 
+test("book: checkrate_http_error registra un log estructurado (endpoint=checkrate)", async () => {
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({ outcome: "checkrate_http_error", httpStatus: 500, body: { error: "internal" } }),
+  });
+  const originalConsoleError = console.error;
+  const logs: string[] = [];
+  console.error = (...args: unknown[]) => logs.push(args.map(String).join(" "));
+  try {
+    await assert.rejects(() => provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE), ProviderError);
+  } finally {
+    console.error = originalConsoleError;
+  }
+  assert.equal(logs.length, 1);
+  const parsed = JSON.parse(logs[0]);
+  assert.equal(parsed.endpoint, "checkrate");
+  assert.equal(parsed.httpStatus, 500);
+});
+
 test("book: BookingRequest sin holder/paxes falla la validación del mapper -> ProviderError, fetchBooking NUNCA se llama", async () => {
   let fetchBookingCalled = false;
   const provider = new HotelbedsProvider({
@@ -794,6 +899,34 @@ test("book: fetchBooking devuelve missing_certificate -> ProviderError (falla an
     assert.ok(!(error instanceof ProviderAmbiguousError));
     return true;
   });
+});
+
+test("book: fetchBooking devuelve http_error, registra un log estructurado (endpoint=booking) con correlationId=clientReference, y nunca imprime datos sensibles del holder", async () => {
+  const provider = new HotelbedsProvider({
+    resolveRate: fakeResolveRate({ outcome: "success", rateKey: "rk-1", rateType: "BOOKABLE" }),
+    fetchBooking: fakeFetchBooking({
+      outcome: "http_error",
+      httpStatus: 403,
+      body: { error: "quota exceeded", holderName: "Juan" },
+    }),
+  });
+  const originalConsoleError = console.error;
+  const logs: string[] = [];
+  console.error = (...args: unknown[]) => logs.push(args.map(String).join(" "));
+  try {
+    await assert.rejects(
+      () => provider.book(VALID_BOOKING_REQUEST, VALID_CLIENT_REFERENCE),
+      ProviderError,
+    );
+  } finally {
+    console.error = originalConsoleError;
+  }
+  assert.equal(logs.length, 1);
+  const parsed = JSON.parse(logs[0]);
+  assert.equal(parsed.endpoint, "booking");
+  assert.equal(parsed.httpStatus, 403);
+  assert.equal(parsed.correlationId, VALID_CLIENT_REFERENCE);
+  assert.ok(!logs[0].includes("Juan"), "el log nunca debe contener el nombre del holder (VALID_BOOKING_REQUEST.holder.name)");
 });
 
 test("book: fetchBooking devuelve http_error -> ProviderError con el status en el mensaje (Hotelbeds SÍ respondió, rechazo claro)", async () => {
@@ -915,6 +1048,28 @@ test("cancelBooking: fetchCancellation devuelve http_error -> ProviderError con 
     assert.match((error as Error).message, /404/);
     return true;
   });
+});
+
+test("cancelBooking: http_error registra un log estructurado (endpoint=cancellation) con correlationId=providerBookingReference", async () => {
+  const provider = new HotelbedsProvider({
+    fetchCancellation: fakeFetchCancellation({ outcome: "http_error", httpStatus: 404, body: { error: "BOOKING_NOT_FOUND" } }),
+  });
+  const originalConsoleError = console.error;
+  const logs: string[] = [];
+  console.error = (...args: unknown[]) => logs.push(args.map(String).join(" "));
+  try {
+    await assert.rejects(
+      () => provider.cancelBooking({ providerBookingReference: "does-not-exist" }),
+      ProviderError,
+    );
+  } finally {
+    console.error = originalConsoleError;
+  }
+  assert.equal(logs.length, 1);
+  const parsed = JSON.parse(logs[0]);
+  assert.equal(parsed.endpoint, "cancellation");
+  assert.equal(parsed.httpStatus, 404);
+  assert.equal(parsed.correlationId, "does-not-exist");
 });
 
 test("cancelBooking: fetchCancellation devuelve network_error -> ProviderAmbiguousError (Hotelbeds pudo recibir la petición aunque se perdiera la respuesta)", async () => {

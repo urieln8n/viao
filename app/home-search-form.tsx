@@ -6,7 +6,7 @@ import { CalendarDays } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DestinationInput } from "@/components/search/destination-input";
+import { DestinationInput, type DestinationCatalogEntry } from "@/components/search/destination-input";
 import { t } from "@/lib/i18n";
 
 interface HomeSearchFormValues {
@@ -69,7 +69,12 @@ function validate(values: HomeSearchFormValues): HomeSearchFormErrors {
   return errors;
 }
 
-export function HomeSearchForm() {
+export interface HomeSearchFormProps {
+  /** Catálogo real de destinos (FPR-HOTELS-02) — cargado server-side en app/page.tsx, mismo criterio que app/search/page.tsx. */
+  destinations: DestinationCatalogEntry[];
+}
+
+export function HomeSearchForm({ destinations }: HomeSearchFormProps) {
   const router = useRouter();
 
   const destinationId = useId();
@@ -79,6 +84,8 @@ export function HomeSearchForm() {
   const roomsId = useId();
 
   const [destination, setDestination] = useState("");
+  // FPR-HOTELS-02: mismo criterio que app/search/search-form.tsx.
+  const [destinationCode, setDestinationCode] = useState<string | undefined>(undefined);
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(1);
@@ -110,6 +117,9 @@ export function HomeSearchForm() {
       guests: String(guests),
       rooms: String(rooms),
     });
+    if (destinationCode) {
+      query.set("destinationCode", destinationCode);
+    }
     router.push(`/search/results?${query.toString()}`);
   }
 
@@ -123,7 +133,12 @@ export function HomeSearchForm() {
           id={destinationId}
           name="destination"
           value={destination}
-          onChange={setDestination}
+          onChange={(value) => {
+            setDestination(value);
+            setDestinationCode(undefined);
+          }}
+          onDestinationCodeChange={setDestinationCode}
+          destinations={destinations}
           ariaInvalid={errors.destination ? true : undefined}
           ariaDescribedBy={errors.destination ? `${destinationId}-error` : undefined}
         />

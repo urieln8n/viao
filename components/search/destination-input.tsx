@@ -4,25 +4,36 @@ import { useId, useState, type ChangeEvent } from "react";
 
 import { Input } from "@/components/ui/input";
 import { t } from "@/lib/i18n";
-import { listKnownDestinations } from "../../lib/travel-provider/mock-provider";
 
-// Bloque 16 ("Destinos seleccionables") — deriva las sugerencias del MISMO
-// catálogo que MockHotelProvider.search() ya usa (listKnownDestinations(),
-// lib/travel-provider/mock-provider.ts), sin tocar esa función de
-// matching. Con solo 4 destinos, un dropdown local hecho a mano cubre la
-// necesidad real (filtrar 4 strings, elegir uno) sin la superficie de una
-// primitiva headless completa (Autocomplete de @base-ui/react: Root +
-// Input + Portal + Positioner + Popup + List + Item + navegación por
-// teclado) que nunca se ha usado en este proyecto — menos riesgo de
-// integración para el mismo resultado visible. Simplificación consciente:
-// selección por click/tap, sin navegación con flechas del teclado.
-const KNOWN_DESTINATIONS = listKnownDestinations();
+// FPR-HOTELS-02 — Ya NO deriva las sugerencias de
+// `MockHotelProvider.listKnownDestinations()` (bloque 16 "Destinos
+// seleccionables", ahora obsoleto para el flujo real): el catálogo real
+// de destinos (`destinations`, Supabase, sincronizado desde Hotelbeds
+// Locations/Destinations) es la única fuente de verdad — se recibe como
+// prop, cargado server-side en app/search/page.tsx. Evita tener dos
+// catálogos de destinos distintos (Mock vs. Hotelbeds) desincronizados
+// entre sí.
+export interface DestinationCatalogEntry {
+  code: string;
+  name: string;
+}
 
 interface DestinationInputProps {
   id: string;
   name: string;
   value: string;
   onChange: (value: string) => void;
+  /**
+   * Se llama con el `code` real cuando el usuario SELECCIONA una
+   * sugerencia del catálogo (nunca al escribir texto libre) — `undefined`
+   * cuando el usuario vuelve a escribir, para no enviar un código que ya
+   * no corresponde a lo escrito. FPR-HOTELS-02: es el dato canónico que
+   * `HotelbedsProvider` usa directamente, sin volver a resolver por
+   * nombre.
+   */
+  onDestinationCodeChange: (code: string | undefined) => void;
+  /** Catálogo real de destinos (FPR-HOTELS-02) — cargado server-side, único origen de sugerencias. */
+  destinations: DestinationCatalogEntry[];
   ariaInvalid?: boolean;
   ariaDescribedBy?: string;
 }
@@ -32,6 +43,8 @@ export function DestinationInput({
   name,
   value,
   onChange,
+  onDestinationCodeChange,
+  destinations,
   ariaInvalid,
   ariaDescribedBy,
 }: DestinationInputProps) {
@@ -40,16 +53,18 @@ export function DestinationInput({
 
   const needle = value.trim().toLowerCase();
   const matches = needle
-    ? KNOWN_DESTINATIONS.filter((destination) => destination.city.toLowerCase().includes(needle))
-    : KNOWN_DESTINATIONS;
+    ? destinations.filter((destination) => destination.name.toLowerCase().includes(needle))
+    : destinations;
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     onChange(event.target.value);
+    onDestinationCodeChange(undefined);
     setIsOpen(true);
   }
 
-  function handleSelect(city: string) {
-    onChange(city);
+  function handleSelect(destination: DestinationCatalogEntry) {
+    onChange(destination.name);
+    onDestinationCodeChange(destination.code);
     setIsOpen(false);
   }
 
@@ -78,16 +93,16 @@ export function DestinationInput({
         >
           {matches.length > 0 ? (
             matches.map((destination) => (
-              <li key={destination.city}>
+              <li key={destination.code}>
                 <button
                   type="button"
                   role="option"
-                  aria-selected={destination.city === value}
+                  aria-selected={destination.name === value}
                   className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => handleSelect(destination.city)}
+                  onClick={() => handleSelect(destination)}
                 >
-                  {destination.city}, {destination.country}
+                  {destination.name}
                 </button>
               </li>
             ))

@@ -16,6 +16,7 @@
 import https from "node:https";
 import { getHotelbedsClientCertificate, getHotelbedsCredentials } from "./config";
 import { currentTimestampSeconds, generateHotelbedsSignature } from "./signature";
+import { decodeHotelbedsResponseBuffer } from "./response-body";
 
 export type HotelbedsHttpResult<TBody> =
   | { outcome: "success"; httpStatus: number; body: TBody }
@@ -80,44 +81,54 @@ export async function postHotelbeds<TBody = unknown>(
   const payload = requestBody === undefined ? undefined : JSON.stringify(requestBody);
 
   try {
-    const response = await new Promise<{ httpStatus: number; rawText: string }>(
-      (resolve, reject) => {
-        const req = https.request(
-          {
-            hostname: target.hostname,
-            port: target.port || 443,
-            path: `${target.pathname}${target.search}`,
-            method,
-            cert: certificate.cert,
-            key: certificate.key,
-            headers: {
-              "Api-key": credentials.apiKey,
-              "X-Signature": signature,
-              Accept: "application/json",
-              ...(payload !== undefined
-                ? { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) }
-                : {}),
-            },
+    const response = await new Promise<{
+      httpStatus: number;
+      rawBuffer: Buffer;
+      contentEncoding: string | undefined;
+    }>((resolve, reject) => {
+      const req = https.request(
+        {
+          hostname: target.hostname,
+          port: target.port || 443,
+          path: `${target.pathname}${target.search}`,
+          method,
+          cert: certificate.cert,
+          key: certificate.key,
+          headers: {
+            "Api-key": credentials.apiKey,
+            "X-Signature": signature,
+            Accept: "application/json",
+            "Accept-Encoding": "gzip",
+            ...(payload !== undefined
+              ? { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) }
+              : {}),
           },
-          (res) => {
-            let raw = "";
-            res.on("data", (chunk) => (raw += chunk));
-            res.on("end", () => resolve({ httpStatus: res.statusCode ?? 0, rawText: raw }));
-          },
-        );
-        req.on("error", reject);
-        if (payload !== undefined) {
-          req.write(payload);
-        }
-        req.end();
-      },
-    );
+        },
+        (res) => {
+          const chunks: Buffer[] = [];
+          res.on("data", (chunk) => chunks.push(chunk));
+          res.on("end", () =>
+            resolve({
+              httpStatus: res.statusCode ?? 0,
+              rawBuffer: Buffer.concat(chunks),
+              contentEncoding: res.headers["content-encoding"],
+            }),
+          );
+        },
+      );
+      req.on("error", reject);
+      if (payload !== undefined) {
+        req.write(payload);
+      }
+      req.end();
+    });
 
+    const rawText = decodeHotelbedsResponseBuffer(response.rawBuffer, response.contentEncoding);
     let body: unknown;
     try {
-      body = response.rawText ? JSON.parse(response.rawText) : undefined;
+      body = rawText ? JSON.parse(rawText) : undefined;
     } catch {
-      body = response.rawText;
+      body = rawText;
     }
 
     if (response.httpStatus >= 200 && response.httpStatus < 300) {

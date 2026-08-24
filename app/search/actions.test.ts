@@ -219,9 +219,10 @@ test("actions.ts registra search_started antes de provider.search() y search_com
 // para la parte de seguridad/RLS que sí es ejercitable aquí, y el reporte
 // de la fase para la verificación E2E real. Esta prueba comprueba la
 // conexión estructural: createSearchRecord se llama después de
-// provider.search() (con resultsCount = results.length) y antes del
-// return de éxito — nunca en invalid_input ni en el catch de
-// provider_error, así que ninguno de esos dos casos puede crear una fila.
+// provider.search() (con resultsCount = properties.length — FPR-HOTELS-03,
+// ver nota abajo) y antes del return de éxito — nunca en invalid_input ni
+// en el catch de provider_error, así que ninguno de esos dos casos puede
+// crear una fila.
 test("actions.ts crea el registro de searches solo en el camino de éxito, después de conocer resultsCount", () => {
   const source = readFileSync(
     path.join(process.cwd(), "app/search/actions.ts"),
@@ -231,7 +232,7 @@ test("actions.ts crea el registro de searches solo en el camino de éxito, despu
   const invalidInputReturnIndex = source.indexOf('return { status: "invalid_input"');
   const providerSearchIndex = source.indexOf("provider.search(validatedParams)");
   const createSearchIndex = source.indexOf("createSearchRecord({");
-  const resultsCountIndex = source.indexOf("resultsCount: results.length,");
+  const resultsCountIndex = source.indexOf("resultsCount: properties.length,");
   const successReturnIndex = source.lastIndexOf('return { status: "success"');
   const catchIndex = source.indexOf("} catch (error) {");
 
@@ -251,6 +252,67 @@ test("actions.ts crea el registro de searches solo en el camino de éxito, despu
   );
   assert.ok(
     resultsCountIndex > -1 && resultsCountIndex < successReturnIndex,
-    "createSearchRecord debe recibir resultsCount = results.length (no una fila provisional)",
+    "createSearchRecord debe recibir resultsCount = properties.length (el total real del " +
+      "provider, no el subconjunto limitado por MAX_PRICED_RESULTS)",
+  );
+});
+
+// ── FPR-HOTELS-03: límite de resultados cotizados/mostrados ──
+//
+// Con destinationCode real, un destino puede devolver cientos de
+// propiedades (Barcelona ~308) — sin límite, getPrice() (una llamada real
+// de Availability a Hotelbeds por propiedad) se dispararía sin límite de
+// concurrencia. MockHotelProvider solo tiene 4 propiedades fijas (ninguna
+// búsqueda real dispara el límite en test), así que esto se verifica
+// estructuralmente, igual que search_started/search_completed arriba.
+test("actions.ts limita properties.slice(0, MAX_PRICED_RESULTS) antes de cotizar/devolver resultados", () => {
+  const source = readFileSync(
+    path.join(process.cwd(), "app/search/actions.ts"),
+    "utf-8",
+  );
+
+  const maxConstIndex = source.indexOf("const MAX_PRICED_RESULTS");
+  const providerSearchIndex = source.indexOf("provider.search(validatedParams)");
+  const sliceIndex = source.indexOf("properties.slice(0, MAX_PRICED_RESULTS)");
+  const getPriceIndex = source.indexOf("provider.getPrice(");
+
+  assert.ok(maxConstIndex > -1, "falta la constante MAX_PRICED_RESULTS");
+  assert.ok(
+    sliceIndex > -1,
+    "falta properties.slice(0, MAX_PRICED_RESULTS) antes de componer resultados",
+  );
+  assert.ok(
+    providerSearchIndex < sliceIndex && sliceIndex < getPriceIndex,
+    "el límite debe aplicarse después de provider.search() y antes de llamar a getPrice() por resultado",
+  );
+});
+
+// ── FPR-HOTELS-03: getPrice() en lotes pequeños, no todo en paralelo ──
+//
+// Una prueba real contra Production (ver informe de la fase) demostró que
+// pedir MAX_PRICED_RESULTS precios a la vez con Promise.all sin agrupar
+// dispara HTTP 429/403 de Hotelbeds bajo carga. Se verifica
+// estructuralmente que existe PRICE_BATCH_SIZE y que el bucle de
+// getPrice() está dentro de un `for` que avanza por lotes (`i +=
+// PRICE_BATCH_SIZE`), no en un único Promise.all sobre todo
+// propertiesToPrice.
+test("actions.ts pide precios en lotes de PRICE_BATCH_SIZE, no todos en paralelo a la vez", () => {
+  const source = readFileSync(
+    path.join(process.cwd(), "app/search/actions.ts"),
+    "utf-8",
+  );
+
+  const batchConstIndex = source.indexOf("const PRICE_BATCH_SIZE");
+  const forLoopIndex = source.indexOf("i += PRICE_BATCH_SIZE");
+  const getPriceIndex = source.indexOf("provider.getPrice(");
+
+  assert.ok(batchConstIndex > -1, "falta la constante PRICE_BATCH_SIZE");
+  assert.ok(
+    forLoopIndex > -1,
+    "falta el bucle por lotes (i += PRICE_BATCH_SIZE) que agrupa las llamadas a getPrice()",
+  );
+  assert.ok(
+    forLoopIndex < getPriceIndex,
+    "getPrice() debe llamarse dentro del bucle por lotes, no en un único Promise.all sin agrupar",
   );
 });

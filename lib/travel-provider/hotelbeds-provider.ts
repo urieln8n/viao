@@ -59,12 +59,23 @@
 // a una llamada real al Content API.
 //
 // `SearchParams.destination` → código de destino Hotelbeds: decisión
-// explícita de este bloque — NO se resuelve automáticamente (3
-// peticiones reales de investigación sin resultado concluyente, ver
-// conversación). `destinationResolver` es el punto de extensión
-// aislado: hoy siempre devuelve `undefined` (ver
-// UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER), y `search()` falla con un
-// mensaje explícito en vez de adivinar o inventar un código.
+// explícita de FASE 2/3 — NO se resolvía automáticamente (3 peticiones
+// reales de investigación sin resultado concluyente en su momento).
+//
+// FPR-HOTELS-02: resuelto. `destinationResolver` (ahora ASYNC — consulta
+// Supabase) tiene una implementación real por defecto
+// (`resolveHotelbedsDestinationCodeByName`, más abajo), que busca por
+// nombre EXACTO (case-insensitive, nunca fuzzy) en el catálogo cacheado
+// de `destinations` (lib/destinations/get-cached-destinations.ts,
+// sincronizado desde Hotelbeds Locations/Destinations vía
+// lib/hotelbeds/sync-destinations.ts — verificado real en FPR-HOTELS-01:
+// España = 74 destinos, sin búsqueda por texto libre en la API, por eso
+// hace falta cachear). `search()` prioriza `params.destinationCode` (ya
+// resuelto por la UI en el momento de la selección, FPR-HOTELS-02) sobre
+// el resolver por nombre — nunca fuzzy matching en el momento de buscar,
+// solo en el momento en que el usuario elige de una lista real.
+// `UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER` se conserva exportado para
+// tests/composición, pero ya NO es el default del constructor.
 //
 // Bloque "conectar HotelbedsProvider de forma controlada"
 // (lib/travel-provider/index.ts): añade `fixedHotelCodes`, una segunda
@@ -120,6 +131,8 @@ import {
 import { fetchHotelbedsBooking } from "../hotelbeds/book";
 import { mapHotelbedsCancellationResponseToCancellationResult } from "../hotelbeds/cancellation";
 import { fetchHotelbedsCancellation } from "../hotelbeds/cancel";
+import { resolveHotelbedsDestinationCodeByName } from "./hotelbeds-destination-resolver";
+import { logHotelbedsHttpError } from "../hotelbeds/log-http-error";
 
 export interface HotelbedsProviderTypes extends HotelProviderTypes {
   searchParams: SearchParams;
@@ -140,15 +153,23 @@ export interface HotelbedsProviderTypes extends HotelProviderTypes {
 /**
  * Punto de extensión aislado para destino→código Hotelbeds (ver
  * cabecera del archivo). `undefined` = "no se pudo resolver este
- * destino" — nunca se lanza un código inventado.
+ * destino" — nunca se lanza un código inventado. ASYNC desde
+ * FPR-HOTELS-02: la implementación real consulta Supabase.
  */
-export type HotelbedsDestinationResolver = (destination: string) => string | undefined;
+export type HotelbedsDestinationResolver = (
+  destination: string,
+) => Promise<string | undefined>;
 
-export const UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER: HotelbedsDestinationResolver = () =>
-  undefined;
+/** Conservado para tests/composición — ya NO es el default del constructor desde FPR-HOTELS-02. */
+export const UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER: HotelbedsDestinationResolver =
+  async () => undefined;
 
 export interface HotelbedsProviderDependencies {
-  /** Por defecto, UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER (ningún destino resuelto todavía). */
+  /**
+   * FPR-HOTELS-02 — inyectable solo para tests, por defecto
+   * `resolveHotelbedsDestinationCodeByName` real (consulta el catálogo
+   * cacheado de `destinations`, Supabase `service_role`).
+   */
   destinationResolver?: HotelbedsDestinationResolver;
   /** Inyectable solo para tests — por defecto, fetchHotelbedsAvailability real. */
   fetchAvailability?: typeof fetchHotelbedsAvailability;
@@ -227,7 +248,7 @@ export class HotelbedsProvider implements HotelProvider<HotelbedsProviderTypes> 
 
   constructor(dependencies: HotelbedsProviderDependencies = {}) {
     this.destinationResolver =
-      dependencies.destinationResolver ?? UNRESOLVED_HOTELBEDS_DESTINATION_RESOLVER;
+      dependencies.destinationResolver ?? resolveHotelbedsDestinationCodeByName;
     this.fetchAvailability = dependencies.fetchAvailability ?? fetchHotelbedsAvailability;
     this.fixedHotelCodes =
       dependencies.fixedHotelCodes && dependencies.fixedHotelCodes.length > 0
@@ -239,15 +260,27 @@ export class HotelbedsProvider implements HotelProvider<HotelbedsProviderTypes> 
     this.fetchCancellation = dependencies.fetchCancellation ?? fetchHotelbedsCancellation;
   }
 
-  /** `search()` usa códigos fijos si los hay; si no, intenta resolver el destino (nunca ambos, nunca inventa). */
-  private resolveSearchScope(destination: string): HotelbedsAvailabilityScope {
+  /**
+   * `search()` usa códigos fijos si los hay (FPR-HOTELS-02: sigue
+   * intacto — no se retira hasta validar el nuevo camino, ver informe);
+   * si no, prioriza `params.destinationCode` (ya resuelto por la UI en
+   * el momento de la selección — nunca vuelve a resolverse por nombre
+   * cuando ya se conoce el código exacto); si tampoco viene, cae al
+   * resolver por nombre (compatibilidad con URLs/búsquedas antiguas que
+   * solo traen `destination` en texto). Nunca se combinan fixedHotelCodes
+   * con destino, nunca se inventa un código.
+   */
+  private async resolveSearchScope(params: SearchParams): Promise<HotelbedsAvailabilityScope> {
     if (this.fixedHotelCodes) {
       return { type: "hotelCodes", codes: this.fixedHotelCodes };
     }
-    const destinationCode = this.destinationResolver(destination);
+    if (params.destinationCode) {
+      return { type: "destination", code: params.destinationCode };
+    }
+    const destinationCode = await this.destinationResolver(params.destination);
     if (!destinationCode) {
       throw new ProviderError(
-        `Sin código de destino Hotelbeds configurado para "${destination}" — la resolución destino→código está pendiente (ver bloque de investigación de códigos de destino).`,
+        `Sin código de destino Hotelbeds configurado para "${params.destination}" — no se encontró en el catálogo sincronizado.`,
       );
     }
     return { type: "destination", code: destinationCode };
@@ -263,6 +296,7 @@ export class HotelbedsProvider implements HotelProvider<HotelbedsProviderTypes> 
       case "network_error":
         throw new ProviderError(result.message);
       case "http_error":
+        logHotelbedsHttpError({ endpoint: "availability", httpStatus: result.httpStatus, body: result.body });
         throw new ProviderError(
           `Hotelbeds devolvió un error HTTP ${result.httpStatus}.`,
           { cause: result.body },
@@ -308,7 +342,13 @@ export class HotelbedsProvider implements HotelProvider<HotelbedsProviderTypes> 
       case "checkrate_no_rate_in_response":
         return new ProviderError(result.message);
       case "availability_http_error":
+        logHotelbedsHttpError({ endpoint: "availability", httpStatus: result.httpStatus, body: result.body });
+        return new ProviderError(
+          `Hotelbeds devolvió un error HTTP ${result.httpStatus} al resolver la tarifa.`,
+          { cause: result.body },
+        );
       case "checkrate_http_error":
+        logHotelbedsHttpError({ endpoint: "checkrate", httpStatus: result.httpStatus, body: result.body });
         return new ProviderError(
           `Hotelbeds devolvió un error HTTP ${result.httpStatus} al resolver la tarifa.`,
           { cause: result.body },
@@ -321,7 +361,7 @@ export class HotelbedsProvider implements HotelProvider<HotelbedsProviderTypes> 
     assertPositive(params.guests, "El número de huéspedes");
     assertPositive(params.rooms, "El número de habitaciones");
 
-    const scope = this.resolveSearchScope(params.destination);
+    const scope = await this.resolveSearchScope(params);
 
     const hotels = await this.requestHotels({
       checkIn: params.checkIn,
@@ -495,6 +535,12 @@ export class HotelbedsProvider implements HotelProvider<HotelbedsProviderTypes> 
         );
       case "http_error":
         // Hotelbeds SÍ respondió (un rechazo claro), no una ambigüedad.
+        logHotelbedsHttpError({
+          endpoint: "booking",
+          httpStatus: httpResult.httpStatus,
+          body: httpResult.body,
+          correlationId: clientReference,
+        });
         throw new ProviderError(
           `Hotelbeds devolvió un error HTTP ${httpResult.httpStatus} al reservar.`,
           { cause: httpResult.body },
@@ -557,6 +603,12 @@ export class HotelbedsProvider implements HotelProvider<HotelbedsProviderTypes> 
         );
       case "http_error":
         // Hotelbeds SÍ respondió (un rechazo claro), no una ambigüedad.
+        logHotelbedsHttpError({
+          endpoint: "cancellation",
+          httpStatus: httpResult.httpStatus,
+          body: httpResult.body,
+          correlationId: request.providerBookingReference,
+        });
         throw new ProviderError(
           `Hotelbeds devolvió un error HTTP ${httpResult.httpStatus} al cancelar.`,
           { cause: httpResult.body },

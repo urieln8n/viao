@@ -32,6 +32,7 @@ import { isAiRecommendationsEnabled } from "../../../lib/openai/config";
 
 interface RawSearchQuery {
   destination?: string | string[];
+  destinationCode?: string | string[];
   checkIn?: string | string[];
   checkOut?: string | string[];
   guests?: string | string[];
@@ -51,6 +52,12 @@ interface SearchResultsPageProps {
 function parseSearchQuery(raw: RawSearchQuery): SearchParams {
   return {
     destination: typeof raw.destination === "string" ? raw.destination : "",
+    // FPR-HOTELS-02: aditivo, opcional — una URL antigua sin
+    // `destinationCode` sigue funcionando igual (cae al resolver por
+    // nombre dentro de HotelbedsProvider).
+    ...(typeof raw.destinationCode === "string" && raw.destinationCode
+      ? { destinationCode: raw.destinationCode }
+      : {}),
     checkIn: typeof raw.checkIn === "string" ? raw.checkIn : "",
     checkOut: typeof raw.checkOut === "string" ? raw.checkOut : "",
     guests: Number(raw.guests),

@@ -29,9 +29,21 @@ type ISODateString = string;
  * Búsqueda de alojamiento (VIAO_ARCHITECTURE.md sección 9: "recibir
  * destino, fechas, huéspedes y habitaciones"; MVP sección 6.2/8; columnas
  * de `searches`: `destination`, `check_in`, `check_out`, `guests`, `rooms`).
+ *
+ * `destinationCode` (FPR-HOTELS-02): opcional y aditivo — el código de
+ * destino YA resuelto en el momento en que el usuario seleccionó
+ * `destination` de un catálogo real (p. ej. Hotelbeds `BCN` para
+ * "Barcelona"), para que el provider no tenga que volver a resolverlo por
+ * nombre. `destination` sigue siendo el dato canónico de dominio (texto
+ * legible, el que persiste `searches.destination`); `destinationCode` es
+ * un dato específico de proveedor que viaja junto a él solo cuando ya se
+ * conoce — `MockHotelProvider` lo ignora por completo (sigue emparejando
+ * por texto contra su catálogo fijo), ningún provider está obligado a
+ * usarlo.
  */
 export interface SearchParams {
   destination: string;
+  destinationCode?: string;
   checkIn: ISODateString;
   checkOut: ISODateString;
   guests: number;
