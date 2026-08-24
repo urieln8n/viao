@@ -14,8 +14,10 @@ import { getWalletBalance } from "../lib/rewards/get-wallet-balance";
 import { pointsToEuroValue } from "../lib/rewards/rules";
 import { getCachedDestinations } from "../lib/destinations/get-cached-destinations";
 import { getActiveGoal } from "../lib/goals/get-goal";
+import { getMissionsStatus } from "../lib/missions/get-missions-status";
 import { HomeSearchForm } from "./home-search-form";
 import { GoalCard } from "./goal-card";
+import { MissionsSummary } from "./missions-summary";
 
 // F11-04 (VIAO_ROADMAP.md) ya expone `getTripDetail()` — no existe hoy
 // ninguna otra fuente de "¿el viaje tiene reserva?" salvo llamarla, así
@@ -146,6 +148,11 @@ export default async function Home() {
   // `getActiveGoal()` ya devuelve `undefined` de forma segura, pero se
   // evita la consulta innecesaria cuando ya se sabe que no hay sesión.
   const activeGoal = balance !== undefined ? await getActiveGoal() : undefined;
+  // Bloque Missions (Prompt Maestro 24/08/2026) — mismo criterio que
+  // `activeGoal`: sin sesión, `getMissionsStatus()` ya devuelve las 4
+  // Missions como no completadas de forma segura, pero se evita la
+  // consulta innecesaria cuando ya se sabe que no hay sesión.
+  const missions = balance !== undefined ? await getMissionsStatus() : undefined;
   // FPR-HOTELS-02 — mismo catálogo real que app/search/page.tsx, nunca
   // MockHotelProvider.listKnownDestinations(). Solo se necesita cuando no
   // hay viaje destacado (única rama que renderiza HomeSearchForm) — se
@@ -297,6 +304,8 @@ export default async function Home() {
           />
 
           {balance !== undefined && <GoalCard goal={activeGoal} walletBalance={balance} />}
+
+          {missions !== undefined && <MissionsSummary missions={missions} />}
 
           <Card className="border-info/30">
             <CardHeader>

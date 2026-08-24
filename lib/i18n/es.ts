@@ -255,6 +255,11 @@ export const es = {
   "goals.cancelBackCta": "Volver",
   "goals.cancelling": "Cancelando…",
   "goals.cancelError": "No se pudo cancelar el objetivo. Inténtalo de nuevo.",
+  "missions.sectionTitle": "Missions de la semana",
+  "missions.completedLabel": "Completada",
+  "missions.pendingLabel": "Pendiente",
+  "missions.weeklyBadge": "Semanal",
+  "missions.lifetimeBadge": "Una vez",
   "aiRecommendation.title": "VIAO AI",
   "aiRecommendation.tagline":
     "Tu compañero para decidir qué opción encaja mejor contigo.",

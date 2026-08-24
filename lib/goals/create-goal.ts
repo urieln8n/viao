@@ -1,4 +1,5 @@
 import { createClient as createSessionClient } from "../supabase/server";
+import { completeMission } from "../missions/complete-mission";
 
 // Bloque 1 (VIAO_V1_LOOP_DECISION.md) — creación de un Goal. Cliente de
 // SESIÓN (Patrón A, igual que `trips`): el usuario inserta directamente
@@ -68,6 +69,22 @@ export async function createGoal(input: CreateGoalInput): Promise<CreateGoalResu
   }
   if (!data) {
     return { outcome: "error", message: "No se pudo crear el objetivo (sin datos devueltos)." };
+  }
+
+  // Bloque Missions (Prompt Maestro 24/08/2026) — "Definir tu objetivo
+  // de viaje" se completa ÚNICAMENTE aquí: tras un INSERT real y
+  // exitoso en `goals` (nunca al abrir el formulario, al escribir, ni
+  // en un intento fallido/`already_has_active_goal`). `periodicity:
+  // "lifetime"` en lib/missions/rules.ts + `period_key='lifetime'`
+  // (complete-mission.ts) impiden farmearla cancelando y creando Goals
+  // repetidamente — la constraint UNIQUE de `mission_completions` solo
+  // permite una fila para siempre, sin importar cuántos Goals cree o
+  // cancele este usuario después. Best-effort: un fallo aquí nunca debe
+  // impedir que el Goal ya creado se devuelva como éxito.
+  try {
+    await completeMission(user.id, "goal_created");
+  } catch (error) {
+    console.error('[missions] No se pudo completar la Mission "goal_created":', error);
   }
 
   return { outcome: "success", goalId: data.id as string };

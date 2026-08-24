@@ -40,6 +40,7 @@ import {
   TravelProviderError,
 } from "../../../lib/travel-provider/errors";
 import { logAnalyticsEvent } from "../../../lib/analytics/log-event";
+import { completeMissionForCurrentSession } from "../../../lib/missions/complete-mission-for-current-session";
 import type { Property } from "../../../types/travel";
 
 export type PropertyDetailResult =
@@ -78,6 +79,10 @@ export async function resolvePropertyDetail(
       providerPropertyId: property.providerPropertyId,
       ...(searchId ? { searchId } : {}),
     });
+    // Bloque Missions (Prompt Maestro 24/08/2026) — "Ver un alojamiento".
+    // Best-effort, misma rama que `hotel_viewed` real (nunca en
+    // `not_found`/`provider_error`) — ruta pública, puede no haber sesión.
+    await completeMissionForCurrentSession("hotel_viewed");
     return { status: "found", property, searchId };
   } catch (error) {
     return classifyDetailError(error);

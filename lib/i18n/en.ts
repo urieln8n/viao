@@ -243,6 +243,11 @@ export const en = {
   "goals.cancelBackCta": "Back",
   "goals.cancelling": "Cancelling…",
   "goals.cancelError": "The goal could not be cancelled. Please try again.",
+  "missions.sectionTitle": "This week's Missions",
+  "missions.completedLabel": "Completed",
+  "missions.pendingLabel": "Pending",
+  "missions.weeklyBadge": "Weekly",
+  "missions.lifetimeBadge": "One-time",
   "aiRecommendation.title": "VIAO AI",
   "aiRecommendation.tagline":
     "Your companion to help you decide what fits you best.",

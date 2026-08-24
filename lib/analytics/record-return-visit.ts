@@ -1,5 +1,6 @@
 import { createServiceRoleClient } from "../supabase/service";
 import { logAnalyticsEvent } from "./log-event";
+import { completeMission } from "../missions/complete-mission";
 
 // F12-05 (VIAO_ROADMAP.md) — `return_visit`: se registra cuando un usuario
 // autenticado inicia una nueva sesión POSTERIOR a su primer uso registrado
@@ -81,5 +82,17 @@ export async function recordReturnVisitIfApplicable(
   }
 
   await logAnalyticsEvent("return_visit", {}, userId);
+
+  // Bloque Missions (Prompt Maestro 24/08/2026) — "Volver esta semana".
+  // `userId` ya es la sesión real resuelta por el llamante (ver cabecera
+  // de este archivo) — nunca de un parámetro de cliente. Best-effort:
+  // un fallo aquí nunca debe impedir que el `return_visit` ya registrado
+  // se devuelva como éxito.
+  try {
+    await completeMission(userId, "return_visit");
+  } catch (error) {
+    console.error('[missions] No se pudo completar la Mission "return_visit":', error);
+  }
+
   return { recorded: true };
 }
