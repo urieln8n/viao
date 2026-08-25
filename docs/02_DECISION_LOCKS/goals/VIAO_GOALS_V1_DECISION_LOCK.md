@@ -1,3 +1,13 @@
+---
+STATUS: LOCKED
+ERA: V1 checkpoint
+DOMAIN: Goals
+AUTHORITY: Fuente de verdad de Goals — APPROVED / IMPLEMENTED, confirmado directamente en código (lib/goals/get-goal.ts, lib/goals/calculate-progress.ts)
+SUPERSEDES: Modelo HYBRID de progreso, congelado en docs/99_ARCHIVE_V1/checkpoints/VIAO_V1_EXECUTION_LOCK.md
+SUPERSEDED BY: —
+LAST REVIEWED: 2026-08-24 (fecha propia)
+---
+
 # VIAO — Goals V1 Decision Lock
 
 **Estado:** DECISION LOCK — **APPROVED / IMPLEMENTED**

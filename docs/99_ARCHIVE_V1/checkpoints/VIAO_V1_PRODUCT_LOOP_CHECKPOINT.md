@@ -1,3 +1,13 @@
+---
+STATUS: HISTORICAL
+ERA: V1 checkpoint
+DOMAIN: Estado operativo/Meta
+AUTHORITY: Ninguna — snapshot puntual, superado por el siguiente checkpoint
+SUPERSEDES: —
+SUPERSEDED BY: docs/VIAO_MVP_MASTER.md (mismo día, commit posterior — en revisión, ver REVIEW REQUIRED) y en última instancia docs/01_CURRENT/product/VIAO_MASTER_PRODUCT_CONTEXT.md
+LAST REVIEWED: 2026-08-24 (fecha propia)
+---
+
 # VIAO V1 — Product Loop Checkpoint
 
 **Fecha:** 2026-08-24
@@ -23,7 +33,7 @@ Working tree: 45 entradas (20 modificadas + 25 sin trackear)
 - Bloque Missions completo: `lib/missions/`, `app/missions-summary.tsx`, 2 migraciones SQL, hooks en `app/search/actions.ts` / `app/properties/[id]/resolve.ts` / `lib/analytics/record-return-visit.ts` / `lib/goals/create-goal.ts`.
 - Bloque Goal-en-onboarding: `app/onboarding/`, cambios en `app/(auth)/register/page.tsx`, refactor de `app/goal-card.tsx` (extracción de `GoalForm`).
 - Trabajo de Destinations/Hotelbeds-catálogo previo a este checkpoint (`lib/destinations/`, `lib/hotelbeds/destinations*.ts`, `lib/hotelbeds/sync-destinations.ts`, migración `20260823140000_create_destinations.sql`) — no forma parte de ningún bloque de este documento, no tocar sin bloque propio.
-- Documentación: `docs/HOTELBEDS_CERTIFICATION_STATUS.md`, `docs/VIAO_COMPETITIVE_AUDIT_DECISION_LOCK.md`, `docs/VIAO_V1_LOOP_DECISION.md` (sin commitear).
+- Documentación: `docs/01_CURRENT/providers/HOTELBEDS_CERTIFICATION_STATUS.md`, `docs/02_DECISION_LOCKS/product/VIAO_COMPETITIVE_AUDIT_DECISION_LOCK.md`, `docs/VIAO_V1_LOOP_DECISION.md` (sin commitear).
 
 **BLOQUEADO EXTERNAMENTE:**
 - Validación visual E2E de Missions — el tooling de navegador (`browse`) presenta crashes del daemon no atribuibles a VIAO (ver sección 4).

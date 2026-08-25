@@ -1,3 +1,13 @@
+---
+STATUS: HISTORICAL
+ERA: V1 / FOUNDATIONAL
+DOMAIN: Producto global
+AUTHORITY: Ninguna — reemplazada por código real y decisiones posteriores
+SUPERSEDES: —
+SUPERSEDED BY: codebase + docs/01_CURRENT/ + Decision Locks vigentes
+LAST REVIEWED: UNKNOWN (documento sin fecha propia)
+---
+
 # VIAO — MVP v0.1
 ### Documento maestro de producto — Definición de MVP
 

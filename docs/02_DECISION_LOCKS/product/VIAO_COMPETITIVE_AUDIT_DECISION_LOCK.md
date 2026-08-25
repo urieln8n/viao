@@ -1,3 +1,13 @@
+---
+STATUS: LOCKED
+ERA: V1 temprano/checkpoint
+DOMAIN: Competencia/Producto
+AUTHORITY: Decision Lock vigente — citado como referencia por VIAO_V1_EXECUTION_LOCK.md (24/08) hasta el cierre de ese checkpoint
+SUPERSEDES: —
+SUPERSEDED BY: —
+LAST REVIEWED: UNKNOWN (sin fecha propia explícita en el documento)
+---
+
 # VIAO — Auditoría Competitiva + Validación del Decision Lock
 
 **Estado:** Documento de decisión — NO implementado. Investigación + auditoría crítica, no confirmación automática.

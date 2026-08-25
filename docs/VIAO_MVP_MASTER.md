@@ -1,3 +1,17 @@
+---
+STATUS: REVIEW REQUIRED
+ERA: V1 CHECKPOINT
+DOMAIN: GLOBAL ENGINEERING / MVP STATE
+AUTHORITY: REVIEW REQUIRED
+SUPERSEDES: NONE DECLARED
+SUPERSEDED BY: NONE DECLARED
+LAST REVIEWED: 2026-08-25
+---
+
+> Este documento permanece temporalmente en `docs/` raíz porque no existe evidencia suficiente para declarar que `VIAO_MASTER_PRODUCT_CONTEXT.md` lo sustituye. Su función es registrar estado técnico/ingenieril granular del MVP, mientras que `MASTER_PRODUCT_CONTEXT` cumple una función de síntesis estratégica. La relación entre ambos queda pendiente de decisión explícita.
+
+---
+
 # VIAO — MVP MASTER
 ## Official Product & Engineering State
 
@@ -67,7 +81,7 @@ Dirección de producto: **Travel Premium + Fintech + Loyalty** — explícitamen
 
 ### Goals
 
-**`GOAL_PROGRESS_MODEL = WALLET_BALANCE` — aprobado por el propietario e implementado** (`docs/VIAO_GOALS_V1_DECISION_LOCK.md`, estado `APPROVED / IMPLEMENTED`):
+**`GOAL_PROGRESS_MODEL = WALLET_BALANCE` — aprobado por el propietario e implementado** (`docs/02_DECISION_LOCKS/goals/VIAO_GOALS_V1_DECISION_LOCK.md`, estado `APPROVED / IMPLEMENTED`):
 
 - **Progreso**: `progress_percent = min(100, round(wallet_balance / target_points * 100))` — `calculateGoalProgressPercent()` (`lib/goals/calculate-progress.ts`, función pura, sin dependencias `next/headers`, separada de `get-goal.ts` a propósito para no romper el bundle de Client Components). Earn sube el progreso, redeem lo baja, refund lo devuelve — sin ninguna excepción por `reason`.
 - **Creación**: Patrón A (RLS directa, `goals_insert_own`), sin cambios. Trigger `set_goal_points_at_creation()` sigue congelando `points_at_goal_creation`, pero esa columna **ya no participa en el cálculo de progreso** (se conserva sin uso, no se eliminó).
@@ -123,7 +137,7 @@ Dos métricas económicas que **no deben confundirse**:
 
 ### Hotelbeds
 
-Estado: 🟡 **CONGELADO** — caso `#60019483` (`docs/HOTELBEDS_CERTIFICATION_STATUS.md`). `MockHotelProvider` es el único provider activo en local (`TRAVEL_PROVIDER` sin definir → fail-safe a mock, `lib/travel-provider/index.ts`). Código de `HotelbedsProvider` existe y tiene tests aislados (sin red real), pero está inactivo. **`[BLOQUEADO EXTERNAMENTE]`** — cero llamadas reales, sin tocar credenciales/certificados/endpoints/Vercel/producción hasta respuesta oficial de Hotelbeds. Trabajo de catálogo de Destinations (`lib/destinations/`, `lib/hotelbeds/destinations*.ts`, `lib/hotelbeds/sync-destinations.ts`) ya implementado y probado, pero **sin commit todavía** — no forma parte de Missions ni de este documento's alcance de decisión.
+Estado: 🟡 **CONGELADO** — caso `#60019483` (`docs/01_CURRENT/providers/HOTELBEDS_CERTIFICATION_STATUS.md`). `MockHotelProvider` es el único provider activo en local (`TRAVEL_PROVIDER` sin definir → fail-safe a mock, `lib/travel-provider/index.ts`). Código de `HotelbedsProvider` existe y tiene tests aislados (sin red real), pero está inactivo. **`[BLOQUEADO EXTERNAMENTE]`** — cero llamadas reales, sin tocar credenciales/certificados/endpoints/Vercel/producción hasta respuesta oficial de Hotelbeds. Trabajo de catálogo de Destinations (`lib/destinations/`, `lib/hotelbeds/destinations*.ts`, `lib/hotelbeds/sync-destinations.ts`) ya implementado y probado, pero **sin commit todavía** — no forma parte de Missions ni de este documento's alcance de decisión.
 
 ### Flights
 
@@ -137,7 +151,7 @@ Estado: 🟡 **CONGELADO** — caso `#60019483` (`docs/HOTELBEDS_CERTIFICATION_S
 
 ## Database — schema real vigente
 
-`docs/VIAO_DATABASE.md` y `docs/VIAO_ARCHITECTURE.md` son **`[DOCUMENTACIÓN HISTÓRICA / DESACTUALIZADA]`** (17 de agosto de 2026, anteriores a los bloques de Rewards/Goals/Missions/Destinations de los días 23-24). No se modifican en este documento. El schema real vigente es el de las 41 migraciones en `supabase/migrations/`.
+`docs/99_ARCHIVE_V1/foundational/VIAO_DATABASE.md` y `docs/99_ARCHIVE_V1/foundational/VIAO_ARCHITECTURE.md` son **`[DOCUMENTACIÓN HISTÓRICA / DESACTUALIZADA]`** (17 de agosto de 2026, anteriores a los bloques de Rewards/Goals/Missions/Destinations de los días 23-24). No se modifican en este documento. El schema real vigente es el de las 41 migraciones en `supabase/migrations/`.
 
 **Tablas originales/fundacionales** (17 de agosto): `profiles`, `trips`, `properties`, `searches`, `bookings`, `rewards_transactions`, `referrals`, `vision_scans`, `photos`, `analytics_events`, `ai_rate_limit_events`.
 
@@ -213,9 +227,9 @@ main...origin/main: ahead 3 -> ahead 4 tras el commit `feat: implement goals v1 
 
 Últimos commits tras este bloque (más reciente primero): `feat: implement goals v1 wallet balance` → `25bde80` (Missions) → `76f0947` (fix cancelación Goal) → `e0c39ea` (Rewards+Goals Bloque 1) → `a4c9fd7` (flujo de reserva).
 
-**Archivos incluidos en el commit de este bloque** (Goals V1, scope estrictamente auditado): `lib/goals/get-goal.ts`, `lib/goals/create-goal.ts`, `lib/goals/calculate-progress.ts` (nuevo), `app/goal-card.tsx`, `lib/goals/get-goal.test.ts`, `lib/goals/create-goal.test.ts`, `supabase/migrations/20260824110000_goals_auto_cancel_active_on_create.sql` (nuevo), `docs/VIAO_GOALS_V1_DECISION_LOCK.md`, `docs/VIAO_MVP_MASTER.md` (este archivo).
+**Archivos incluidos en el commit de este bloque** (Goals V1, scope estrictamente auditado): `lib/goals/get-goal.ts`, `lib/goals/create-goal.ts`, `lib/goals/calculate-progress.ts` (nuevo), `app/goal-card.tsx`, `lib/goals/get-goal.test.ts`, `lib/goals/create-goal.test.ts`, `supabase/migrations/20260824110000_goals_auto_cancel_active_on_create.sql` (nuevo), `docs/02_DECISION_LOCKS/goals/VIAO_GOALS_V1_DECISION_LOCK.md`, `docs/VIAO_MVP_MASTER.md` (este archivo).
 
-**Resto del working tree** (sin tocar por este bloque, sigue pendiente): trabajo de Destinations/Hotelbeds ya en curso (`app/search/*`, `components/search/destination-input.tsx`, `lib/hotelbeds/*`, `lib/destinations/`, `types/travel.ts`, migración `20260823140000_create_destinations.sql`), el resto del bloque de Goal-en-onboarding (`app/(auth)/register/page.tsx`, `app/onboarding/`), otros documentos sin commitear (`docs/VIAO_V1_EXECUTION_LOCK.md`, `VIAO_V1_PRODUCT_LOOP_CHECKPOINT.md`, `VIAO_V1_LOOP_DECISION.md`, `VIAO_COMPETITIVE_AUDIT_DECISION_LOCK.md`, `HOTELBEDS_CERTIFICATION_STATUS.md`), y el artefacto de tooling `.gstack/`. `.gitignore` verificado sin alterar.
+**Resto del working tree** (sin tocar por este bloque, sigue pendiente): trabajo de Destinations/Hotelbeds ya en curso (`app/search/*`, `components/search/destination-input.tsx`, `lib/hotelbeds/*`, `lib/destinations/`, `types/travel.ts`, migración `20260823140000_create_destinations.sql`), el resto del bloque de Goal-en-onboarding (`app/(auth)/register/page.tsx`, `app/onboarding/`), otros documentos sin commitear (`docs/99_ARCHIVE_V1/checkpoints/VIAO_V1_EXECUTION_LOCK.md`, `VIAO_V1_PRODUCT_LOOP_CHECKPOINT.md`, `VIAO_V1_LOOP_DECISION.md`, `VIAO_COMPETITIVE_AUDIT_DECISION_LOCK.md`, `HOTELBEDS_CERTIFICATION_STATUS.md`), y el artefacto de tooling `.gstack/`. `.gitignore` verificado sin alterar.
 
 **No se hizo push.**
 
@@ -250,7 +264,7 @@ main...origin/main: ahead 3 -> ahead 4 tras el commit `feat: implement goals v1 
 
 ## DECISIONES QUE EL PROPIETARIO DEBE APROBAR
 
-1. **Semántica de `completed` en Goals** — explícitamente abierta (`docs/VIAO_GOALS_V1_DECISION_LOCK.md`, sección 11: `OPEN / DERIVED ONLY / NO AUTOMATIC PERSISTENCE`).
+1. **Semántica de `completed` en Goals** — explícitamente abierta (`docs/02_DECISION_LOCKS/goals/VIAO_GOALS_V1_DECISION_LOCK.md`, sección 11: `OPEN / DERIVED ONLY / NO AUTOMATIC PERSISTENCE`).
 2. **Mecanismo exacto de atribución Partner/QR** — sin formalizar en ningún documento.
 3. **Cuándo se autoriza el commit del hook `search_started`** — depende de cuándo se autorice el commit del bloque Destinations/Hotelbeds (están entrelazados en `app/search/actions.ts`).
 4. **`HISTORICAL_EARNED_POINTS`** (estadística separada de mérito histórico, propuesta como tercera vía en la Product Decision Master Audit) — `FUTURE / NOT V1 CORE`, no decidida.
@@ -277,7 +291,7 @@ main...origin/main: ahead 3 -> ahead 4 tras el commit `feat: implement goals v1 
 
 1. **Qué es VIAO**: plataforma de viajes + loyalty + fintech ligera, loop `Goal → actividad → Partner → comisión → Points → guardar/canjear → repetir`. Proyecto exclusivo de Andrés.
 2. **Dónde estamos**: Core, Rewards, Goals (WALLET_BALANCE, aprobado e implementado) y Missions implementados y probados. `main` va 4 commits por delante de `origin/main`, sin push.
-3. **Qué acabamos de terminar**: commit `25bde80` "feat: complete missions v1", seguido de una Product Decision Master Audit sobre Goals (`docs/VIAO_GOALS_V1_DECISION_LOCK.md`), aprobada por el propietario e implementada en el commit `feat: implement goals v1 wallet balance` — nuevo modelo de progreso (`lib/goals/calculate-progress.ts`), auto-cancelación (nueva migración, trigger `cancel_active_goal_before_insert()`), tests reescritos.
+3. **Qué acabamos de terminar**: commit `25bde80` "feat: complete missions v1", seguido de una Product Decision Master Audit sobre Goals (`docs/02_DECISION_LOCKS/goals/VIAO_GOALS_V1_DECISION_LOCK.md`), aprobada por el propietario e implementada en el commit `feat: implement goals v1 wallet balance` — nuevo modelo de progreso (`lib/goals/calculate-progress.ts`), auto-cancelación (nueva migración, trigger `cancel_active_goal_before_insert()`), tests reescritos.
 4. **Estado de cada bloque**: ver tabla "Estado del MVP" al principio de este documento.
 5. **Decisiones aprobadas**: ver sección "DECISIONES BLOQUEADAS / APROBADAS".
 6. **Decisiones pendientes**: ver sección "DECISIONES QUE EL PROPIETARIO DEBE APROBAR" — la más urgente ahora es la semántica de `completed` en Goals.
@@ -304,13 +318,13 @@ main...origin/main: ahead 3 -> ahead 4 tras el commit `feat: implement goals v1 
 
 Este Master indica dónde está la información detallada — no la duplica:
 
-- **Decisión concreta de Goals**: `docs/VIAO_GOALS_V1_DECISION_LOCK.md`.
-- **Fuente de verdad operativa previa (Missions/roadmap general)**: `docs/VIAO_V1_EXECUTION_LOCK.md`.
-- **Checkpoint técnico detallado (RPC/RLS/tests línea por línea)**: `docs/VIAO_V1_PRODUCT_LOOP_CHECKPOINT.md`.
+- **Decisión concreta de Goals**: `docs/02_DECISION_LOCKS/goals/VIAO_GOALS_V1_DECISION_LOCK.md`.
+- **Fuente de verdad operativa previa (Missions/roadmap general)**: `docs/99_ARCHIVE_V1/checkpoints/VIAO_V1_EXECUTION_LOCK.md`.
+- **Checkpoint técnico detallado (RPC/RLS/tests línea por línea)**: `docs/99_ARCHIVE_V1/checkpoints/VIAO_V1_PRODUCT_LOOP_CHECKPOINT.md`.
 - **Razonamiento estratégico/económico original de V1**: `docs/VIAO_V1_LOOP_DECISION.md`.
-- **Investigación de mercado/competencia**: `docs/VIAO_COMPETITIVE_AUDIT_DECISION_LOCK.md`.
-- **Arquitectura (histórico, desactualizado)**: `docs/VIAO_ARCHITECTURE.md`.
-- **Schema/base de datos (histórico, desactualizado)**: `docs/VIAO_DATABASE.md`.
-- **Planificación original**: `docs/VIAO_ROADMAP.md`.
-- **Estado operativo Hotelbeds**: `docs/HOTELBEDS_CERTIFICATION_STATUS.md`.
-- **MVP fundacional original**: `docs/VIAO_MVP_v0.1.md`.
+- **Investigación de mercado/competencia**: `docs/02_DECISION_LOCKS/product/VIAO_COMPETITIVE_AUDIT_DECISION_LOCK.md`.
+- **Arquitectura (histórico, desactualizado)**: `docs/99_ARCHIVE_V1/foundational/VIAO_ARCHITECTURE.md`.
+- **Schema/base de datos (histórico, desactualizado)**: `docs/99_ARCHIVE_V1/foundational/VIAO_DATABASE.md`.
+- **Planificación original**: `docs/99_ARCHIVE_V1/foundational/VIAO_ROADMAP.md`.
+- **Estado operativo Hotelbeds**: `docs/01_CURRENT/providers/HOTELBEDS_CERTIFICATION_STATUS.md`.
+- **MVP fundacional original**: `docs/99_ARCHIVE_V1/foundational/VIAO_MVP_v0.1.md`.

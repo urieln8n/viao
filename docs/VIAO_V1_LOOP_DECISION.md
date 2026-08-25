@@ -1,3 +1,24 @@
+---
+STATUS: SUPERSEDED PARTIALLY
+ERA: V1 temprano
+DOMAIN: Producto/Economía
+AUTHORITY: Parcial — ver nota de supersesión abajo; el resto del documento permanece vigente/referencial mientras no exista un documento posterior que lo sustituya
+SUPERSEDES: —
+SUPERSEDED BY: docs/02_DECISION_LOCKS/partners/VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md (parcial, solo los 3 puntos listados abajo); docs/99_ARCHIVE_V1/checkpoints/VIAO_V1_EXECUTION_LOCK.md (vision_used como Mission)
+LAST REVIEWED: 2026-08-25
+---
+
+> **NOTA DE SUPERSESIÓN PARCIAL** (añadida en la reorganización documental, no reescribe el contenido original que sigue a continuación). `VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md` sustituye, únicamente, estas 3 decisiones de este documento:
+> 1. **Cofinanciación Partner/VIAO 50/50** → `DEPRECATED`.
+> 2. **"Sin dashboard de Partner en V1"** → sustituido por un dashboard mínimo de solo lectura (`PMM6 LOCKED`).
+> 3. **QR/token rotativo diario escaneado por el usuario** → sustituido por código fijo por usuario + confirmación explícita del Partner con importe declarado (`PMM3 LOCKED`).
+>
+> Adicionalmente, la propuesta de `vision_used` como Mission candidata (sección de diseño de Missions semanales, más abajo) queda `SUPERSEDED / RESOLVED` por `VIAO_V1_EXECUTION_LOCK.md` — nunca se implementó, y ese documento declaró esa omisión definitiva, no pendiente.
+>
+> **El resto de este documento NO está marcado como superseded** — el loop estratégico general (Goal → actividad → Partner → comisión → Points → guardar/canjear → repetir) permanece vigente/referencial mientras no exista un documento posterior que lo sustituya explícitamente.
+
+---
+
 # VIAO V1 — Diseño del Loop y Decisión de Producto
 
 **Estado:** Documento de decisión — NO implementado. Requiere aprobación explícita antes de cualquier código.

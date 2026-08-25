@@ -1,3 +1,13 @@
+---
+STATUS: HISTORICAL
+ERA: V1 / FOUNDATIONAL
+DOMAIN: Plan de ejecución
+AUTHORITY: Ninguna
+SUPERSEDES: —
+SUPERSEDED BY: orden real de commits/checkpoints
+LAST REVIEWED: UNKNOWN (documento sin fecha propia)
+---
+
 # VIAO — Roadmap técnico del MVP
 
 **Estado:** Borrador para aprobación — no ejecutar ninguna fase hasta confirmación.

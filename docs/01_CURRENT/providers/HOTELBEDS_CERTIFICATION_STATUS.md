@@ -1,3 +1,13 @@
+---
+STATUS: CURRENT
+ERA: V1 checkpoint
+DOMAIN: Travel/Providers, estado operativo
+AUTHORITY: Estado operativo vigente (🟡 CONGELADO, caso #60019483)
+SUPERSEDES: —
+SUPERSEDED BY: —
+LAST REVIEWED: 2026-08-23 (fecha propia del documento)
+---
+
 # VIAO — Estado de certificación Hotelbeds
 
 **Estado:** 🟡 CONGELADO — esperando respuesta de Hotelbeds al caso **#60019483**.

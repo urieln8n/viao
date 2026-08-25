@@ -1,3 +1,13 @@
+---
+STATUS: HISTORICAL
+ERA: V1 / FOUNDATIONAL
+DOMAIN: Modelo de datos
+AUTHORITY: Ninguna
+SUPERSEDES: —
+SUPERSEDED BY: supabase/migrations/*.sql (schema real)
+LAST REVIEWED: UNKNOWN (documento sin fecha propia)
+---
+
 # VIAO — Modelo de datos del MVP
 
 **Estado:** Borrador para aprobación — no crear migraciones ni código hasta confirmación.

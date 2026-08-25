@@ -1,3 +1,14 @@
+---
+STATUS: HISTORICAL
+ERA: V1 temprano
+DOMAIN: Travel/Providers
+AUTHORITY: Ninguna — investigación, nunca fue una decisión (autoetiquetado en el propio documento)
+SUPERSEDES: —
+SUPERSEDED BY: docs/03_RESEARCH_VALIDATION/providers/ (investigación posterior de Travelgate/RateHawk)
+LAST REVIEWED: 2026-08-19 (fecha propia del documento)
+NOTA: este documento referencia un "FPR-02 (selección final)" que no existe en el repositorio — hueco de documentación, no inventado aquí.
+---
+
 # FPR-01 — Evaluación de proveedores hoteleros candidatos
 
 **Estado:** Documento de investigación — NO es una decisión. No sustituye FPR-02 (selección final).

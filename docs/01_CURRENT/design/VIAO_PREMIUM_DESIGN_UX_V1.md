@@ -1,3 +1,13 @@
+---
+STATUS: PROPOSAL
+ERA: V1 checkpoint (el "V1" del nombre no implica histórico — ver docs/00_GOVERNANCE.md, principio 12)
+DOMAIN: Design/UX
+AUTHORITY: Auditoría + propuesta de rediseño, no implementada, no superada por nada posterior
+SUPERSEDES: —
+SUPERSEDED BY: —
+LAST REVIEWED: 2026-08-24 (fecha propia)
+---
+
 # VIAO — Premium Design System & UX V1
 ## Fase 1 — Auditoría y Propuesta de Rediseño (documento, sin implementación)
 

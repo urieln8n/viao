@@ -1,3 +1,13 @@
+---
+STATUS: HISTORICAL
+ERA: V1 / FOUNDATIONAL
+DOMAIN: Arquitectura técnica
+AUTHORITY: Ninguna — el código real es la fuente técnica actual
+SUPERSEDES: —
+SUPERSEDED BY: codebase (lib/, supabase/)
+LAST REVIEWED: UNKNOWN (documento sin fecha propia)
+---
+
 # VIAO — Arquitectura técnica del MVP
 
 **Estado:** Borrador para aprobación — no programar hasta confirmación.

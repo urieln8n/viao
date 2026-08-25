@@ -1,3 +1,13 @@
+---
+STATUS: HISTORICAL / GOVERNANCE PRECEDENT
+ERA: V1 checkpoint
+DOMAIN: Gobernanza/Meta
+AUTHORITY: Contenido operativo NO vigente; su jerarquía de autoridad documental (código > decisiones recientes > docs V1 > docs fundacionales) SÍ es precedente vigente — incorporada en docs/00_GOVERNANCE.md
+SUPERSEDES: —
+SUPERSEDED BY: docs/02_DECISION_LOCKS/goals/VIAO_GOALS_V1_DECISION_LOCK.md (Goals); docs/VIAO_MVP_MASTER.md (estado operativo general, en revisión)
+LAST REVIEWED: 2026-08-24 (fecha propia)
+---
+
 # VIAO V1 — Execution Lock
 
 **Fecha:** 2026-08-24
@@ -111,7 +121,7 @@ Después de Partners/QR: antifraude ampliado, límites, caducidad de Points, det
 
 ### 5.7 Hotelbeds — regla absoluta, sin cambios
 
-Estado: 🟡 **CONGELADO** — caso `#60019483` (verificado contra `docs/HOTELBEDS_CERTIFICATION_STATUS.md`). Cero llamadas reales, sin reservar, sin cancelar, sin cambiar credenciales/certificados/endpoints, sin tocar Vercel, sin pruebas reales. La integración continúa en entorno de evaluación (`MockHotelProvider`, `TRAVEL_PROVIDER` sin definir en local). El siguiente movimiento depende exclusivamente de la respuesta oficial de Hotelbeds a ese caso.
+Estado: 🟡 **CONGELADO** — caso `#60019483` (verificado contra `docs/01_CURRENT/providers/HOTELBEDS_CERTIFICATION_STATUS.md`). Cero llamadas reales, sin reservar, sin cancelar, sin cambiar credenciales/certificados/endpoints, sin tocar Vercel, sin pruebas reales. La integración continúa en entorno de evaluación (`MockHotelProvider`, `TRAVEL_PROVIDER` sin definir en local). El siguiente movimiento depende exclusivamente de la respuesta oficial de Hotelbeds a ese caso.
 
 ### 5.8 Flights — diferido
 
@@ -179,7 +189,7 @@ Todo mecanismo nuevo que otorgue Points debe cumplir, sin excepción (mismo est�
 
 ## 9. Documentos fundacionales — estado
 
-`docs/VIAO_ARCHITECTURE.md` y `docs/VIAO_DATABASE.md` (17 de agosto de 2026) son **anteriores** a los bloques de Rewards, Goals y Missions (23-24 de agosto de 2026) y no reflejan el schema real vigente hoy. Se marcan como:
+`docs/99_ARCHIVE_V1/foundational/VIAO_ARCHITECTURE.md` y `docs/99_ARCHIVE_V1/foundational/VIAO_DATABASE.md` (17 de agosto de 2026) son **anteriores** a los bloques de Rewards, Goals y Missions (23-24 de agosto de 2026) y no reflejan el schema real vigente hoy. Se marcan como:
 
 **Históricos / parcialmente desactualizados; el schema real vigente es el de las migraciones actuales (`supabase/migrations/`).**
 
@@ -196,7 +206,7 @@ No se reescriben ahora — la actualización de estos dos documentos queda anota
 | QR | PENDIENTE | Sin código; diseño conceptual únicamente | Depende de Partners |
 | Antifraude | PENDIENTE | `lib/rate-limit/` existe pero no aplicado a Points todavía | Definir en detalle solo después de Partners/QR |
 | Caducidad | PENDIENTE | No implementado; solo `reward_redemptions.expires_at` (caducidad del código de canje, no del saldo) | Definir en detalle solo después de Partners/QR |
-| Hotelbeds | CONGELADO | `docs/HOTELBEDS_CERTIFICATION_STATUS.md`, caso `#60019483` | Ninguna hasta respuesta oficial de Hotelbeds |
+| Hotelbeds | CONGELADO | `docs/01_CURRENT/providers/HOTELBEDS_CERTIFICATION_STATUS.md`, caso `#60019483` | Ninguna hasta respuesta oficial de Hotelbeds |
 | Flights | DIFERIDO | Sin código | Ninguna |
 | Vision | COMPLETADO | `lib/vision/*`, tests verdes, funcional y visible | Ninguna — se mantiene sin acoplarse a Missions (sección 5.2) |
 | Referidos | COMPLETADO | `lib/referrals/*`, tests verdes | Ninguna en este ciclo |
