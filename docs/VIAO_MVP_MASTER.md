@@ -1,14 +1,14 @@
 ---
-STATUS: REVIEW REQUIRED
+STATUS: CURRENT
 ERA: V1 CHECKPOINT
 DOMAIN: GLOBAL ENGINEERING / MVP STATE
-AUTHORITY: REVIEW REQUIRED
+AUTHORITY: Technical/Engineering checkpoint
 SUPERSEDES: NONE DECLARED
 SUPERSEDED BY: NONE DECLARED
 LAST REVIEWED: 2026-08-25
 ---
 
-> Este documento permanece temporalmente en `docs/` raíz porque no existe evidencia suficiente para declarar que `VIAO_MASTER_PRODUCT_CONTEXT.md` lo sustituye. Su función es registrar estado técnico/ingenieril granular del MVP, mientras que `MASTER_PRODUCT_CONTEXT` cumple una función de síntesis estratégica. La relación entre ambos queda pendiente de decisión explícita.
+> Este documento es la fuente de verdad para el **estado técnico/ingenieril granular** del MVP — archivos, RPC, RLS, migraciones, tests, checkpoints de commit concretos. Su snapshot técnico está ligado al commit `25bde807` ("feat: complete missions v1"); su contenido puede estar desactualizado respecto a cambios de código/tests posteriores a esa fecha. Para propósito de producto, estrategia global y el estado actual de Partners, consultar `docs/01_CURRENT/product/VIAO_MASTER_PRODUCT_CONTEXT.md` — ambos documentos son complementarios, ninguno sustituye al otro. En cualquier discrepancia entre este documento y el código real, el código + tests + migraciones son la autoridad técnica final.
 
 ---
 

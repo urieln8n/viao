@@ -46,20 +46,28 @@ Campo no determinable → `UNKNOWN` / `REVIEW REQUIRED`. Nunca se rellena con un
 
 ## Documentos en `docs/` raíz — no movidos todavía
 
-Estos 3 documentos permanecen en `docs/` (raíz), sin mover. Cada uno lleva ya su propia cabecera de metadata y nota explicativa in situ:
+Estos 2 documentos permanecen en `docs/` (raíz), sin mover. Cada uno lleva ya su propia cabecera de metadata y nota explicativa in situ:
 
 1. **`docs/VIAO_PARTNERS_MASTER.md`** — `STATUS: HISTORICAL / SUPERSEDED PARTIALLY`. Confirmado por evidencia textual directa (`VIAO_PARTNERS_MASTER_V2.md` lo llama "versión 1, hipótesis inicial, superada parcialmente donde entran en conflicto"). La cofinanciación 50/50 (§11) queda `DEPRECATED` vía `VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md`; atribución y arquitectura evolucionaron en `VIAO_PARTNERS_MASTER_V2.md`/`VIAO_PARTNERS_TECHNICAL_SPEC.md`; el resto (mini-web, análisis OCR, comparativa de modelos de ingresos, guiones comerciales) no está sustituido y se conserva como referencia histórica. Archivarlo formalmente a `99_ARCHIVE_V1/` sigue pendiente de tu confirmación explícita.
 2. **`docs/VIAO_V1_LOOP_DECISION.md`** — `STATUS: SUPERSEDED PARTIALLY`. Solo 3 decisiones puntuales están sustituidas (cofinanciación 50/50, "sin dashboard", QR/token rotativo → todas por `VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md`) más `vision_used` como Mission (→ `VIAO_V1_EXECUTION_LOCK.md`). El resto del documento — el loop estratégico general — permanece vigente/referencial. No se archiva todavía.
 
 ## Documentos `REVIEW REQUIRED`
 
-Solo queda uno — ver también la sección "Documentos pendientes de decisión" abajo:
+**NINGUNO.** El último caso (`docs/VIAO_MVP_MASTER.md`) quedó resuelto el 2026-08-25 mediante auditoría de coherencia documental — ver "MVP_MASTER vs MASTER_PRODUCT_CONTEXT" abajo.
 
-1. **`docs/VIAO_MVP_MASTER.md`** — `STATUS: REVIEW REQUIRED`. Solapa en propósito con `docs/01_CURRENT/product/VIAO_MASTER_PRODUCT_CONTEXT.md`, pero ninguno de los dos documentos referencia al otro y no existe evidencia textual que determine cuál manda. No se trata como fuente de verdad mientras conserve este estado — ver principio de gobernanza correspondiente más abajo.
+## MVP_MASTER vs MASTER_PRODUCT_CONTEXT — autoridad resuelta
+
+No existe contradicción lógica entre ambos; son documentos complementarios, con dominios de autoridad distintos:
+
+- **Producto/estrategia global** → `docs/01_CURRENT/product/VIAO_MASTER_PRODUCT_CONTEXT.md` (`STATUS: CURRENT`). Propósito, Decision Register consolidado, Partners actual, riesgos, roadmap de negocio.
+- **Estado técnico/ingeniería granular** → `docs/VIAO_MVP_MASTER.md` (`STATUS: CURRENT`, `AUTHORITY: Technical/Engineering checkpoint`). Archivos, RPC, RLS, migraciones, tests, checkpoint ligado al commit `25bde807`. Su contenido técnico puede estar desactualizado respecto a cambios posteriores a esa fecha — no se trata como estado técnico actual sin verificar contra el código real primero.
+- **En conflicto técnico**: prevalece el código real + tests + migraciones (principio 1).
+- **En conflicto de producto/estrategia**: prevalece el Decision Lock o documento `CURRENT` de mayor autoridad según la jerarquía ya establecida (`LOCKED` > `CURRENT/V2` > `V1/HISTORICAL`).
+- Ambos documentos se referencian mutuamente in situ. Ninguno sustituye al otro.
 
 ## Documentos pendientes de decisión
 
-1. `VIAO_MVP_MASTER.md` — relación con `VIAO_MASTER_PRODUCT_CONTEXT.md` pendiente de decisión.
+Ninguno.
 
 ## Gap identificado — sin resolver en este bloque
 

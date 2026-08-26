@@ -6,7 +6,7 @@ AUTHORITY: Síntesis y mapa de navegación entre los documentos vigentes — dec
 SUPERSEDES: —
 SUPERSEDED BY: —
 LAST REVIEWED: 2026-08-25 (fecha propia)
-NOTA: solape sin resolver con docs/VIAO_MVP_MASTER.md (en revisión, ver REVIEW REQUIRED en el informe de reorganización) — ninguno de los dos documentos referencia al otro.
+NOTA: relación con docs/VIAO_MVP_MASTER.md resuelta (auditoría de coherencia documental, 2026-08-25) — documentos complementarios, sin contradicción lógica. Este documento es la fuente de verdad de producto/estrategia global; VIAO_MVP_MASTER.md es la fuente de verdad del estado técnico/ingenieril granular (checkpoint ligado a un commit concreto). Ninguno sustituye al otro.
 ---
 
 # VIAO — Contexto Maestro de Producto (fuente de verdad)
@@ -282,5 +282,6 @@ Sin cambios en código, schema, Supabase, migraciones, componentes, UX. Único a
 4. `docs/03_RESEARCH_VALIDATION/partners_commercial/VIAO_PARTNERS_B2B_VALUE_PROPOSITION.md` + `docs/03_RESEARCH_VALIDATION/partners_commercial/VIAO_PARTNERS_B2B_AI_STRATEGY.md` — investigación comercial, `PROPOSED`/`VALIDATION`.
 5. `docs/03_RESEARCH_VALIDATION/providers/VIAO_TRAVELGATE_AUDIT.md`, `VIAO_TRAVELGATE_SANDBOX_VALIDATION.md`, `VIAO_RATEHAWK_AUDIT.md`, `VIAO_HOTEL_PROVIDERS_SCREENING.md` — Travel, `FROZEN`.
 6. Este documento — síntesis y mapa de navegación entre todos los anteriores, no los sustituye.
+7. `docs/VIAO_MVP_MASTER.md` — para estado técnico/ingenieril granular (archivos, RPC, RLS, migraciones, tests, checkpoint de commit) fuera del alcance de este documento. Complementario, no sustituido por este documento ni lo sustituye.
 
 ---
