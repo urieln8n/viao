@@ -398,7 +398,7 @@ Ninguna migración toca `rewards_transactions`, `bookings`, `booking_intents`, `
 | 7 | Umbral del kill-switch mensual del pool de Partners, incl. comportamiento al agotarse (sección 12) | **`LOCKED` P4/P5 — 3000 Points/mes; Actividad se registra igualmente con `points_awarded=0`** | Resuelta |
 | 8 | Modelo de acceso del Partner a su panel (sección 11.4) | **`LOCKED` P7 — token opaco sin login, exclusivo Beta** | Resuelta |
 
-Fuente de las resoluciones 5-8: Decision Lock Económico Final, aprobación explícita del propietario — 25/08/2026. Ver Sección 25 (Decision Register).
+Fuente de las resoluciones 5-8: Decision Lock Económico Final, aprobación explícita del propietario — 25/08/2026. Ver Sección 24 (Decision Register).
 
 ---
 
@@ -452,7 +452,7 @@ Usuario ──QR/Reserva──▶ ┌──────────────�
 
 ---
 
-## 24. FREE/PREMIUM — Nota de extensibilidad futura (`LOCKED` la neutralidad arquitectónica — P8, Decision Lock Económico Final, 25/08/2026; el diseño de Premium en sí permanece `FUTURE`/`OPEN`, nada implementado ni diseñado en detalle)
+## 23. FREE/PREMIUM — Nota de extensibilidad futura (`LOCKED` la neutralidad arquitectónica — P8, Decision Lock Económico Final, 25/08/2026; el diseño de Premium en sí permanece `FUTURE`/`OPEN`, nada implementado ni diseñado en detalle)
 
 VIAO tendrá en el futuro dos tipos de usuario (FREE / PREMIUM mediante suscripción). Esta sección documenta, sin diseñar nada, que **Partners Beta permanece completamente neutral respecto a esa segmentación** — no porque se haya excluido deliberadamente algo ya existente, sino porque **el concepto de tier/suscripción no existe hoy en ningún punto del schema de VIAO** (verificado por auditoría directa: cero referencias a tier/premium/subscription/plan/membership en `supabase/migrations/`, y `profiles` — `20260817140000_create_profiles.sql` — no tiene ningún campo de este tipo).
 
@@ -470,7 +470,7 @@ VIAO tendrá en el futuro dos tipos de usuario (FREE / PREMIUM mediante suscripc
 
 ---
 
-## 25. Decision Register — Parámetros económicos y acceso Beta (P1-P8)
+## 24. Decision Register — Parámetros económicos y acceso Beta (P1-P8)
 
 Fuente única para todas las filas: **Aprobación explícita del propietario — 25/08/2026** (Decision Lock Económico Final). Resuelve las preguntas 5-8 de la Sección 20.
 
@@ -483,7 +483,7 @@ Fuente única para todas las filas: **Aprobación explícita del propietario —
 | P5 | Al agotarse el pool mensual: la Actividad se registra igualmente, no se interrumpe la captura, no se inserta `rewards_transaction`, `points_awarded=0`, sin backfill posterior ni emisión retroactiva | `LOCKED` | Sección 10, pasos 8-9; Sección 17 |
 | P6 | `partner_activities.points_awarded integer NOT NULL DEFAULT 0` — Points realmente otorgados; no representa Points pendientes ni prometidos; no implica deuda futura de VIAO | `LOCKED` | Sección 6 |
 | P7 | Acceso Partner Beta: enlace único, token opaco (`access_token`), sin Supabase Auth, sin contraseña, sin sistema de usuarios Partner — exclusivo Beta, no es arquitectura definitiva para V1/V2 | `LOCKED` | Sección 11.4 |
-| P8 | Partners Beta arquitectónicamente neutral respecto a FREE/PREMIUM — sin `tier_id`, sin `premium_multiplier`, sin lógica condicionada a Premium en Beta | `LOCKED` | Sección 24 |
+| P8 | Partners Beta arquitectónicamente neutral respecto a FREE/PREMIUM — sin `tier_id`, sin `premium_multiplier`, sin lógica condicionada a Premium en Beta | `LOCKED` | Sección 23 |
 
 **Permanecen `OPEN`** (no cerradas por este Decision Lock, ver Sección 20, preguntas 1-4): % de comisión V1, umbral de resultado sostenido, OCR V1 vs V1.1, pricing Premium/Pro, arquitectura definitiva de autenticación Partner para V1+, eventual multiplicador Premium, ubicación futura del concepto de tier de usuario.
 

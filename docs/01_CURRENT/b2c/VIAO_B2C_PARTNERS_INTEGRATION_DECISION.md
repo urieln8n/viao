@@ -33,7 +33,7 @@ LAST REVIEWED: 2026-08-25
 | 10. Partner dashboard | `NOT IMPLEMENTED` | Sin rutas (`app/partners/` vacío) |
 | 11. RLS Partners | `PENDING` | Diseño Patrón B (Technical Spec §11), no aplicable — la tabla no existe |
 | 12. Antifraude (P3/P4) | `PENDING` | Umbrales `LOCKED`, código del RPC no escrito |
-| 13. P1-P8 | `LOCKED` (decisión) / `PENDING` (implementación) | Decision Lock Económico, Technical Spec §25 |
+| 13. P1-P8 | `LOCKED` (decisión) / `PENDING` (implementación) | Decision Lock Económico, Technical Spec §24 |
 | 14. L1-L19 | `LOCKED` (decisión) / `PENDING` (implementación) | Master V2 §21 |
 
 ---
@@ -206,6 +206,6 @@ L1-L19 (Master V2) · P1-P8 (Decision Lock Económico) · GOALS-V1 (`WALLET_BALA
 
 ## Fuentes
 
-`docs/01_CURRENT/partners/VIAO_PARTNERS_MASTER_V2.md`, `docs/01_CURRENT/partners/VIAO_PARTNERS_TECHNICAL_SPEC.md` (§6, §8-9, §11, §14, §19, §25), `docs/01_CURRENT/b2c/VIAO_B2C_PRODUCT_DEFINITION.md`, `docs/01_CURRENT/product/VIAO_MASTER_PRODUCT_CONTEXT.md`, `docs/02_DECISION_LOCKS/goals/VIAO_GOALS_V1_DECISION_LOCK.md`. Código verificado directamente: `lib/rewards/get-wallet-balance.ts`, `lib/goals/get-goal.ts`, `lib/goals/calculate-progress.ts`, `lib/missions/rules.ts`, y ausencia confirmada de `supabase/migrations/*partner*`, `lib/partners/`, `app/partners/`.
+`docs/01_CURRENT/partners/VIAO_PARTNERS_MASTER_V2.md`, `docs/01_CURRENT/partners/VIAO_PARTNERS_TECHNICAL_SPEC.md` (§6, §8-9, §11, §14, §19, §24), `docs/01_CURRENT/b2c/VIAO_B2C_PRODUCT_DEFINITION.md`, `docs/01_CURRENT/product/VIAO_MASTER_PRODUCT_CONTEXT.md`, `docs/02_DECISION_LOCKS/goals/VIAO_GOALS_V1_DECISION_LOCK.md`. Código verificado directamente: `lib/rewards/get-wallet-balance.ts`, `lib/goals/get-goal.ts`, `lib/goals/calculate-progress.ts`, `lib/missions/rules.ts`, y ausencia confirmada de `supabase/migrations/*partner*`, `lib/partners/`, `app/partners/`.
 
 ---

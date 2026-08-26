@@ -263,7 +263,9 @@ No tocar Rewards sin auditoría (ya hecha aquí, sin cambios necesarios). No cre
 
 # PARTNERS MVP MASTER
 
-## Estado: **BLOCKED**
+## Estado: **BLOCKED** *(⚠️ veredicto histórico, ver nota)*
+
+> **NOTA DE SUPERSESIÓN (añadida posteriormente, no reescribe el veredicto original)**: las 4 decisiones que bloqueaban este documento — PMM3 (atribución), PMM4 (modelo económico), PMM6 (dashboard), PMM10 (refunds/disputas) — quedaron resueltas por `docs/02_DECISION_LOCKS/partners/VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md`. Este veredicto `BLOCKED` es histórico, no vigente — no debe tratarse como el estado actual de Partners. Ver la cabecera de este documento (`STATUS: SUPERSEDED PARTIALLY`) para la relación de autoridad completa.
 
 No por falta de diseño — el diseño (Master V2, Technical Spec) es sólido y detallado. **Bloqueado porque existen 4 contradicciones reales entre el diseño más antiguo (V1_LOOP_DECISION, con su propio Decision Lock) y el diseño más reciente (Master V2/Technical Spec), nunca reconciliadas explícitamente**, más un hallazgo nuevo (refunds/disputas, PMM10) sin resolver en ningún documento.
 

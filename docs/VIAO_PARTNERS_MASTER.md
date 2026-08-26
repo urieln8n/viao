@@ -193,6 +193,8 @@ Estudio de producto, sin diseño técnico.
 - Points ligados a campaña/promoción específica del Partner, distintos del Point base.
 
 **Quién financia los Points**: ya existe una decisión conceptual aprobada (no implementada) en `docs/VIAO_V1_LOOP_DECISION.md` — co-financiación 50% Partner / 50% VIAO en el canje, y `POINTS_PERCENTAGE_OF_COMMISSION = 0.25` (25%, ya en código en `lib/rewards/rules.ts`, sin ningún flujo real que lo ejercite todavía). Este documento **no** cambia esas cifras — las hereda como punto de partida para Partners, sujetas a validación con datos reales.
+>
+> **⚠️ NOTA DE SUPERSESIÓN (añadida posteriormente, no reescribe el párrafo anterior)**: la cofinanciación 50% Partner / 50% VIAO aquí citada quedó formalmente `DEPRECATED` por `docs/02_DECISION_LOCKS/partners/VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md` — nunca se implementó en el schema real (`rewards_catalog.funding_type` es un binario `viao`/`partner`, sin ninguna columna de reparto porcentual). **No debe leerse como modelo económico vigente.** `POINTS_PERCENTAGE_OF_COMMISSION = 0.25` permanece `FUTURE`/dormant, sin cambios respecto a lo ya citado.
 
 **Protecciones económicas necesarias, reutilizando patrones ya construidos**: techo mensual específico para el pool de Partners (mismo patrón que `VIAO_REWARD_POOL_MONTHLY_LIMIT_EUR` y el pool de 3000 Points/mes de Missions, pero un pool propio — nunca mezclado con esos dos), límite de Points por transacción, límite de transacciones por usuario/Partner/día.
 

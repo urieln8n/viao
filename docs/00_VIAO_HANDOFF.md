@@ -99,7 +99,7 @@ Es un mapa: dice **dónde está cada cosa y qué estado tiene**, no decide nada 
 | MI4 | `goal_created` con `period_key='lifetime'` (anti-farming) | Código + tests — **sin Decision Lock propio todavía** |
 | GOALS-V1 | `GOAL_PROGRESS_MODEL = WALLET_BALANCE` | `VIAO_GOALS_V1_DECISION_LOCK.md`, `APPROVED/IMPLEMENTED` |
 | L1-L19 | Partners Beta (3-5 piloto, categorías, onboarding manual, QR+Reserva, gratis, ledger reutilizado, etc.) | `VIAO_PARTNERS_MASTER_V2.md` §21 |
-| P1-P8 | Economía de Partner Activity (tasa por €, límites diario/mensual, semántica de agotamiento) | `VIAO_PARTNERS_TECHNICAL_SPEC.md` §25 |
+| P1-P8 | Economía de Partner Activity (tasa por €, límites diario/mensual, semántica de agotamiento) | `VIAO_PARTNERS_TECHNICAL_SPEC.md` §24 |
 | PMM3/PMM4/PMM6/PMM10 | Atribución, economía, dashboard mínimo, refunds de Partners | `VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md` |
 
 **Nota**: MI1-MI4 son decisiones reales, verificadas directamente en código y tests, pero **no tienen todavía un Decision Lock formal propio** — su autoridad hoy es el código mismo más el precedente histórico ya archivado. Esto es exactamente el gap que motiva el siguiente bloque lógico (sección 11).

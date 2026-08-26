@@ -130,7 +130,7 @@ Verificadas directamente contra el código en la auditoría B2C de esta sesión:
 - `GOAL_PROGRESS_MODEL = WALLET_BALANCE` — `docs/02_DECISION_LOCKS/goals/VIAO_GOALS_V1_DECISION_LOCK.md`, **APPROVED/IMPLEMENTED**.
 - Rewards ledger (`rewards_transactions`), Points ≠ dinero — decisión histórica del proyecto.
 - Partners como motor B2B, Partner Activities, Attribution — `docs/01_CURRENT/partners/VIAO_PARTNERS_MASTER_V2.md` (L1-L19), `docs/01_CURRENT/partners/VIAO_PARTNERS_TECHNICAL_SPEC.md`.
-- P1-P8 (Decision Lock Económico) — Technical Spec sección 25.
+- P1-P8 (Decision Lock Económico) — Technical Spec sección 24.
 - No Partner Missions — investigación comercial de Partners, esta sesión.
 - Beta Partners 3-5, onboarding manual/curado, Beta gratis, categorías Restaurantes+Experiencias, atribución QR+Reserva — Master V2 L1-L6.
 

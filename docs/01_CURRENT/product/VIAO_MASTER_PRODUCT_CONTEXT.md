@@ -213,7 +213,7 @@ Ambos lados comparten la misma fila de dato en `partner_activities` — no son d
 | ID | Decisión | Estado | Fuente | Impacto | ¿Reabrible? | Próximo paso |
 |---|---|---|---|---|---|---|
 | L1-L19 | Ver Master V2 sección 21 | `LOCKED` | Master V2 | Base de todo Partners | Solo con contradicción real | — |
-| P1-P8 | Ver Decision Lock Económico | `LOCKED` | Technical Spec sección 25 | Parámetros económicos de Partners | Solo con contradicción real | — |
+| P1-P8 | Ver Decision Lock Económico | `LOCKED` | Technical Spec sección 24 | Parámetros económicos de Partners | Solo con contradicción real | — |
 | GOALS-V1 | `GOAL_PROGRESS_MODEL = WALLET_BALANCE` | `LOCKED` / `IMPLEMENTED` | `VIAO_GOALS_V1_DECISION_LOCK.md`, verificado en código | Progreso del Goal en toda la app | No — ya implementado y verificado | — |
 | PVB1-PVB13 | Ver `VIAO_PARTNERS_B2B_VALUE_PROPOSITION.md`/`AI_STRATEGY.md` | `PROPOSED`/`VALIDATION` según ID | Investigación comercial | Pricing, producto B2B | Sí, son propuestas | Validar en Beta |
 | PVB14 | Desarrollo = €0 cash cost | `DECISION` | Instrucción explícita del propietario | Unit economics | No | — |
