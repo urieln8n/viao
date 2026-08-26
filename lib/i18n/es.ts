@@ -438,4 +438,48 @@ export const es = {
   // chips + botón "Buscar" hacia /search, mismo dato/misma ruta).
   "home.discoveryTitle": "Cuando estés listo para viajar",
   "home.tripsClosingTitle": "Tu próximo viaje empieza aquí.",
+  // Bloque Partners PB5 (VIAO_PARTNERS_IMPLEMENTATION_STATUS.md) — UI
+  // operativa mínima de /partners/ops/[accessToken]. El caso
+  // "resultRegisteredNoPoints" (pool mensual agotado, P5, LOCKED) NO es un
+  // mensaje de error: la Actividad se registró correctamente.
+  "partnerOps.selectFlowDescription": "Selecciona cómo quieres registrar la actividad.",
+  "partnerOps.qrCta": "Registrar visita (QR)",
+  "partnerOps.reservationCta": "Registrar reserva",
+  "partnerOps.qrFormTitle": "Registrar visita",
+  "partnerOps.reservationFormTitle": "Registrar reserva",
+  "partnerOps.amountLabel": "Importe (€)",
+  "partnerOps.amountPlaceholder": "Ej: 25.50",
+  "partnerOps.reservationReferenceLabel": "Referencia de la reserva (opcional)",
+  "partnerOps.reservationReferencePlaceholder": "Ej: Mesa 4, 21:00",
+  "partnerOps.submitCta": "Confirmar",
+  "partnerOps.submitting": "Registrando…",
+  "partnerOps.backCta": "Volver",
+  "partnerOps.backToStart": "Registrar otra actividad",
+  "partnerOps.resultTitle": "Actividad registrada",
+  "partnerOps.resultPointsAwarded": "Points otorgados",
+  "partnerOps.resultRegisteredNoPoints": "Actividad registrada correctamente.",
+  "partnerOps.resultNoPointsExplanation":
+    "El presupuesto mensual de Points ya se agotó este mes. La actividad ha quedado registrada igualmente.",
+  "partnerOps.errorTitle": "No se pudo completar la operación",
+  "partnerOps.errorInvalidAmount": "Introduce un importe válido, mayor que cero.",
+  "partnerOps.errorPartnerDenied": "Este enlace ya no está disponible.",
+  "partnerOps.errorDailyLimit": "Ya se alcanzó el límite de actividades de hoy para este usuario.",
+  "partnerOps.errorUnauthenticated": "Es necesario iniciar sesión en VIAO para continuar.",
+  "partnerOps.errorGeneric": "No se pudo registrar la actividad. Inténtalo de nuevo.",
+  // Bloque Partners PB6 (VIAO_PARTNERS_IMPLEMENTATION_STATUS.md) — panel
+  // de solo lectura /partners/dashboard/[accessToken] (PMM6, LOCKED).
+  "partnerDashboard.subtitle": "Resumen de tu actividad en VIAO.",
+  "partnerDashboard.statusActive": "Activo",
+  "partnerDashboard.statusInactive": "Sin actividad reciente",
+  "partnerDashboard.backToOpsCta": "Registrar actividad",
+  "partnerDashboard.newCustomersLabel": "Clientes nuevos",
+  "partnerDashboard.returningCustomersLabel": "Clientes recurrentes",
+  "partnerDashboard.declaredSalesLabel": "Ventas declaradas",
+  "partnerDashboard.confirmedSalesLabel": "Ventas confirmadas por reserva",
+  "partnerDashboard.recentActivityTitle": "Actividad reciente",
+  "partnerDashboard.emptyActivityTitle": "Todavía no hay actividad",
+  "partnerDashboard.emptyActivityMessage": "Aquí aparecerán las visitas y reservas en cuanto se registren.",
+  "partnerDashboard.qrActivityLabel": "Visita (QR)",
+  "partnerDashboard.reservationActivityLabel": "Reserva",
+  "partnerDashboard.noPointsLabel": "Sin Points este mes",
 } as const;
