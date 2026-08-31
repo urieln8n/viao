@@ -169,6 +169,45 @@ Tests/tsc/lint/build:  PASS (817/813/0/4) — verificado repetidamente, última 
 
 ---
 
+## 11.1 V2 Release Checkpoint — evidencia real (2026-08-31)
+
+```
+Commits código+docs:   9233fd7 — "feat: implement commerce identity ownership" (UX-16.3, ya existía
+                       sin pushear desde un bloque anterior de esta misma sesión)
+                       17d6986 — "feat: complete partner v2 release checkpoint" (Commerce Chrome
+                       UX-16.5/16.6 + Partner Auth Entry UX-17.1 + Partner Discovery CTA UX-17.2 +
+                       landing UX-14 + fix de imagen de Partner + sincronización documental —
+                       19 archivos, todos previamente verificados en bloques anteriores de esta
+                       sesión, consolidados en un único commit, mismo patrón que c809584)
+origin/main:           17d6986 (push bde1663..17d6986, verificado en este bloque)
+Working tree:          limpio tras el commit (verificado en este bloque)
+Vercel:                dpl_5x6z3porRuYc6fgvGpy7PebrmPB1, ● Ready, target production,
+                       alias https://viao.vercel.app (deploy automático disparado por el push,
+                       verificado con `vercel inspect` en este bloque)
+Tests/tsc/lint/build:  PASS (835 tests / 831 pass / 0 fail / 4 skipped), tsc/lint/build limpios —
+                       verificado en frío justo antes del commit, en este mismo bloque
+E2E local:             Usuario (Login/Register/Goals/Missions/Rewards/Partners Discovery) 6/6 PASS;
+                       Partner Auth Entry/Discovery 7/7+10/10 PASS (bloques UX-17.1/17.2, reafirmado);
+                       Partner Application: envío 1/1 PASS (verificado en BD, status:pending,
+                       is_test:false, fila de prueba eliminada tras verificar); revisión/aprobación/
+                       rechazo vía UI de la app NO EJECUTABLE (no existe interfaz — decisión explícita,
+                       ver `VIAO_PARTNERS_CONTINUITY_MASTER.md` §18.4), verificable solo vía Supabase
+                       Studio (ya documentado en el Runbook, §17 de ese documento)
+Smoke test producción: Home, Login, Register, Partners (0 Partners reales, esperado), Partner Join,
+                       Profile (redirige a /login sin sesión, middleware correcto), Partner Dashboard
+                       con token inexistente (404 correcto), Login con intent=partner (CTA oculto
+                       correctamente en producción) — 8/8 rutas, 0 errores de consola en todas.
+                       Ninguna prueba destructiva ni dato real creado en producción.
+Observación abierta:   Home en producción, visita anónima verificada (cookies vacías, sin sesión
+                       alguna), muestra la experiencia de usuario logueado (Goal en 0 Points) en vez
+                       de HomeLanding (UX-14) — el condicional `balance === undefined` no parece
+                       alcanzarse en ese caso. No es parte del alcance de UX-17.1/17.2/este release,
+                       no se ha investigado ni corregido en este bloque — queda señalado para su
+                       propia auditoría.
+```
+
+---
+
 ## 12. FROZEN
 
 - Travel/HotelProvider en su totalidad (`Trips`, `TravelProvider`/`HotelProvider`, `HotelbedsProvider`, `MockHotelProvider`, `Search`, `Bookings`) — código presente, sin punto de entrada en navegación, sin trabajo activo.
@@ -188,9 +227,9 @@ Favoritos, notificaciones, promociones/multiplicadores, QR, campañas, CRM, mapa
 
 ## 14. Current work / Next logical vs. Authorized
 
-- **NEXT LOGICAL**: UX-13 — Self-Service C2 (imágenes/Storage) + campo "oferta" (texto libre). Requiere auditar primero si las políticas de Storage existentes (pensadas para `auth.uid()`) son reutilizables para `access_token` — no asumirlo.
-- **AUTHORIZED**: ninguno.
-- **NOT AUTHORIZED**: UX-13 y todo lo listado en §13.
+- **NEXT LOGICAL**: UX-13 — Self-Service C2 (imágenes/Storage) + campo "oferta" (texto libre). Requiere auditar primero si las políticas de Storage existentes (pensadas para `auth.uid()`) son reutilizables para `access_token` — no asumirlo. Alternativa igualmente lógica: investigar la observación abierta de Home en producción (§11.1).
+- **AUTHORIZED**: el V2 Release Checkpoint (§11.1) ya se ejecutó y cerró en este bloque — commit, push y deploy completados con autorización explícita. Nada más está autorizado a partir de aquí.
+- **NOT AUTHORIZED**: UX-13, UX-18, V3 (Partner Engagement, ver `VIAO_PARTNERS_CONTINUITY_MASTER.md` §18.5) y todo lo listado en §13.
 
 Esto es una observación, no una autorización. Ningún bloque se ejecuta por estar identificado aquí como "siguiente lógico" — requiere instrucción explícita en su propio turno.
 
@@ -310,7 +349,10 @@ Ninguna contradicción se corrige automáticamente en ningún bloque, nunca.
 | 2026-08-31 | Partner Registration → Approval → Access → Response Audit | Cerrado — confirmó que el tramo intermedio es 100% manual, sin panel, sin notificación, sin `rejected` | Sin commitear (solo lectura + greps) | — | Partner Operational Flow / Next Block Audit |
 | 2026-08-31 | Partner Operational Flow / Next Block Audit (UX/producto/escalabilidad) | Cerrado — recomendó runbook manual (no código) antes que UX-13 o Partner Ops | Sin commitear (solo lectura) | — | Partner Onboarding Operational Closure |
 | 2026-08-31 | Partner Onboarding Operational Closure — Runbook Operativo Beta + este HANDOFF (este bloque) | Cerrado — puramente documental. Runbook creado en `VIAO_PARTNERS_CONTINUITY_MASTER.md` §17. NO se implementó Partner Ops, UX-13, estado `rejected`, regeneración de token, ni ningún cambio de schema/Decision Locks | Sin commitear (no autorizado en este bloque) | — | Ninguno autorizado |
+| 2026-08-31 | Commerce Identity (UX-16.3) — `owner_id`/`link_partner_owner()`, y Commerce Chrome (UX-16.5/16.6) — separación visual Usuario/Commerce | Cerrado, tests/build/E2E PASS en su momento | `9233fd7` (sin pushear hasta el V2 Release Checkpoint) | — | Partner Auth Entry |
+| 2026-08-31 | Partner Entry & Auth (UX-17): auditoría → Partner Auth Entry (UX-17.1) → Partner Discovery CTA (UX-17.2) | Cerrado — 7/7 y 10/10 E2E PASS respectivamente, `accessToken` verificado en URL únicamente, Commerce Identity/RLS/RPC sin tocar | Sin commitear hasta el V2 Release Checkpoint | — | V2 Release Checkpoint |
+| 2026-08-31 | **V2 Release Checkpoint** — auditoría de intake de solicitudes Partner (decisión explícita: sin panel admin nuevo), sincronización documental (`VIAO_PARTNERS_CONTINUITY_MASTER.md` §3/§16/§18, este HANDOFF §2/§6/§7/§11.1/§13/§14), tests/build en frío, E2E (Usuario 6/6, Partner Application 1/1 + resto no ejecutable por diseño), commit, push, deploy automático, smoke test de producción (8/8 rutas, 0 errores) | **Cerrado, PASS** — ver §11.1 para el detalle completo | `9233fd7` + `17d6986` | Vercel `dpl_5x6z3porRuYc6fgvGpy7PebrmPB1`, ● Ready, `https://viao.vercel.app` | Ninguno autorizado — no iniciar UX-18/V3 |
 
 ---
 
-**Fin del documento. En este bloque se modificaron únicamente `docs/00_VIAO_HANDOFF.md` y `docs/01_CURRENT/partners/VIAO_PARTNERS_CONTINUITY_MASTER.md` (Runbook Operativo, §17 de ese documento) — ningún código, migración, test, schema ni Decision Lock fue tocado. No se ha hecho commit (no autorizado en este bloque).**
+**Fin del documento (revisión V2 Release Checkpoint, 2026-08-31). Este bloque auditó, implementó cuando correspondía, testeó, verificó E2E, sincronizó documentación, commiteó (`9233fd7`+`17d6986`), pusheó y desplegó a producción (`https://viao.vercel.app`, `dpl_5x6z3porRuYc6fgvGpy7PebrmPB1`) — ver §11.1 para el detalle completo. Decisión explícita registrada: no se construyó panel administrativo para solicitudes Partner en este release. No se inició UX-13, UX-18 ni V3.**
