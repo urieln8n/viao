@@ -77,6 +77,14 @@ export default function ProfilePage() {
   const [rewardsBalance, setRewardsBalance] = useState<number | undefined>(undefined);
   const [logoutLoading, setLogoutLoading] = useState(false);
 
+  // UX-16.3 (Commerce Identity) — "undefined" = sin comprobar todavía,
+  // mismo criterio que rewardsBalance. La comprobación en sí (más abajo)
+  // usa el cliente de sesión directamente: RLS (`owner_id = auth.uid()`)
+  // ya restringe el resultado a lo que esta persona posee, sin necesitar
+  // ningún endpoint nuevo — si devuelve >=1 fila, tiene al menos un
+  // Commerce vinculado.
+  const [hasOwnedCommerce, setHasOwnedCommerce] = useState<boolean | undefined>(undefined);
+
   useEffect(() => {
     const supabase = createClient();
 
@@ -146,6 +154,35 @@ export default function ProfilePage() {
         setRewardsBalance(balance);
       }
     });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionStatus]);
+
+  // UX-16.3 (Commerce Identity) — consulta directa vía el cliente de
+  // sesión del propio navegador (mismo patrón que el efecto de `profiles`
+  // de arriba): `id` SÍ está en el GRANT de SELECT de `partners`
+  // (20260831140000_add_partners_owner_id_identity.sql), y RLS
+  // (`owner_id = auth.uid()`) ya limita el resultado a lo propio — no
+  // hace falta filtrar por `owner_id` en la query ni pasar por ninguna
+  // Server Action nueva.
+  useEffect(() => {
+    if (sessionStatus !== "signed-in") {
+      return;
+    }
+
+    let cancelled = false;
+    const supabase = createClient();
+    supabase
+      .from("partners")
+      .select("id")
+      .limit(1)
+      .then(({ data }: { data: { id: string }[] | null }) => {
+        if (!cancelled) {
+          setHasOwnedCommerce(Boolean(data && data.length > 0));
+        }
+      });
 
     return () => {
       cancelled = true;
@@ -448,6 +485,22 @@ export default function ProfilePage() {
                 className={buttonVariants({ variant: "outline", size: "sm" })}
               >
                 {t("home.visionTeaserCta", activeLocale)}
+              </Link>
+            </div>
+          )}
+
+          {/* UX-16.3 (Commerce Identity) — solo visible si la sesión tiene
+              al menos un Commerce vinculado. Lleva a /partners/dashboard
+              (Camino B, resuelve por sesión) — nunca se renderiza el
+              Dashboard de Commerce aquí dentro, solo un enlace de salida. */}
+          {sessionStatus === "signed-in" && profileStatus === "ready" && hasOwnedCommerce && (
+            <div className="flex flex-col gap-2 border-t border-border pt-4">
+              <span className="text-sm font-medium">{t("profile.manageCommerceCta", activeLocale)}</span>
+              <Link
+                href="/partners/dashboard"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                {t("profile.manageCommerceCta", activeLocale)}
               </Link>
             </div>
           )}

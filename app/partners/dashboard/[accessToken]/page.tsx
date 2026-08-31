@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { PageContainer } from "@/components/layout/page-container";
 
-import { resolvePartnerAccess } from "../../../../lib/partners/resolve-partner-access";
+import { resolvePartnerAccess, isPartnerOwnerLinked } from "../../../../lib/partners/resolve-partner-access";
 import { getPartnerDashboard } from "../../../../lib/partners/get-partner-dashboard";
 import { getPartnerForEditing } from "../../../../lib/partners/get-partner-for-editing";
 import { PartnerDashboardView } from "./partner-dashboard-view";
@@ -39,6 +39,12 @@ export default async function PartnerDashboardPage({ params }: PartnerDashboardP
     notFound();
   }
 
+  // UX-16.3 (Commerce Identity) — el Dashboard sigue siendo alcanzable
+  // por access_token exactamente igual que antes (Camino A, sin cambios
+  // de autorización); esto solo decide qué widget mostrar (vincular vs.
+  // ya vinculado), nunca condiciona el acceso en sí.
+  const ownerLinked = await isPartnerOwnerLinked(access.partner.id);
+
   return (
     <main className="flex flex-1 flex-col">
       <PageContainer variant="default" className="flex flex-1 flex-col gap-4 p-6">
@@ -47,6 +53,7 @@ export default async function PartnerDashboardPage({ params }: PartnerDashboardP
           accessToken={accessToken}
           dashboard={dashboard}
           editableProfile={editableProfile}
+          ownerLinked={ownerLinked}
         />
       </PageContainer>
     </main>

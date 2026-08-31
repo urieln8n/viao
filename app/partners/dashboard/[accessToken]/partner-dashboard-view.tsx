@@ -11,6 +11,7 @@ import type { PartnerAccessContext } from "../../../../lib/partners/resolve-part
 import type { PartnerDashboardData } from "../../../../lib/partners/get-partner-dashboard";
 import type { PartnerEditableProfile } from "../../../../lib/partners/get-partner-for-editing";
 import { MyBusinessForm } from "./my-business-form";
+import { LinkAccountWidget } from "./link-account-widget";
 
 // Bloque Partners PB6 (VIAO_PARTNERS_IMPLEMENTATION_STATUS.md) — Server
 // Component puro (sin "use client"): el Dashboard es estrictamente de
@@ -37,9 +38,16 @@ interface PartnerDashboardViewProps {
   accessToken: string;
   dashboard: PartnerDashboardData;
   editableProfile: PartnerEditableProfile;
+  ownerLinked: boolean;
 }
 
-export function PartnerDashboardView({ partner, accessToken, dashboard, editableProfile }: PartnerDashboardViewProps) {
+export function PartnerDashboardView({
+  partner,
+  accessToken,
+  dashboard,
+  editableProfile,
+  ownerLinked,
+}: PartnerDashboardViewProps) {
   return (
     <div className="flex flex-col gap-4">
       <Card>
@@ -56,6 +64,18 @@ export function PartnerDashboardView({ partner, accessToken, dashboard, editable
           </Link>
         </CardContent>
       </Card>
+
+      {/* UX-16.3 (Commerce Identity) — mismo hueco estructural que el
+          resto de secciones del Dashboard: "vincula" mientras `owner_id`
+          es NULL, "ya vinculado" en cuanto exista. El access_token de la
+          URL sigue funcionando igual en ambos casos. */}
+      {ownerLinked ? (
+        <Badge variant="success" className="w-fit">
+          {t("partnerDashboard.accountLinkedLabel")}
+        </Badge>
+      ) : (
+        <LinkAccountWidget accessToken={accessToken} />
+      )}
 
       {/* UX-3 (World-Class Core Screen Design) — hallazgo de la
           auditoría: 4 StatCards en un único grid 2x2 mezclaban dos

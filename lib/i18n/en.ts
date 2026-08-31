@@ -15,6 +15,8 @@ export const en = {
   "i18nDemo.fallbackDescription":
     'When resolving an unsupported locale (e.g. "de"), Spanish is used as a safe fallback without throwing errors.',
   "register.title": "Create account",
+  // UX-14.1 (P2, §13) — see es.ts for the rationale.
+  "register.continuitySubtitle": "Your activity starts counting the moment you create your account.",
   "register.emailLabel": "Email",
   "register.passwordLabel": "Password",
   "register.submitButton": "Create account",
@@ -107,6 +109,7 @@ export const en = {
   "profile.tripsTitle": "🧳 My trips",
   "profile.viewTripsCta": "View my trips",
   "profile.accountTitle": "Account",
+  "profile.manageCommerceCta": "Manage my business",
   "search.title": "Search accommodation",
   "search.destinationLabel": "Destination",
   "search.checkInLabel": "Check-in date",
@@ -405,6 +408,39 @@ export const en = {
   "home.partnersTeaserTitle": "Partners",
   "home.partnersTeaserSubtitle": "Discover where to earn Points",
   "home.partnersTeaserCta": "View Partners",
+  // UX-14 (Landing educativa + First Experience) — see es.ts for the full
+  // rationale. Cycle labels (Partner/Mission/Points/Goal/Reward) stay in
+  // English in both locales, same convention already used across the
+  // product (Wallet/Rewards/Missions/Goals).
+  "home.landingSecondaryCta": "See how it works",
+  "home.landingPointsTitle": "What are Points?",
+  // UX-14.1 (P0) — see es.ts for the full rationale: this key deliberately
+  // excludes referrals, unlike rewards.pointsExplainer.
+  "home.landingPointsBody":
+    "You earn Points by visiting Partner businesses or completing Missions inside VIAO.",
+  "home.landingCycleTitle": "How VIAO works",
+  "home.landingCyclePartnerLabel": "Partner",
+  "home.landingCyclePartnerDesc": "A real business that's part of VIAO.",
+  "home.landingCycleMissionLabel": "Mission",
+  "home.landingCycleMissionDesc": "A simple action inside VIAO that can also earn you Points.",
+  "home.landingCyclePointsLabel": "Points",
+  "home.landingCyclePointsDesc": "Your progress within VIAO.",
+  "home.landingCycleGoalLabel": "Goal",
+  "home.landingCycleGoalDesc": "The target you choose to work toward.",
+  "home.landingCycleRewardLabel": "Reward",
+  "home.landingCycleRewardDesc": "Something you get within VIAO using your Points.",
+  "home.landingPartnersTitle": "Real businesses, already on VIAO",
+  "home.landingPartnersSubtitle": "This is what a Partner looks like.",
+  "home.landingExperienceTitle": "Choose an activity",
+  "home.landingExperienceSubtitle": "This is how you could earn Points on VIAO.",
+  "home.landingExperienceCafeLabel": "Coffee",
+  "home.landingExperienceMealLabel": "Meal",
+  "home.landingExperienceActivityLabel": "Experience",
+  "home.landingExperienceResultPrefix": "Example",
+  "home.landingExperienceResultCaption": "This is what progress toward a goal could look like.",
+  "home.landingExperienceClosing": "That's how simple progress in VIAO can be.",
+  "home.landingFinalCtaText":
+    "This was just an example. Create your account so it starts counting for real.",
   // FASE J-B2.5 (Travel Legacy Purge) — removes the "home.hero*Eyebrow"/
   // "home.recap*Label"/"home.intro*"/"home.rewardsIntro*"/
   // "home.rewardsExample"/"home.rewardsDisclaimer"/"home.closingTagline"/
@@ -466,6 +502,20 @@ export const en = {
   "partnerDashboard.myBusinessSaving": "Saving…",
   "partnerDashboard.myBusinessSuccessMessage": "Changes saved successfully.",
   "partnerDashboard.myBusinessErrorGeneric": "Could not save the changes. Please try again.",
+  "partnerDashboard.linkAccountTitle": "Link your VIAO account",
+  "partnerDashboard.linkAccountDescription":
+    "Sign in with this business's contact email so you can enter without this link in the future.",
+  "partnerDashboard.linkAccountCta": "Link account",
+  "partnerDashboard.linkAccountLoading": "Linking…",
+  "partnerDashboard.linkAccountError":
+    "Could not link. Sign in with this business's contact email, already verified, and try again.",
+  "partnerDashboard.linkAccountSignInPrompt": "Sign in or create a VIAO account to continue.",
+  "partnerDashboard.linkAccountSignInCta": "Sign in",
+  "partnerDashboard.accountLinkedLabel": "VIAO account linked",
+  "partnerDashboard.noOwnedPartnersTitle": "You don't have a linked business yet",
+  "partnerDashboard.noOwnedPartnersMessage":
+    "If you already have a business on VIAO, enter from the link you received when it was set up and link your account from there.",
+  "partnerDashboard.chooseCommerceTitle": "Choose a business",
   "partners.pageTitle": "Partners",
   "partners.pageSubtitle": "Discover businesses where you can earn Points.",
   "partners.emptyTitle": "No active Partners yet",

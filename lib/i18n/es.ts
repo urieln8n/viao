@@ -13,6 +13,11 @@ export const es = {
   "i18nDemo.fallbackDescription":
     'Al resolver un locale no soportado (por ejemplo, "de"), se usa español como idioma de respaldo sin lanzar errores.',
   "register.title": "Crear cuenta",
+  // UX-14.1 (P2, §13) — mejora mínima de continuidad narrativa desde la
+  // landing: una sola línea, genérica a propósito (no presupone que el
+  // usuario vio la First Experience, ya que /register también se llega
+  // desde /login). Ningún cambio de lógica del formulario.
+  "register.continuitySubtitle": "Tu actividad empieza a contar en cuanto creas tu cuenta.",
   "register.emailLabel": "Email",
   "register.passwordLabel": "Contraseña",
   "register.submitButton": "Crear cuenta",
@@ -114,6 +119,12 @@ export const es = {
   "profile.tripsTitle": "🧳 Mis viajes",
   "profile.viewTripsCta": "Ver mis viajes",
   "profile.accountTitle": "Cuenta",
+  // UX-16.3 (Commerce Identity) — entrada visible solo si la sesión tiene
+  // al menos un Commerce vinculado (`partners.owner_id`), comprobado vía
+  // RLS directa (nunca decidido por el cliente). Lleva a
+  // /partners/dashboard (Camino B, resuelve el Commerce por sesión), sin
+  // mezclar su contenido dentro de esta pantalla.
+  "profile.manageCommerceCta": "Gestionar mi negocio",
   "search.title": "Buscar alojamiento",
   "search.destinationLabel": "Destino",
   "search.checkInLabel": "Fecha de entrada",
@@ -429,6 +440,47 @@ export const es = {
   "home.partnersTeaserTitle": "Partners",
   "home.partnersTeaserSubtitle": "Descubre dónde ganar Points",
   "home.partnersTeaserCta": "Ver Partners",
+  // UX-14 (Landing educativa + First Experience) — contenido exclusivo del
+  // usuario deslogueado (app/home-landing.tsx, app/landing-first-experience.tsx).
+  // "¿Qué son los Points?" reutiliza rewards.pointsExplainer/
+  // rewards.provisionalNote tal cual (ya validados en producción), no los
+  // duplica aquí. Las etiquetas del ciclo (Partner/Mission/Points/Goal/
+  // Reward) se dejan sin traducir a propósito: mismo criterio ya usado en
+  // todo el producto (Wallet/Rewards/Missions/Goals en inglés dentro de
+  // copy en español).
+  "home.landingSecondaryCta": "Ver cómo funciona",
+  "home.landingPointsTitle": "¿Qué son los Points?",
+  // UX-14.1 (P0) — la landing NO reutiliza rewards.pointsExplainer:
+  // esa frase menciona "invitando a otras personas" (referidos), y la
+  // autorización de UX-14 pide explícitamente no presentar referidos en
+  // esta primera versión (su alcance no se ha auditado). Esta clave
+  // describe únicamente los dos mecanismos verificados: Partners y
+  // Missions.
+  "home.landingPointsBody":
+    "Ganas Points visitando tus comercios Partner o completando Missions dentro de VIAO.",
+  "home.landingCycleTitle": "Así funciona VIAO",
+  "home.landingCyclePartnerLabel": "Partner",
+  "home.landingCyclePartnerDesc": "Un negocio real que forma parte de VIAO.",
+  "home.landingCycleMissionLabel": "Mission",
+  "home.landingCycleMissionDesc": "Una acción sencilla dentro de VIAO que también puede darte Points.",
+  "home.landingCyclePointsLabel": "Points",
+  "home.landingCyclePointsDesc": "Tu progreso dentro de VIAO.",
+  "home.landingCycleGoalLabel": "Goal",
+  "home.landingCycleGoalDesc": "El objetivo que tú decides perseguir.",
+  "home.landingCycleRewardLabel": "Reward",
+  "home.landingCycleRewardDesc": "Algo que consigues dentro de VIAO usando tus Points.",
+  "home.landingPartnersTitle": "Comercios reales, ya en VIAO",
+  "home.landingPartnersSubtitle": "Así es como se ve un Partner.",
+  "home.landingExperienceTitle": "Elige una actividad",
+  "home.landingExperienceSubtitle": "Así podrías ganar Points en VIAO.",
+  "home.landingExperienceCafeLabel": "Café",
+  "home.landingExperienceMealLabel": "Comida",
+  "home.landingExperienceActivityLabel": "Experiencia",
+  "home.landingExperienceResultPrefix": "Ejemplo",
+  "home.landingExperienceResultCaption": "Así podría verse el progreso hacia un objetivo.",
+  "home.landingExperienceClosing": "Así de simple es avanzar en VIAO.",
+  "home.landingFinalCtaText":
+    "Esto era solo un ejemplo. Crea tu cuenta para que empiece a contar de verdad.",
   // FASE J-B2.5 (Travel Legacy Purge) — se eliminan aquí las claves
   // "home.hero*Eyebrow"/"home.recap*Label"/"home.intro*"/
   // "home.rewardsIntro*"/"home.rewardsExample"/"home.rewardsDisclaimer"/
@@ -499,6 +551,28 @@ export const es = {
   "partnerDashboard.myBusinessSaving": "Guardando…",
   "partnerDashboard.myBusinessSuccessMessage": "Cambios guardados correctamente.",
   "partnerDashboard.myBusinessErrorGeneric": "No se pudieron guardar los cambios. Inténtalo de nuevo.",
+  // UX-16.3 (Commerce Identity) — vinculación de cuenta VIAO (PD-14,
+  // LOCKED). "Vincula tu cuenta" solo aparece si `owner_id` todavía es
+  // NULL; tras vincular con éxito, el Dashboard pasa a mostrar
+  // `accountLinkedLabel` en su lugar — el `access_token` de la URL sigue
+  // funcionando exactamente igual en ambos casos (fallback, nunca se
+  // invalida en este bloque, PD-19 OPEN/FUTURE).
+  "partnerDashboard.linkAccountTitle": "Vincula tu cuenta VIAO",
+  "partnerDashboard.linkAccountDescription":
+    "Inicia sesión con el email de contacto de este negocio para poder entrar sin este enlace en el futuro.",
+  "partnerDashboard.linkAccountCta": "Vincular cuenta",
+  "partnerDashboard.linkAccountLoading": "Vinculando…",
+  "partnerDashboard.linkAccountError":
+    "No se pudo vincular. Inicia sesión con el email de contacto de este negocio, ya verificado, e inténtalo de nuevo.",
+  "partnerDashboard.linkAccountSignInPrompt": "Inicia sesión o crea una cuenta VIAO para continuar.",
+  "partnerDashboard.linkAccountSignInCta": "Iniciar sesión",
+  "partnerDashboard.accountLinkedLabel": "Cuenta VIAO vinculada",
+  // /partners/dashboard sin token (Camino B) — entrada para un Commerce
+  // ya vinculado, resuelto por sesión.
+  "partnerDashboard.noOwnedPartnersTitle": "Todavía no tienes ningún negocio vinculado",
+  "partnerDashboard.noOwnedPartnersMessage":
+    "Si ya tienes un negocio en VIAO, entra desde el enlace que recibiste al darlo de alta y vincula tu cuenta desde allí.",
+  "partnerDashboard.chooseCommerceTitle": "Elige un negocio",
   // UX-10 (Partners Visible + Discovery + Registration) — Discovery
   // pública `/partners` (§6-7). Nombre de la entidad "Partners" +
   // subtítulo explicativo, en vez de renombrar el término ya establecido

@@ -65,3 +65,65 @@ export async function resolvePartnerAccess(accessToken: string): Promise<Partner
     partner: { id: data.id as string, name: data.name as string, category: data.category as string },
   };
 }
+
+// UX-16.3 (Commerce Identity) — "Camino B": resuelve el/los Partner(s) de
+// un Commerce ya vinculado (`partners.owner_id`) a partir de un `userId`
+// de sesión REAL, en vez de un `access_token` de URL ("Camino A", función
+// de arriba, sin cambios). Usa `service_role` deliberadamente (no el
+// cliente de sesión): necesita leer `access_token` para poder construir
+// el enlace de vuelta al Dashboard existente
+// (`/partners/dashboard/[accessToken]`, sin tocar esa ruta ni su lógica
+// de autorización) — el mismo valor que ya viaja hoy en cualquier enlace
+// de Dashboard ya bookmarkeado por un Partner, nunca expuesto al cliente
+// vía `SELECT` directo (esa columna sigue excluida del GRANT de RLS,
+// 20260831140000_add_partners_owner_id_identity.sql). "Un usuario nunca
+// puede resolver un Commerce ajeno" queda garantizado por el propio
+// `WHERE owner_id = userId` — no por confiar en nada que el cliente
+// afirme.
+export interface OwnedPartnerSummary {
+  id: string;
+  name: string;
+  accessToken: string;
+}
+
+export async function resolveOwnedPartners(userId: string): Promise<OwnedPartnerSummary[]> {
+  const service = createServiceRoleClient();
+  const { data, error } = await service
+    .from("partners")
+    .select("id, name, access_token")
+    .eq("owner_id", userId)
+    .eq("status", "active")
+    .order("name", { ascending: true });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data.map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    accessToken: row.access_token as string,
+  }));
+}
+
+// UX-16.3 (Commerce Identity) — lectura mínima para que el Dashboard sepa
+// si debe mostrar "Vincula tu cuenta VIAO" o "Cuenta VIAO vinculada".
+// Deliberadamente NO reutiliza/extiende `getPartnerForEditing()`
+// (mismo criterio ya documentado ahí: cambiar la forma de un retorno ya
+// consumido arriesga romper a sus consumidores existentes) — una
+// consulta nueva y separada, con su propio allowlist mínimo (`owner_id`
+// nunca sale de aquí como valor, solo se usa para calcular `boolean`).
+export async function isPartnerOwnerLinked(partnerId: string): Promise<boolean> {
+  const service = createServiceRoleClient();
+  const { data, error } = await service
+    .from("partners")
+    .select("owner_id")
+    .eq("id", partnerId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return false;
+  }
+
+  return data.owner_id !== null;
+}
