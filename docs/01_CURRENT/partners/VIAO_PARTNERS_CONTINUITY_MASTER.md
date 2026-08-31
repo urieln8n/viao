@@ -374,6 +374,25 @@ Reviews
 
 ---
 
-**Fin del documento. Esta revisión registra la implementación real de F3.5 (`lib/analytics/metrics.ts`, único archivo de código tocado en ese bloque) y actualiza este documento en consecuencia.**
+## 16.1 RELEASE BASELINE — 2026-08-31
 
-**HARD STOP — F3.5 COMPLETED — MASTER CONTEXT UPDATED — WAITING FOR EXPLICIT IMPLEMENTATION AUTHORIZATION (UX-13).**
+UX-12 y F3.5 quedaron consolidadas en un único commit de checkpoint (incluía además, del mismo working tree acumulado, el Travel Legacy Purge, el Core Reset y el Premium Design System — todo trabajo real y ya reportado en bloques anteriores de esta sesión, nunca commiteado hasta este punto):
+
+```
+Commit:  c809584 — "feat: complete travel-to-partners core reset and partners v2 ecosystem"
+Push:    origin/main (517088c..c809584), working tree clean
+Vercel:  dpl_Gf25caNUTRw7BgxnDubMFyNvyUr9, target production, Ready (~35-39s build)
+         Alias: https://viao.vercel.app
+Tests:   817 · 813 pass · 0 fail · 4 skipped (re-confirmado en frío, 2 ejecuciones separadas)
+tsc/lint/build: PASS
+```
+
+**Verificación de esquema de producción — RESUELTA.** En un primer intento de smoke test, `/partners` y `/partners/[slug]` en producción mostraban estados vacíos indistinguibles entre "sin Partners reales" y "columna inexistente" (`getActivePartners()`/`getPartnerBySlug()` capturan cualquier error de Supabase y devuelven `[]`/`undefined` — diseño deliberado, pero ambiguo para un smoke test). Se resolvió con una prueba de caja negra sin credenciales: se envió una solicitud real a través de `/partners/join` en `https://viao.vercel.app` (nombre `"[TEST-CLAUDE-VERIFICACION-SCHEMA] Ignorar y marcar inactivo"`, categoría `restaurant`, con descripción) — `requestPartnerRegistration()` inserta siempre `is_test: false` y la `description` proporcionada de forma hardcodeada, así que un fallo de columna faltante habría producido un error visible, no un falso positivo. **La solicitud se completó con éxito** ("Solicitud recibida") — confirma que `partners.is_test`, `partners.description` y el CHECK de `category` ya están sincronizados en producción.
+
+**Pendiente de verificación real en producción** (no bloqueante para este baseline, pero sin cobertura todavía): Partner Dashboard, `profileViews`, la sección "Mi comercio" (Self-Service C1: editar nombre/categoría/descripción/teléfono/dirección/imagen y persistencia tras recargar), y la emisión de `partner_profile_viewed` — todos requieren un Partner `active` real en producción con su `access_token`, y quien esto escribe no tiene (ni debe fabricar) credenciales `service_role` de producción. Existe ahora mismo una fila real y segura para ese propósito: la solicitud `pending` creada arriba — aprobarla a `active` (Supabase Studio) y compartir su `access_token` permitiría cerrar esta cobertura sin crear una fila nueva. Alternativa: dar por válida la verificación exhaustiva ya hecha contra Supabase local (misma base de código, mismo esquema) como suficiente evidencia funcional, dejando la confirmación en producción para cuando exista el primer Partner real aprobado.
+
+---
+
+**Fin del documento. Esta revisión registra el RELEASE BASELINE (commit `c809584`, push, deployment Vercel, esquema de producción verificado) además de la implementación real de F3.5.**
+
+**HARD STOP — RELEASE BASELINE COMPLETE — UX-13 NOT IMPLEMENTED.**
