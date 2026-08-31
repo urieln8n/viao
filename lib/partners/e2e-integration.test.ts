@@ -56,7 +56,7 @@ async function createTestPartner(): Promise<{ id: string; accessToken: string }>
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const { data, error } = await service
     .from("partners")
-    .insert({ name: `Test Partner PB7 ${suffix}`, slug: `test-partner-pb7-${suffix}`, category: "restaurant" })
+    .insert({ name: `Test Partner PB7 ${suffix}`, slug: `test-partner-pb7-${suffix}`, category: "restaurant", is_test: true })
     .select("id, access_token")
     .single();
   assert.equal(error, null, `crear Partner de test falló: ${error?.message}`);
@@ -381,7 +381,7 @@ test("E2E independencia: una Actividad Partner no altera el pool de Missions, y 
     const missionsPoolAfterPartner = await getMissionsPoolSpentThisMonth();
     assert.equal(missionsPoolAfterPartner, missionsPoolBefore, "una Actividad de Partner no debe mover el pool de Missions");
 
-    const missionResult = await completeMission(userId, "search_started");
+    const missionResult = await completeMission(userId, "return_visit");
     assert.equal(missionResult.outcome, "completed");
     if (missionResult.outcome !== "completed") return;
 
@@ -399,7 +399,7 @@ test("E2E independencia: una Actividad Partner no altera el pool de Missions, y 
       .from("rewards_transactions")
       .select("reason, amount")
       .eq("user_id", userId)
-      .in("reason", ["partner_activity", "mission:search_started"]);
+      .in("reason", ["partner_activity", "mission:return_visit"]);
     assert.equal(transactions?.length, 2, "una transacción de cada dominio, ambas en el mismo ledger único");
 
     const balanceAfter = await getWalletBalanceReal(sessionClient);

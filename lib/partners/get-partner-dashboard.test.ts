@@ -40,7 +40,7 @@ async function createTestPartner(): Promise<string> {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const { data, error } = await service
     .from("partners")
-    .insert({ name: `Test Partner PB6 ${suffix}`, slug: `test-partner-pb6-${suffix}`, category: "restaurant" })
+    .insert({ name: `Test Partner PB6 ${suffix}`, slug: `test-partner-pb6-${suffix}`, category: "restaurant", is_test: true })
     .select("id")
     .single();
   assert.equal(error, null, `crear Partner de test falló: ${error?.message}`);
@@ -70,6 +70,19 @@ async function insertActivity(params: {
   assert.equal(error, null, `insertar Actividad de test falló: ${error?.message}`);
 }
 
+// UX-12 (Partner Self-Service + Measurement) — inserta directamente en
+// `analytics_events` (bypass de logAnalyticsEvent/app/partners/[slug]/page.tsx),
+// mismo criterio ya establecido arriba para `insertActivity`: este
+// archivo prueba la AGREGACIÓN de lectura de getPartnerDashboard(), no
+// la emisión real del evento (cubierta por lib/analytics/taxonomy.test.ts).
+async function insertProfileView(partnerId: string) {
+  const service = createServiceRoleClient();
+  const { error } = await service
+    .from("analytics_events")
+    .insert({ event_name: "partner_profile_viewed", metadata: { partnerId } });
+  assert.equal(error, null, `insertar vista de perfil de test falló: ${error?.message}`);
+}
+
 // ── Partner sin actividad ──
 test("getPartnerDashboard: Partner sin ninguna Actividad -> las 6 métricas en su valor vacío correcto, sin lanzar", async () => {
   const partnerId = await createTestPartner();
@@ -81,6 +94,7 @@ test("getPartnerDashboard: Partner sin ninguna Actividad -> las 6 métricas en s
   assert.equal(dashboard.ventasConfirmadasReservaEur, 0);
   assert.deepEqual(dashboard.actividadReciente, []);
   assert.equal(dashboard.partnerActivo, false);
+  assert.equal(dashboard.profileViews, 0);
 });
 
 // ── clientes_nuevos / clientes_recurrentes ──
@@ -228,6 +242,31 @@ test("getPartnerDashboard: partner_activo=false cuando la única Actividad tiene
   }
 });
 
+// ── profileViews (UX-12) ──
+test("getPartnerDashboard: profileViews cuenta las filas reales de analytics_events (partner_profile_viewed) de este Partner", async () => {
+  const partnerId = await createTestPartner();
+  await insertProfileView(partnerId);
+  await insertProfileView(partnerId);
+  await insertProfileView(partnerId);
+
+  const dashboard = await getPartnerDashboard(partnerId);
+  assert.equal(dashboard.profileViews, 3);
+});
+
+test("getPartnerDashboard: profileViews del Partner A nunca incluye vistas del Partner B (aislamiento por metadata->>partnerId)", async () => {
+  const partnerA = await createTestPartner();
+  const partnerB = await createTestPartner();
+
+  await insertProfileView(partnerA);
+  await insertProfileView(partnerB);
+  await insertProfileView(partnerB);
+
+  const dashboardA = await getPartnerDashboard(partnerA);
+  const dashboardB = await getPartnerDashboard(partnerB);
+  assert.equal(dashboardA.profileViews, 1, "el conteo de A no debe incluir las 2 vistas de B");
+  assert.equal(dashboardB.profileViews, 2, "el conteo de B no debe incluir la vista de A");
+});
+
 // ── Aislamiento entre Partners ──
 test("Aislamiento: el dashboard del Partner A nunca incluye Actividades del Partner B", async () => {
   const partnerA = await createTestPartner();
@@ -259,7 +298,7 @@ test("getPartnerDashboard: el resultado nunca incluye access_token ni ningún id
 
     assert.equal(
       Object.keys(dashboard).sort().join(","),
-      ["actividadReciente", "clientesNuevos", "clientesRecurrentes", "partnerActivo", "ventasConfirmadasReservaEur", "ventasDeclaradasEur"].sort().join(","),
+      ["actividadReciente", "clientesNuevos", "clientesRecurrentes", "partnerActivo", "profileViews", "ventasConfirmadasReservaEur", "ventasDeclaradasEur"].sort().join(","),
     );
     for (const activity of dashboard.actividadReciente) {
       assert.equal(

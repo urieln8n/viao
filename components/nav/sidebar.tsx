@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Target, Compass, Luggage, Wallet, User } from "lucide-react";
+import { Home, Target, ListChecks, Wallet, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -13,39 +13,28 @@ import { isNavItemActive } from "./main-nav";
 // en mobile/tablet). Reutiliza `isNavItemActive` de `./main-nav` en vez de
 // duplicar la lógica de detección de ruta activa.
 //
-// Micro-bloque 1 (Sidebar Premium) — dos grupos con peso visual distinto
-// en vez de una lista plana: PRIMARY_NAV_ITEMS (Travel core) arriba, sin
-// separador; SECONDARY_NAV_ITEMS (Wallet) debajo de un separador que
-// reutiliza el mismo patrón `border-t border-border pt-3` que ya usaba el
-// bloque de Perfil más abajo en este archivo — ningún tratamiento visual
-// nuevo, solo el que ya existía aquí aplicado también arriba.
-//
 // Vision se retira de esta lista: no forma parte de la navegación
 // principal de escritorio. No se toca `/vision`, su lógica, su backend ni
 // ningún otro archivo — sigue siendo accesible desde su acceso
 // contextual ya existente en `app/trips/[id]/page.tsx`.
 //
-// Micro-bloque 3B (Sidebar Beta) — "Buscar" se retira como entrada
-// propia: "Mi objetivo" (`/#goal`, ancla ya existente desde Micro-bloque
-// 2, GoalCard sin cambios) y "Explorar" (`/#travel`, ancla nueva sobre la
-// sección "Cuando estés listo para viajar" de app/page.tsx, /search sin
-// tocar) narran mejor "actividad -> Points -> Goal -> viaje" que
-// "Buscar hotel". `isNavItemActive()` compara por `pathname`, que nunca
-// incluye el hash — estos dos enlaces nunca mostrarán el estado activo
-// (deliberado, sin scroll-spy, fuera de alcance de este bloque); "Inicio"
-// sigue iluminándose con normalidad al estar en `/`.
-const PRIMARY_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
+// Corrección estratégica permanente (VIAO no es una app de viajes) — se
+// retira el grupo SECONDARY_NAV_ITEMS que FASE J-B1 había introducido
+// (Explorar/#search, Mi viaje/#trips): Travel deja de tener cualquier
+// punto de entrada en la navegación principal, no solo un menor peso
+// visual. Solo queda MAIN_NAV_ITEMS (Inicio, Mi objetivo, Missions,
+// Wallet) + ACCOUNT_ITEM (Perfil) — mismo set que ya usaba `MainNav`
+// (mobile), ahora también en desktop. `/trips`, `/search`, `/properties`,
+// `/booking`, `/vision` NO se tocan ni se eliminan: siguen existiendo
+// como rutas completas, simplemente sin entrada en el Sidebar.
+const MAIN_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/#goal", label: "Mi objetivo", icon: Target },
-  { href: "/#travel", label: "Explorar", icon: Compass },
-  { href: "/trips", label: "Mi viaje", icon: Luggage },
-];
-
-const SECONDARY_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: "/#missions", label: "Missions", icon: ListChecks },
   { href: "/rewards", label: "Wallet", icon: Wallet },
 ];
 
-const PROFILE_ITEM: { href: string; label: string; icon: LucideIcon } = {
+const ACCOUNT_ITEM: { href: string; label: string; icon: LucideIcon } = {
   href: "/profile",
   label: "Perfil",
   icon: User,
@@ -105,29 +94,19 @@ export function Sidebar() {
       </span>
 
       <nav className="flex flex-1 flex-col gap-1">
-        {PRIMARY_NAV_ITEMS.map((item) => (
+        {MAIN_NAV_ITEMS.map((item) => (
           <SidebarLink
             key={item.href}
             {...item}
             active={isNavItemActive(pathname, item.href)}
           />
         ))}
-
-        <div className="flex flex-col gap-1 border-t border-border pt-3">
-          {SECONDARY_NAV_ITEMS.map((item) => (
-            <SidebarLink
-              key={item.href}
-              {...item}
-              active={isNavItemActive(pathname, item.href)}
-            />
-          ))}
-        </div>
       </nav>
 
       <div className="flex flex-col gap-1 border-t border-border pt-3">
         <SidebarLink
-          {...PROFILE_ITEM}
-          active={isNavItemActive(pathname, PROFILE_ITEM.href)}
+          {...ACCOUNT_ITEM}
+          active={isNavItemActive(pathname, ACCOUNT_ITEM.href)}
         />
       </div>
     </aside>

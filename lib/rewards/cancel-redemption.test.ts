@@ -56,6 +56,17 @@ async function createTestReward(pointsCost: number): Promise<string> {
   return data!.id as string;
 }
 
+// rewards_catalog no concede DELETE a ningún rol (mismo criterio "nunca
+// borrar" ya aplicado al resto de tablas tipo ledger/catálogo del
+// proyecto): la única forma de retirar una fila de prueba es active=false,
+// la misma que usaría el producto real para retirar un Reward. Evita que
+// cada ejecución de la suite deje basura permanente y creciente en el
+// catálogo real.
+async function deactivateTestReward(rewardId: string) {
+  const service = createServiceRoleClient();
+  await service.from("rewards_catalog").update({ active: false }).eq("id", rewardId);
+}
+
 async function markFulfilledDirect(redemptionId: string) {
   // Igual que markRedemptionFulfilled(), pero inline aquí para no
   // depender de otro módulo en un test de cancel-redemption.
@@ -66,10 +77,11 @@ async function markFulfilledDirect(redemptionId: string) {
 // ── 7. Cancelación genera refund exactamente una vez ──
 test("cancelRedemption: cancela una redención pending y devuelve los Points mediante una nueva transacción positiva", async () => {
   const { userId } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     const balanceBefore = await getBalance(userId);
     await grantPoints(userId, 1000);
-    const rewardId = await createTestReward(300);
+    rewardId = await createTestReward(300);
 
     const redeemResult = await redeemReward(userId, rewardId, crypto.randomUUID());
     assert.equal(redeemResult.outcome, "success");
@@ -87,16 +99,18 @@ test("cancelRedemption: cancela una redención pending y devuelve los Points med
     assert.equal(balanceAfterCancel, balanceBefore + 1000, "el refund debe devolver EXACTAMENTE los Points gastados");
   } finally {
     await deleteTestUser(userId);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });
 
 // ── 8. Cancelación duplicada no duplica el refund ──
 test("cancelRedemption: cancelar dos veces la MISMA redención nunca genera un segundo refund", async () => {
   const { userId } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     const balanceBefore = await getBalance(userId);
     await grantPoints(userId, 1000);
-    const rewardId = await createTestReward(300);
+    rewardId = await createTestReward(300);
 
     const redeemResult = await redeemReward(userId, rewardId, crypto.randomUUID());
     assert.equal(redeemResult.outcome, "success");
@@ -112,15 +126,17 @@ test("cancelRedemption: cancelar dos veces la MISMA redención nunca genera un s
     assert.equal(balanceAfter, balanceBefore + 1000, "el saldo debe reflejar UN solo refund, nunca dos");
   } finally {
     await deleteTestUser(userId);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });
 
 // No permitir cancelar una redención ya `fulfilled`.
 test("cancelRedemption: rechaza cancelar una redención ya fulfilled", async () => {
   const { userId } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     await grantPoints(userId, 1000);
-    const rewardId = await createTestReward(300);
+    rewardId = await createTestReward(300);
 
     const redeemResult = await redeemReward(userId, rewardId, crypto.randomUUID());
     assert.equal(redeemResult.outcome, "success");
@@ -132,6 +148,7 @@ test("cancelRedemption: rechaza cancelar una redención ya fulfilled", async () 
     assert.equal(cancelResult.outcome, "cannot_cancel_fulfilled_redemption");
   } finally {
     await deleteTestUser(userId);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });
 
@@ -139,9 +156,10 @@ test("cancelRedemption: rechaza cancelar una redención ya fulfilled", async () 
 test("cancelRedemption: un usuario no puede cancelar la redención de otro usuario", async () => {
   const { userId: owner } = await signUpUser();
   const { userId: attacker } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     await grantPoints(owner, 1000);
-    const rewardId = await createTestReward(300);
+    rewardId = await createTestReward(300);
     const redeemResult = await redeemReward(owner, rewardId, crypto.randomUUID());
     assert.equal(redeemResult.outcome, "success");
     if (redeemResult.outcome !== "success") return;
@@ -151,6 +169,7 @@ test("cancelRedemption: un usuario no puede cancelar la redención de otro usuar
   } finally {
     await deleteTestUser(owner);
     await deleteTestUser(attacker);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });
 
@@ -174,10 +193,11 @@ test("cancelRedemption: una redención inexistente devuelve redemption_not_found
 // las dos operaciones "gana".
 test("cancelRedemption: carrera real con markRedemptionFulfilled() sobre la misma redención nunca deja un estado inconsistente", async () => {
   const { userId } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     const balanceBefore = await getBalance(userId);
     await grantPoints(userId, 1000);
-    const rewardId = await createTestReward(300);
+    rewardId = await createTestReward(300);
 
     const redeemResult = await redeemReward(userId, rewardId, crypto.randomUUID());
     assert.equal(redeemResult.outcome, "success");
@@ -216,5 +236,6 @@ test("cancelRedemption: carrera real con markRedemptionFulfilled() sobre la mism
     }
   } finally {
     await deleteTestUser(userId);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });

@@ -23,14 +23,12 @@ function readSource(relativePath: string): string {
   return readFileSync(path.join(process.cwd(), relativePath), "utf8");
 }
 
-test("F13-06: app/search/ai-recommendation/actions.ts comprueba isAiRecommendationsEnabled() ANTES de checkAndConsumeRateLimit()", () => {
-  const source = readSource("app/search/ai-recommendation/actions.ts");
-  const killSwitchIdx = source.indexOf("isAiRecommendationsEnabled()");
-  const rateLimitIdx = source.indexOf("checkAndConsumeRateLimit(");
-  assert.ok(killSwitchIdx !== -1, "no se encontró la comprobación del kill switch");
-  assert.ok(rateLimitIdx !== -1, "no se encontró la comprobación de rate limit");
-  assert.ok(killSwitchIdx < rateLimitIdx, "el kill switch debe comprobarse ANTES del rate limit");
-});
+// J-B8.1 (Travel Legacy Purge — Search & AI Recommendation) — se retira
+// aquí el test que comprobaba isAiRecommendationsEnabled() en
+// app/search/ai-recommendation/actions.ts: ese archivo (y toda la
+// funcionalidad de recomendación IA sobre búsquedas) se elimina en este
+// bloque. lib/openai/index.ts (el wrapper de OpenAI que exponía ese kill
+// switch) permanece intacto y sigue verificado más abajo.
 
 test("F13-06: app/vision/actions.ts comprueba isVisionEnabled() ANTES de checkAndConsumeRateLimit()", () => {
   const source = readSource("app/vision/actions.ts");

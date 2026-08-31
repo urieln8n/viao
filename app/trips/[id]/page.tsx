@@ -6,11 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { EmptyState } from "@/components/state/empty-state";
 import { ErrorState } from "@/components/state/error-state";
 import { PropertyImage } from "@/components/property/property-image";
+import { PageContainer } from "@/components/layout/page-container";
 import { t } from "@/lib/i18n";
 
 import { getTripDetail } from "../../../lib/trips/get-trip-detail";
 import { getAssociableBookings } from "../../../lib/trips/get-associable-bookings";
-import { isValidUuid } from "../../properties/[id]/resolve";
+import { isValidUuid } from "../../../lib/utils/is-valid-uuid";
 import { AssociateBookingForm } from "./associate-booking-form";
 import { AddPhotoForm } from "./add-photo-form";
 import { pointsToEuroValue } from "../../../lib/rewards/rules";
@@ -81,12 +82,14 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
 
   if (!isValidUuid(id)) {
     return (
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
-        <ErrorState
-          title={t("trips.notFoundTitle")}
-          message={t("trips.notFoundMessage")}
-          action={<BackToTripsLink />}
-        />
+      <main className="flex flex-1 flex-col">
+        <PageContainer variant="default" className="flex flex-1 flex-col gap-4 p-6">
+          <ErrorState
+            title={t("trips.notFoundTitle")}
+            message={t("trips.notFoundMessage")}
+            action={<BackToTripsLink />}
+          />
+        </PageContainer>
       </main>
     );
   }
@@ -95,12 +98,14 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
 
   if (!detail) {
     return (
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
-        <ErrorState
-          title={t("trips.notFoundTitle")}
-          message={t("trips.notFoundMessage")}
-          action={<BackToTripsLink />}
-        />
+      <main className="flex flex-1 flex-col">
+        <PageContainer variant="default" className="flex flex-1 flex-col gap-4 p-6">
+          <ErrorState
+            title={t("trips.notFoundTitle")}
+            message={t("trips.notFoundMessage")}
+            action={<BackToTripsLink />}
+          />
+        </PageContainer>
       </main>
     );
   }
@@ -156,282 +161,284 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
     bookings.length > 0 || stationDistanceKm !== undefined || airportDistanceKm !== undefined || totalPoints > 0;
 
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
-      <div className="flex flex-col gap-3">
-        <PropertyImage
-          src={coverImageUrl}
-          alt={trip.destination}
-          aspect="video"
-          className="rounded-xl"
-        />
+    <main className="flex flex-1 flex-col">
+      <PageContainer variant="default" className="flex flex-1 flex-col gap-4 p-6">
+        <div className="flex flex-col gap-3">
+          <PropertyImage
+            src={coverImageUrl}
+            alt={trip.destination}
+            aspect="video"
+            className="rounded-xl"
+          />
 
-        <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold">{trip.destination}</h1>
-          <p className="text-sm text-muted-foreground">
-            {trip.startDate && trip.endDate
-              ? `${trip.startDate} — ${trip.endDate}`
-              : t("trips.datesUnset")}
-          </p>
+          <div className="flex flex-col gap-1">
+            <h1 className="text-xl font-semibold">{trip.destination}</h1>
+            <p className="text-sm text-muted-foreground">
+              {trip.startDate && trip.endDate
+                ? `${trip.startDate} — ${trip.endDate}`
+                : t("trips.datesUnset")}
+            </p>
+          </div>
+
+          {/* Cabecera-resumen (Bloque 16): un vistazo al viaje completo antes
+              de entrar en el detalle de cada sección — la sensación de "todo
+              mi viaje está aquí" en vez de cuatro Cards sin relación entre
+              sí. Bloque 19: iconos con el acento de color de su módulo
+              (Reservas=naranja VIAO, Rewards=verde ya existente) para
+              reforzar la misma jerarquía de color que el resto de la app —
+              Fotos se mantiene neutro a propósito (no es "un módulo", es
+              contenido del usuario). */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <Hotel className="size-4 text-viao-orange" aria-hidden="true" />
+              {bookings.length}{" "}
+              {bookings.length === 1
+                ? t("trips.summaryBookingSingular")
+                : t("trips.summaryBookingPlural")}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Camera className="size-4" aria-hidden="true" />
+              {photos.length}{" "}
+              {photos.length === 1
+                ? t("trips.summaryMemorySingular")
+                : t("trips.summaryMemoryPlural")}
+            </span>
+            <span className="inline-flex items-center gap-1 font-medium text-success">
+              <Heart className="size-4" aria-hidden="true" />
+              {totalPoints} {t("trips.pointsUnit")}
+            </span>
+          </div>
         </div>
 
-        {/* Cabecera-resumen (Bloque 16): un vistazo al viaje completo antes
-            de entrar en el detalle de cada sección — la sensación de "todo
-            mi viaje está aquí" en vez de cuatro Cards sin relación entre
-            sí. Bloque 19: iconos con el acento de color de su módulo
-            (Reservas=naranja VIAO, Rewards=verde ya existente) para
-            reforzar la misma jerarquía de color que el resto de la app —
-            Fotos se mantiene neutro a propósito (no es "un módulo", es
-            contenido del usuario). */}
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <Hotel className="size-4 text-viao-orange" aria-hidden="true" />
-            {bookings.length}{" "}
-            {bookings.length === 1
-              ? t("trips.summaryBookingSingular")
-              : t("trips.summaryBookingPlural")}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Camera className="size-4" aria-hidden="true" />
-            {photos.length}{" "}
-            {photos.length === 1
-              ? t("trips.summaryMemorySingular")
-              : t("trips.summaryMemoryPlural")}
-          </span>
-          <span className="inline-flex items-center gap-1 font-medium text-success">
-            <Heart className="size-4" aria-hidden="true" />
-            {totalPoints} {t("trips.pointsUnit")}
-          </span>
-        </div>
-      </div>
+        {hasAnyRecommendation && (
+          <Card className="border-viao-orange/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lightbulb className="size-4 text-viao-orange" aria-hidden="true" />
+                {t("trips.recommendationsTitle")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2 text-sm">
+              {bookings.length > 0 && (
+                <p className="flex items-center gap-1.5">
+                  <MapPin className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  {t("trips.recommendationAccommodation")} {trip.destination}.
+                </p>
+              )}
+              {stationDistanceKm !== undefined && nearestStation && (
+                <p className="flex flex-wrap items-center gap-x-1.5">
+                  <TrainFront className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span>
+                    {nearestStation.name} {t("trips.recommendationDistanceLabel")}{" "}
+                    {stationDistanceKm.toFixed(1)} km.
+                  </span>
+                  <a
+                    href={buildGoogleMapsUrl(nearestStation.latitude, nearestStation.longitude)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-viao-orange underline-offset-4 hover:underline"
+                  >
+                    {t("trips.viewOnMapsCta")}
+                  </a>
+                </p>
+              )}
+              {airportDistanceKm !== undefined && nearestAirport && (
+                <p className="flex flex-wrap items-center gap-x-1.5">
+                  <Plane className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span>
+                    {nearestAirport.name} {t("trips.recommendationDistanceLabel")}{" "}
+                    {airportDistanceKm.toFixed(1)} km.
+                  </span>
+                  <a
+                    href={buildGoogleMapsUrl(nearestAirport.latitude, nearestAirport.longitude)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-viao-orange underline-offset-4 hover:underline"
+                  >
+                    {t("trips.viewOnMapsCta")}
+                  </a>
+                </p>
+              )}
+              {totalPoints > 0 && (
+                <p className="flex items-center gap-1.5">
+                  <Gift className="size-4 shrink-0 text-success" aria-hidden="true" />
+                  {t("trips.recommendationPointsPrefix")} {totalPoints}{" "}
+                  {t("trips.recommendationPointsSuffix")}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
-      {hasAnyRecommendation && (
-        <Card className="border-viao-orange/30">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="size-4 text-viao-orange" aria-hidden="true" />
-              {t("trips.recommendationsTitle")}
+              <Hotel className="size-4 text-viao-orange" aria-hidden="true" />
+              {t("trips.bookingsTitle")}
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col gap-2 text-sm">
-            {bookings.length > 0 && (
-              <p className="flex items-center gap-1.5">
-                <MapPin className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                {t("trips.recommendationAccommodation")} {trip.destination}.
-              </p>
+          <CardContent className="flex flex-col gap-4">
+            {bookings.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t("trips.bookingsEmpty")}</p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-border">
+                {bookings.map((booking) => (
+                  <li key={booking.id} className="flex flex-col gap-1 py-2 first:pt-0 last:pb-0">
+                    <span className="text-sm font-medium">
+                      {booking.propertyName ?? booking.propertyId}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {booking.checkIn} — {booking.checkOut} ({booking.status})
+                      {booking.bookingValue != null &&
+                        ` · ${booking.bookingValue} ${booking.currency}`}
+                    </span>
+                    {booking.latitude !== null && booking.longitude !== null && (
+                      <span className="flex flex-wrap gap-x-3 gap-y-1">
+                        <a
+                          href={buildGoogleMapsUrl(booking.latitude, booking.longitude)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-fit text-xs text-primary underline-offset-4 hover:underline"
+                        >
+                          {t("trips.locationCta")}
+                        </a>
+                        <a
+                          href={buildUberDeepLink(
+                            booking.latitude,
+                            booking.longitude,
+                            booking.propertyName ?? booking.propertyId,
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-fit text-xs text-viao-orange underline-offset-4 hover:underline"
+                        >
+                          {t("trips.uberCta")}
+                        </a>
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
             )}
-            {stationDistanceKm !== undefined && nearestStation && (
-              <p className="flex flex-wrap items-center gap-x-1.5">
-                <TrainFront className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <span>
-                  {nearestStation.name} {t("trips.recommendationDistanceLabel")}{" "}
-                  {stationDistanceKm.toFixed(1)} km.
-                </span>
-                <a
-                  href={buildGoogleMapsUrl(nearestStation.latitude, nearestStation.longitude)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-viao-orange underline-offset-4 hover:underline"
-                >
-                  {t("trips.viewOnMapsCta")}
-                </a>
-              </p>
+
+            <div className="flex flex-col gap-2 border-t border-border pt-3">
+              <span className="text-sm font-medium">{t("trips.associateBookingTitle")}</span>
+              <AssociateBookingForm tripId={trip.id} bookings={associableBookings} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Camera className="size-4 text-muted-foreground" aria-hidden="true" />
+              {t("trips.photosTitle")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            {photos.length === 0 ? (
+              <EmptyState
+                title={t("trips.photosEmptyTitle")}
+                message={t("trips.photosEmptyMessage")}
+              />
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {photos.map((photo) =>
+                  photo.signedUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- bucket privado con URL firmada temporal (Bloque 16): un <Image> de next/image exigiría configurar un remotePattern para un host que cambia de token en cada petición, sin beneficio real para una galería pequeña.
+                    <img
+                      key={photo.id}
+                      src={photo.signedUrl}
+                      alt={photo.caption ?? ""}
+                      className="aspect-square w-full rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div
+                      key={photo.id}
+                      className="flex aspect-square w-full items-center justify-center rounded-lg bg-accent p-2 text-center text-xs text-muted-foreground"
+                    >
+                      {photo.caption ?? photo.storagePath}
+                    </div>
+                  ),
+                )}
+              </div>
             )}
-            {airportDistanceKm !== undefined && nearestAirport && (
-              <p className="flex flex-wrap items-center gap-x-1.5">
-                <Plane className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <span>
-                  {nearestAirport.name} {t("trips.recommendationDistanceLabel")}{" "}
-                  {airportDistanceKm.toFixed(1)} km.
-                </span>
-                <a
-                  href={buildGoogleMapsUrl(nearestAirport.latitude, nearestAirport.longitude)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-viao-orange underline-offset-4 hover:underline"
-                >
-                  {t("trips.viewOnMapsCta")}
-                </a>
-              </p>
+
+            <div className="border-t border-border pt-3">
+              <AddPhotoForm tripId={trip.id} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-info/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Eye className="size-4 text-info" aria-hidden="true" />
+              {t("trips.scansTitle")}
+            </CardTitle>
+            <CardDescription>{t("trips.visionSectionTagline")}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {scans.length === 0 ? (
+              <EmptyState message={t("trips.scansEmpty")} />
+            ) : (
+              <ul className="flex flex-col divide-y divide-border">
+                {scans.map((scan) => (
+                  <li key={scan.id} className="flex flex-col gap-0.5 py-2 text-sm first:pt-0 last:pb-0">
+                    <span>{scan.translatedText || scan.explanation}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {scan.sourceLanguage ?? "?"} → {scan.targetLanguage}
+                      {scan.imageRetained && ` · ${t("trips.associatedLabel")}`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             )}
-            {totalPoints > 0 && (
-              <p className="flex items-center gap-1.5">
-                <Gift className="size-4 shrink-0 text-success" aria-hidden="true" />
-                {t("trips.recommendationPointsPrefix")} {totalPoints}{" "}
-                {t("trips.recommendationPointsSuffix")}
-              </p>
+            {/* Bloque 19, sección 8 ("Vision dentro de Mi viaje") — mismo
+                enlace y variant="outline" de siempre (semánticamente sigue
+                siendo una acción secundaria de esta pantalla, no la acción
+                principal), reforzado con el acento azul de Vision solo en
+                el color de texto (`text-info`): el variant `outline` no fija
+                ningún `text-*` en reposo, así que no compite con
+                `border-border`/`hover:bg-muted` ya declarados — evita
+                exactamente el problema de especificidad de clases ya
+                documentado y corregido en Bloque 13 (tailwind-merge no
+                reconoce los tokens de color propios del tema). Tamaño por
+                defecto (sin `size="sm"`) para que sea más visible que antes. */}
+            <Link
+              href="/vision"
+              className={buttonVariants({ variant: "outline", className: "w-fit text-info" })}
+            >
+              {t("home.visionTeaserCta")}
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Heart className="size-4 text-success" aria-hidden="true" />
+              {t("trips.rewardsTitle")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {rewards.length === 0 ? (
+              <EmptyState message={t("trips.rewardsEmpty")} />
+            ) : (
+              <div className="flex flex-col gap-0.5">
+                <p className="text-lg font-semibold">
+                  {totalPoints} <span className="text-sm font-normal text-muted-foreground">{t("trips.pointsUnit")}</span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  ≈ {pointsToEuroValue(totalPoints).toFixed(2)} € {t("rewards.valueSuffix")}
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>
-      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Hotel className="size-4 text-viao-orange" aria-hidden="true" />
-            {t("trips.bookingsTitle")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {bookings.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("trips.bookingsEmpty")}</p>
-          ) : (
-            <ul className="flex flex-col divide-y divide-border">
-              {bookings.map((booking) => (
-                <li key={booking.id} className="flex flex-col gap-1 py-2 first:pt-0 last:pb-0">
-                  <span className="text-sm font-medium">
-                    {booking.propertyName ?? booking.propertyId}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {booking.checkIn} — {booking.checkOut} ({booking.status})
-                    {booking.bookingValue != null &&
-                      ` · ${booking.bookingValue} ${booking.currency}`}
-                  </span>
-                  {booking.latitude !== null && booking.longitude !== null && (
-                    <span className="flex flex-wrap gap-x-3 gap-y-1">
-                      <a
-                        href={buildGoogleMapsUrl(booking.latitude, booking.longitude)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-fit text-xs text-primary underline-offset-4 hover:underline"
-                      >
-                        {t("trips.locationCta")}
-                      </a>
-                      <a
-                        href={buildUberDeepLink(
-                          booking.latitude,
-                          booking.longitude,
-                          booking.propertyName ?? booking.propertyId,
-                        )}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-fit text-xs text-viao-orange underline-offset-4 hover:underline"
-                      >
-                        {t("trips.uberCta")}
-                      </a>
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <div className="flex flex-col gap-2 border-t border-border pt-3">
-            <span className="text-sm font-medium">{t("trips.associateBookingTitle")}</span>
-            <AssociateBookingForm tripId={trip.id} bookings={associableBookings} />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Camera className="size-4 text-muted-foreground" aria-hidden="true" />
-            {t("trips.photosTitle")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {photos.length === 0 ? (
-            <EmptyState
-              title={t("trips.photosEmptyTitle")}
-              message={t("trips.photosEmptyMessage")}
-            />
-          ) : (
-            <div className="grid grid-cols-3 gap-2">
-              {photos.map((photo) =>
-                photo.signedUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- bucket privado con URL firmada temporal (Bloque 16): un <Image> de next/image exigiría configurar un remotePattern para un host que cambia de token en cada petición, sin beneficio real para una galería pequeña.
-                  <img
-                    key={photo.id}
-                    src={photo.signedUrl}
-                    alt={photo.caption ?? ""}
-                    className="aspect-square w-full rounded-lg object-cover"
-                  />
-                ) : (
-                  <div
-                    key={photo.id}
-                    className="flex aspect-square w-full items-center justify-center rounded-lg bg-accent p-2 text-center text-xs text-muted-foreground"
-                  >
-                    {photo.caption ?? photo.storagePath}
-                  </div>
-                ),
-              )}
-            </div>
-          )}
-
-          <div className="border-t border-border pt-3">
-            <AddPhotoForm tripId={trip.id} />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-info/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Eye className="size-4 text-info" aria-hidden="true" />
-            {t("trips.scansTitle")}
-          </CardTitle>
-          <CardDescription>{t("trips.visionSectionTagline")}</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          {scans.length === 0 ? (
-            <EmptyState message={t("trips.scansEmpty")} />
-          ) : (
-            <ul className="flex flex-col divide-y divide-border">
-              {scans.map((scan) => (
-                <li key={scan.id} className="flex flex-col gap-0.5 py-2 text-sm first:pt-0 last:pb-0">
-                  <span>{scan.translatedText || scan.explanation}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {scan.sourceLanguage ?? "?"} → {scan.targetLanguage}
-                    {scan.imageRetained && ` · ${t("trips.associatedLabel")}`}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {/* Bloque 19, sección 8 ("Vision dentro de Mi viaje") — mismo
-              enlace y variant="outline" de siempre (semánticamente sigue
-              siendo una acción secundaria de esta pantalla, no la acción
-              principal), reforzado con el acento azul de Vision solo en
-              el color de texto (`text-info`): el variant `outline` no fija
-              ningún `text-*` en reposo, así que no compite con
-              `border-border`/`hover:bg-muted` ya declarados — evita
-              exactamente el problema de especificidad de clases ya
-              documentado y corregido en Bloque 13 (tailwind-merge no
-              reconoce los tokens de color propios del tema). Tamaño por
-              defecto (sin `size="sm"`) para que sea más visible que antes. */}
-          <Link
-            href="/vision"
-            className={buttonVariants({ variant: "outline", className: "w-fit text-info" })}
-          >
-            {t("home.visionTeaserCta")}
-          </Link>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Heart className="size-4 text-success" aria-hidden="true" />
-            {t("trips.rewardsTitle")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {rewards.length === 0 ? (
-            <EmptyState message={t("trips.rewardsEmpty")} />
-          ) : (
-            <div className="flex flex-col gap-0.5">
-              <p className="text-lg font-semibold">
-                {totalPoints} <span className="text-sm font-normal text-muted-foreground">{t("trips.pointsUnit")}</span>
-              </p>
-              <p className="text-sm text-muted-foreground">
-                ≈ {pointsToEuroValue(totalPoints).toFixed(2)} € {t("rewards.valueSuffix")}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <BackToTripsLink />
+        <BackToTripsLink />
+      </PageContainer>
     </main>
   );
 }

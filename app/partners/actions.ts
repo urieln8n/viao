@@ -12,8 +12,44 @@ import {
   registerReservationActivity,
   type PartnerActivityOutcome,
 } from "../../lib/partners/register-partner-activity";
+import { completeMission } from "../../lib/missions/complete-mission";
+import { checkAndCompleteReferralIfThresholdMet } from "../../lib/referrals/complete-referral-action";
 
 export type RegisterPartnerActivityActionResult = PartnerActivityOutcome | { outcome: "unauthenticated" };
+
+// FASE J-B4 (Core Reset — Dependency Exit, Product Decision Lock
+// 2026-08-27) — efectos secundarios best-effort tras una Partner Activity
+// registrada con éxito, en el mismo punto (Server Action) donde
+// `app/booking/actions.ts` enganchaba su propio guard de Referrals —
+// mismo patrón, nuevo origen. Ninguno de los dos debe impedir que la
+// Actividad ya registrada se devuelva como éxito:
+// 1. Mission "partner_activity_registered" (reemplaza `hotel_viewed`,
+//    lib/missions/rules.ts) — mismo criterio best-effort ya usado para
+//    "goal_created" en lib/goals/create-goal.ts.
+// 2. Referrals — el nuevo modelo de umbral (2 Partner activities
+//    confirmadas, lib/referrals/rules.ts `PARTNER_ACTIVITY_REFERRAL_TRIGGER`)
+//    sustituye a `VALID_REFERRAL_ACTION_TRIGGER === "booking_confirmed"`
+//    como mecanismo REALMENTE activo — sin tocar `lib/referrals/rules.ts`
+//    ni `app/booking/actions.ts` en su constante histórica.
+async function afterPartnerActivityRegistered(userId: string): Promise<void> {
+  try {
+    await completeMission(userId, "partner_activity_registered");
+  } catch (error) {
+    console.error(
+      '[missions] No se pudo completar la Mission "partner_activity_registered":',
+      error,
+    );
+  }
+
+  try {
+    await checkAndCompleteReferralIfThresholdMet(userId);
+  } catch (error) {
+    console.error(
+      `[referrals] No se pudo comprobar el umbral de Partner activities para el usuario "${userId}":`,
+      error,
+    );
+  }
+}
 
 export async function registerQrActivityAction(
   accessToken: string,
@@ -36,7 +72,11 @@ export async function registerQrActivityAction(
       return { outcome: "unauthenticated" };
     }
 
-    return await registerQrActivity(userId, accessToken, attemptId, declaredAmountEur);
+    const result = await registerQrActivity(userId, accessToken, attemptId, declaredAmountEur);
+    if (result.outcome === "registered") {
+      await afterPartnerActivityRegistered(userId);
+    }
+    return result;
   } catch (error) {
     if (!userId) {
       return { outcome: "unauthenticated" };
@@ -62,7 +102,11 @@ export async function registerReservationActivityAction(
       return { outcome: "unauthenticated" };
     }
 
-    return await registerReservationActivity(userId, accessToken, attemptId, declaredAmountEur, reservationReference);
+    const result = await registerReservationActivity(userId, accessToken, attemptId, declaredAmountEur, reservationReference);
+    if (result.outcome === "registered") {
+      await afterPartnerActivityRegistered(userId);
+    }
+    return result;
   } catch (error) {
     if (!userId) {
       return { outcome: "unauthenticated" };

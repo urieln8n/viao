@@ -4,6 +4,7 @@ import { PageContainer } from "@/components/layout/page-container";
 
 import { resolvePartnerAccess } from "../../../../lib/partners/resolve-partner-access";
 import { getPartnerDashboard } from "../../../../lib/partners/get-partner-dashboard";
+import { getPartnerForEditing } from "../../../../lib/partners/get-partner-for-editing";
 import { PartnerDashboardView } from "./partner-dashboard-view";
 
 // Bloque Partners PB6 (VIAO_PARTNERS_IMPLEMENTATION_STATUS.md) — panel de
@@ -28,10 +29,25 @@ export default async function PartnerDashboardPage({ params }: PartnerDashboardP
 
   const dashboard = await getPartnerDashboard(access.partner.id);
 
+  // UX-12 (Partner Self-Service C1) — segunda consulta independiente de
+  // resolvePartnerAccess() de arriba (ver get-partner-for-editing.ts):
+  // en la práctica siempre resuelve si `access` ya fue "granted", pero se
+  // trata la ausencia igual que un access_token inválido (notFound())
+  // en vez de asumir que nunca puede pasar.
+  const editableProfile = await getPartnerForEditing(accessToken);
+  if (!editableProfile) {
+    notFound();
+  }
+
   return (
     <main className="flex flex-1 flex-col">
       <PageContainer variant="default" className="flex flex-1 flex-col gap-4 p-6">
-        <PartnerDashboardView partner={access.partner} accessToken={accessToken} dashboard={dashboard} />
+        <PartnerDashboardView
+          partner={access.partner}
+          accessToken={accessToken}
+          dashboard={dashboard}
+          editableProfile={editableProfile}
+        />
       </PageContainer>
     </main>
   );

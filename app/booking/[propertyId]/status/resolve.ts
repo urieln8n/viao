@@ -50,7 +50,7 @@
 // real, en vez de asumirlo por casteo. Si alguna vez no lo fuera, se
 // devuelve un error en lugar de inventar/mostrar un estado no soportado.
 import { createClient as createSessionClient } from "../../../../lib/supabase/server";
-import { isValidUuid } from "../../../properties/[id]/resolve";
+import { isValidUuid } from "../../../../lib/utils/is-valid-uuid";
 import type { BookingStatus } from "../../../../types/travel";
 
 export interface BookingStatusPropertyView {

@@ -2,7 +2,6 @@ import type { Dictionary } from "./types";
 
 export const en = {
   "nav.search": "Search",
-  "nav.trips": "My trip",
   "nav.rewards": "Wallet",
   "nav.profile": "Profile",
   "i18nDemo.title": "Language test",
@@ -94,6 +93,7 @@ export const en = {
   "profile.localeSpanishOption": "Español",
   "profile.localeEnglishOption": "English",
   "profile.referralCodeLabel": "Referral code",
+  "profile.referralCodeCopyCta": "Copy referral code",
   "profile.referralCodeExplainer":
     "Share your code. When the person you invite completes their first booking, you both earn Points.",
   "profile.saveButton": "Save changes",
@@ -190,13 +190,13 @@ export const en = {
   "rewards.balanceLabel": "Current balance",
   "rewards.pointsUnit": "Points",
   "rewards.pointsExplainer":
-    "You earn Points by booking, completing Missions, or inviting others. Use them to get Rewards within VIAO.",
+    "You earn Points by visiting Partner businesses, completing Missions, or inviting others. Use them to unlock Rewards within VIAO.",
   "rewards.provisionalNote":
-    "Points are provisional and do not represent any definitive value in euros.",
+    "Points are VIAO's own currency, not real money — they can't be withdrawn or transferred to a bank account.",
   "rewards.historyTitle": "Transaction history",
   "rewards.emptyTitle": "No activity yet",
   "rewards.emptyMessage":
-    "You'll see your Points here once you register your account or complete a booking.",
+    "You'll see your Points here as soon as you sign up or visit one of your Partner businesses.",
   "rewards.reasonRegistration": "Account registration",
   "rewards.reasonBooking": "Confirmed booking",
   "rewards.reasonReferral": "Referral reward",
@@ -211,6 +211,7 @@ export const en = {
   "rewards.catalog.title": "Rewards",
   "rewards.catalog.emptyTitle": "No Rewards available yet",
   "rewards.catalog.emptyMessage": "Check back soon — we're putting the catalog together.",
+  "rewards.catalog.partnerLabel": "Partner",
   "rewards.catalog.redeemCta": "Redeem",
   "rewards.catalog.insufficientCta": "Not enough Points",
   "rewards.redeem.confirmTitle": "Confirm redemption",
@@ -230,16 +231,24 @@ export const en = {
   "rewards.redeem.errorLimitExceeded": "You've already redeemed this Reward the maximum number of times.",
   "rewards.redeem.errorInsufficientBalance": "You don't have enough Points for this Reward.",
   "rewards.redeem.errorPoolExhausted": "This Reward isn't available right now — try again next month.",
+  // FASE UX-1.1 (Core UX Quick-Fix Pass, P0-8) — redemption history:
+  // recover the redemption code at any time, not only the first time it's
+  // shown.
+  "rewards.redemptions.title": "My redemptions",
+  "rewards.redemptions.emptyMessage": "You haven't redeemed any Reward yet.",
+  "rewards.redemptions.statusPending": "Pending",
+  "rewards.redemptions.statusFulfilled": "Fulfilled",
+  "rewards.redemptions.statusCancelled": "Cancelled",
   "goals.myGoalTitle": "My goal",
   "goals.createDescription":
     "Pick a destination and how many Points you want to reach. You'll see your progress here.",
   "goals.earnedLabel": "Earned toward your goal",
   "goals.availableLabel": "Available now",
-  "goals.createCta": "Create a travel goal",
+  "goals.createCta": "Create a goal",
   "goals.creating": "Creating…",
-  "goals.titlePlaceholder": "Where do you want to go?",
+  "goals.titlePlaceholder": "What do you want to achieve?",
   "goals.targetPlaceholder": "Target Points",
-  "goals.validationError": "Enter a destination and a Points target greater than zero.",
+  "goals.validationError": "Enter a title and a Points target greater than zero.",
   "goals.alreadyHasActiveGoal": "You already have an active goal.",
   "goals.createError": "The goal could not be created. Please try again.",
   "goals.cancelCta": "Cancel goal",
@@ -251,14 +260,14 @@ export const en = {
   "goals.cancelError": "The goal could not be cancelled. Please try again.",
   // Micro-bloque 2 (Home Beta) — short line under the progress bar: copy
   // only, no calculation changes (progressPercent stays the same).
-  "goals.progressMotivation": "Every Point you earn brings you closer to this trip.",
+  "goals.progressMotivation": "Every Point you earn brings you closer to this goal.",
   "onboarding.title": "What do you want to use VIAO for?",
   "onboarding.subtitle": "Turn part of what you already do every day into Points that bring you closer to what you actually want.",
-  "onboarding.concept": "Your next trip can start here.",
+  "onboarding.concept": "Reach goals, earn Points, and unlock Rewards at your favorite local businesses.",
   "onboarding.goalQuestion": "What's your goal?",
   "onboarding.continue": "Create my goal",
   "onboarding.skip": "Not now",
-  "onboarding.dateOptional": "Trip date (optional)",
+  "onboarding.dateOptional": "Target date (optional)",
   // Micro-bloque 2 (Home Beta) — same data/same 4 Missions, only the
   // section title changes: less "gamification", more direct connection
   // to the Goal above ("this is how you move toward it").
@@ -269,6 +278,9 @@ export const en = {
   "missions.pendingLabel": "Pending",
   "missions.weeklyBadge": "Weekly",
   "missions.lifetimeBadge": "One-time",
+  "missions.partnerExplainer":
+    "Partners are real local businesses — your activity there also earns Points toward your Goal.",
+  "missions.viewPartnersCta": "View Partners",
   "aiRecommendation.title": "VIAO AI",
   "aiRecommendation.tagline":
     "Your companion to help you decide what fits you best.",
@@ -373,7 +385,7 @@ export const en = {
   // Micro-bloque 2 (Home Beta) — see the matching es.ts comment: the
   // no-trip Hero title/subtitle now state the product thesis instead of
   // presenting a search form as the first touchpoint.
-  "home.greetingTitle": "Your everyday activity gets you closer to your next trip.",
+  "home.greetingTitle": "Your everyday activity gets you closer to your next goal.",
   "home.greetingSubtitle":
     "Set a goal, earn Points for what you already do, and get closer to it.",
   "home.createAccountCta": "Create account",
@@ -390,40 +402,18 @@ export const en = {
   // Micro-bloque 2 — connecting line under the Points balance: same
   // `walletBalance`, only ties it narratively to the Goal above.
   "home.pointsGoalConnection": "These Points already count toward your goal.",
-  "home.heroUpcomingEyebrow": "Your next trip",
-  "home.heroPreparingEyebrow": "Preparing your trip",
-  "home.heroReturnedEyebrow": "Welcome back",
-  "home.recapPhotosLabel": "Photos",
-  "home.recapScansLabel": "Scans",
-  "home.introBeforeEyebrow": "Before",
-  "home.introBeforeTitle": "Search and decide better.",
-  "home.introBeforeItem1": "Search for accommodation",
-  "home.introBeforeItem2": "VIAO AI helps you choose",
-  "home.introDuringEyebrow": "During",
-  "home.introDuringTitle": "VIAO travels with you.",
-  "home.introDuringItem1": "Vision to translate and understand what you find",
-  "home.introDuringItem2": "My trip to save your moments",
-  "home.introAfterEyebrow": "After",
-  "home.introAfterTitle": "Your trip stays with you.",
-  "home.introAfterItem":
-    "Photos, bookings, moments, and memories, saved in your trip album.",
-  "home.introAfterCta": "Go to My trip",
-  "home.rewardsIntroTitle": "Your trip builds value for your next one.",
-  "home.rewardsExample": "+800 VIAO Points ≈ 8 € in value",
-  "home.rewardsDisclaimer":
-    "VIAO Points are not money and cannot be withdrawn. They're used to reduce eligible purchases within VIAO, subject to the program's terms.",
-  "home.closingTagline": "Plan. Travel. Save your memories. Earn for the next one.",
-  "home.startTripCta": "Start my trip",
-  // Fase C (Home V1 redesign) — Discovery section + Trips closing
-  // invitation. The "home.intro*"/"home.rewardsIntro*"/
-  // "home.rewardsExample"/"home.rewardsDisclaimer"/"home.closingTagline"
-  // keys above stop being used in Home after this phase, but are kept
-  // without deleting them (outside this block's authorized scope).
-  // Micro-bloque 2 — used to title only the Discovery chips; now titles
-  // the merged "Search + Discovery" section (same chips + a "Search"
-  // button to /search, same data/same route).
-  "home.discoveryTitle": "When you're ready to travel",
-  "home.tripsClosingTitle": "Your next trip starts here.",
+  "home.partnersTeaserTitle": "Partners",
+  "home.partnersTeaserSubtitle": "Discover where to earn Points",
+  "home.partnersTeaserCta": "View Partners",
+  // FASE J-B2.5 (Travel Legacy Purge) — removes the "home.hero*Eyebrow"/
+  // "home.recap*Label"/"home.intro*"/"home.rewardsIntro*"/
+  // "home.rewardsExample"/"home.rewardsDisclaimer"/"home.closingTagline"/
+  // "home.discoveryTitle"/"home.tripsClosingTitle" keys: already orphaned
+  // since Fase C/Micro-bloque 2 (prior comment: "stop being used in
+  // Home... but are kept without deleting"), and this phase explicitly
+  // authorizes deleting i18n keys that are exclusively Travel and truly
+  // orphaned — confirmed zero consumers in app/page.tsx or elsewhere
+  // before removing them.
   // Bloque Partners PB5 (VIAO_PARTNERS_IMPLEMENTATION_STATUS.md) — minimal
   // operational UI for /partners/ops/[accessToken].
   "partnerOps.selectFlowDescription": "Choose how you want to register the activity.",
@@ -456,6 +446,8 @@ export const en = {
   "partnerDashboard.statusActive": "Active",
   "partnerDashboard.statusInactive": "No recent activity",
   "partnerDashboard.backToOpsCta": "Register activity",
+  "partnerDashboard.customersGroupLabel": "Customers",
+  "partnerDashboard.salesGroupLabel": "Sales",
   "partnerDashboard.newCustomersLabel": "New customers",
   "partnerDashboard.returningCustomersLabel": "Returning customers",
   "partnerDashboard.declaredSalesLabel": "Declared sales",
@@ -466,4 +458,56 @@ export const en = {
   "partnerDashboard.qrActivityLabel": "Visit (QR)",
   "partnerDashboard.reservationActivityLabel": "Reservation",
   "partnerDashboard.noPointsLabel": "No Points this month",
+  "partnerDashboard.visibilityGroupLabel": "Visibility",
+  "partnerDashboard.profileViewsLabel": "Profile views",
+  "partnerDashboard.myBusinessTitle": "My business",
+  "partnerDashboard.myBusinessDescription": "Edit the information users see on your public profile.",
+  "partnerDashboard.myBusinessSaveCta": "Save changes",
+  "partnerDashboard.myBusinessSaving": "Saving…",
+  "partnerDashboard.myBusinessSuccessMessage": "Changes saved successfully.",
+  "partnerDashboard.myBusinessErrorGeneric": "Could not save the changes. Please try again.",
+  "partners.pageTitle": "Partners",
+  "partners.pageSubtitle": "Discover businesses where you can earn Points.",
+  "partners.emptyTitle": "No active Partners yet",
+  "partners.emptyMessage": "VIAO is onboarding its first businesses. Check back soon.",
+  "partners.card.pointsHint": "You can earn Points by doing an activity here.",
+  "partners.card.viewCta": "View Partner",
+  "partners.joinTeaser": "Have a business?",
+  "partners.joinTeaserCta": "Join VIAO as a Partner",
+  "partners.category.restaurant": "Restaurant",
+  "partners.category.experience": "Experience",
+  "partners.category.barbershop": "Barbershop",
+  "partners.category.gym": "Gym",
+  "partners.category.shop": "Shop",
+  "partners.category.service": "Service",
+  "partnerProfile.notFoundTitle": "Partner not found",
+  "partnerProfile.notFoundMessage": "This Partner doesn't exist or is no longer available.",
+  "partnerProfile.backToDiscoveryCta": "View all Partners",
+  "partnerProfile.whatCanYouDoTitle": "What can you do here?",
+  "partnerProfile.pointsHintCta": "How to earn Points here",
+  "partnerJoin.title": "Have a business?",
+  "partnerJoin.subtitle": "Join VIAO and help your customers earn Points.",
+  "partnerJoin.valueProposition":
+    "Join VIAO for free. Your customers can earn Points by doing activities with you, and you can register that activity from your Partner Dashboard.",
+  "partnerJoin.nameLabel": "Business name",
+  "partnerJoin.categoryLabel": "Category",
+  "partnerJoin.categoryPlaceholder": "Select a category",
+  "partnerJoin.descriptionLabel": "Description (optional)",
+  "partnerJoin.addressLabel": "Address (optional)",
+  "partnerJoin.emailLabel": "Contact email (optional)",
+  "partnerJoin.phoneLabel": "Contact phone (optional)",
+  "partnerJoin.imageUrlLabel": "Image link (optional)",
+  "partnerJoin.submitCta": "Send request",
+  "partnerJoin.submitting": "Sending…",
+  "partnerJoin.validationError": "Fill in the name and select a category.",
+  "partnerJoin.errorGeneric": "Could not send the request. Please try again.",
+  "partnerJoin.successTitle": "Request received",
+  "partnerJoin.successMessage": "VIAO will review your business and contact you to activate your Partner access.",
+  "partnerJoin.backCta": "Back to Partners",
+  // FASE UX-1.1 (Core UX Quick-Fix Pass) — copy for the global Error
+  // Boundary (app/error.tsx), the single catch point for uncontrolled
+  // errors across the app.
+  "error.title": "Something went wrong",
+  "error.message": "An unexpected error occurred. You can try again.",
+  "error.retryCta": "Try again",
 } satisfies Dictionary;

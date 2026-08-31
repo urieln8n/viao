@@ -52,7 +52,7 @@
 // `search_id` (F6-06, VIAO_ROADMAP.md): F6-01 ya conserva `?search_id=`
 // (F5-07) hasta esta pantalla, pero ese valor sigue siendo dato de
 // cliente en este límite — el formato UUID por sí solo (`isValidUuid`,
-// reutilizado de `app/properties/[id]/resolve.ts`, sin duplicar el regex)
+// reutilizado de `lib/utils/is-valid-uuid.ts`, sin duplicar el regex)
 // NO basta: un cliente podría enviar el UUID real de una búsqueda AJENA
 // (una que existe, con formato válido, pero de otro usuario). Auditoría
 // previa (Paso 0 de F6-06): `service_role` no tiene NINGÚN GRANT sobre
@@ -140,7 +140,7 @@ import { VALID_REFERRAL_ACTION_TRIGGER } from "../../lib/referrals/rules";
 import { findOrCreateTripForBooking } from "../../lib/trips/find-or-create-trip-for-booking";
 import { associateBookingWithTrip } from "../../lib/bookings/associate-trip";
 import { getSearchById } from "../../lib/searches/get-search-by-id";
-import { isValidUuid } from "../properties/[id]/resolve";
+import { isValidUuid } from "../../lib/utils/is-valid-uuid";
 import { t } from "../../lib/i18n";
 import type { BookingRequest, BookingResult, Property } from "../../types/travel";
 

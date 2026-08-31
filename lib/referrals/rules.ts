@@ -28,9 +28,39 @@ export type ValidReferralActionTrigger = "booking_confirmed";
 /**
  * PROVISIONAL / CONFIGURABLE / PENDIENTE DE DEFINICIÓN DE NEGOCIO.
  * Ver la cabecera de este archivo para la justificación completa.
+ *
+ * FASE J-B4 (Core Reset — Dependency Exit) — este valor queda tal cual,
+ * sin tocar: `app/booking/actions.ts` sigue consultándolo (fuera de
+ * alcance de esta fase, HARD RULE explícita de no modificar Booking) y
+ * ya es inerte en la práctica desde J-B1/J-B2.5 — Booking no tiene
+ * ninguna entrada de navegación, así que este camino nunca se dispara
+ * hoy. El mecanismo REALMENTE activo desde esta fase es
+ * `PARTNER_ACTIVITY_REFERRAL_TRIGGER`, más abajo.
  */
 export const VALID_REFERRAL_ACTION_TRIGGER: ValidReferralActionTrigger =
   "booking_confirmed";
+
+// FASE J-B4 (Core Reset — Dependency Exit, Product Decision Lock
+// 2026-08-27) — nuevo modelo de "acción válida" de Referrals,
+// independiente de Travel/Booking: un evento único (como el de arriba)
+// es gameable por una sola visita fabricada entre referrer y referido,
+// así que se sustituye por un modelo de UMBRAL. El referido debe
+// completar al menos `minCount` Partner activities confirmadas
+// (`partner_activities` — cada fila ya nace confirmada por el propio
+// Partner, PMM3/LOCKED) antes de que se otorgue la recompensa a ambas
+// partes. `minCount = 2`: resiste la colusión de una sola visita
+// fabricada, sin retrasar la recompensa hasta un evento tardío o poco
+// frecuente (ver Product Decision Lock, sección Referrals, para la
+// comparación completa frente a otras alternativas consideradas).
+export interface PartnerActivityCountReferralTrigger {
+  type: "partner_activity_count";
+  minCount: number;
+}
+
+export const PARTNER_ACTIVITY_REFERRAL_TRIGGER: PartnerActivityCountReferralTrigger = {
+  type: "partner_activity_count",
+  minCount: 2,
+};
 
 // Montos PROVISIONALES — igual que `lib/rewards/rules.ts` (F7-04): NO
 // representan ninguna conversión definitiva a EUR ni ninguna promesa

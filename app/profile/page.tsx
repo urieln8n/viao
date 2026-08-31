@@ -3,17 +3,16 @@
 import { useEffect, useId, useState, type FormEvent } from "react";
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
+import { Check, Copy } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { EmptyState } from "@/components/state/empty-state";
 import { ErrorState } from "@/components/state/error-state";
 import { Input } from "@/components/ui/input";
 import { LoadingState } from "@/components/state/loading-state";
 import { t, type Locale, SUPPORTED_LOCALES } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
-import { pointsToEuroValue } from "../../lib/rewards/rules";
-import { getProfileRewardsBalanceAction } from "./actions";
+import { getProfileRewardsBalanceAction, completeProfileCompletedMissionAction } from "./actions";
 
 type SessionStatus = "checking" | "signed-out" | "signed-in";
 // "idle" cubre también "cargando": mientras la promesa de carga está en
@@ -66,6 +65,12 @@ export default function ProfilePage() {
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // UX-2 (World-Class Product Design) — Fase G: estado puramente de UI,
+  // sin ninguna llamada a backend nueva. `referralCode` ya existe y ya se
+  // carga (ver el efecto de abajo); esto solo controla el icono/texto del
+  // botón de copiar durante 2s tras un click exitoso.
+  const [referralCodeCopied, setReferralCodeCopied] = useState(false);
 
   // Bloque 16 ("Perfil") — resumen de Rewards, mismo criterio "undefined
   // = sin sesión/sin cargar todavía" que StatCard en Home (app/page.tsx).
@@ -151,6 +156,23 @@ export default function ProfilePage() {
   // app/(auth)/login/page.tsx: signOut() + onAuthStateChange (ya
   // suscrito arriba) actualiza sessionStatus automáticamente, sin
   // redirección manual.
+  // UX-2 (World-Class Product Design) — Fase G: copia al portapapeles del
+  // código ya cargado en memoria (`referralCode`) — ninguna llamada de
+  // red, ningún dato nuevo. `navigator.clipboard` requiere un contexto
+  // seguro (https/localhost), ya garantizado en producción y en dev.
+  async function handleCopyReferralCode() {
+    try {
+      await navigator.clipboard.writeText(referralCode);
+      setReferralCodeCopied(true);
+      setTimeout(() => setReferralCodeCopied(false), 2000);
+    } catch {
+      // Best-effort puramente visual: si el portapapeles no está
+      // disponible (permiso denegado, navegador antiguo), el código
+      // sigue siendo perfectamente legible/seleccionable a mano — no se
+      // muestra ningún error, no hay nada roto que reportar.
+    }
+  }
+
   async function handleLogout() {
     setLogoutLoading(true);
     const supabase = createClient();
@@ -200,6 +222,12 @@ export default function ProfilePage() {
 
       setActiveLocale(locale);
       setSaveStatus("success");
+      // FASE J-B4 — Mission "profile_completed" (reemplaza a
+      // search_started). Best-effort, nunca bloquea ni condiciona el
+      // guardado ya confirmado — completeProfileCompletedMissionAction()
+      // vuelve a comprobar server-side que name/avatar_url quedaron
+      // rellenos antes de otorgar nada.
+      void completeProfileCompletedMissionAction();
     } catch {
       setSaveError(t("profile.errorUnexpected", activeLocale));
       setSaveStatus("error");
@@ -220,7 +248,7 @@ export default function ProfilePage() {
           )}
 
           {sessionStatus === "signed-out" && (
-            <EmptyState
+            <ErrorState
               title={t("profile.signedOutTitle", activeLocale)}
               message={t("profile.signedOutMessage", activeLocale)}
               action={
@@ -296,7 +324,7 @@ export default function ProfilePage() {
                   <label
                     key={option.id}
                     htmlFor={option.id}
-                    className="flex items-center gap-2 text-sm"
+                    className="flex min-h-11 items-center gap-2 text-sm"
                   >
                     <input
                       type="radio"
@@ -316,22 +344,42 @@ export default function ProfilePage() {
               </fieldset>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor={referralCodeId} className="text-sm font-medium">
+                <span id={referralCodeId} className="text-sm font-medium">
                   {t("profile.referralCodeLabel", activeLocale)}
-                </label>
-                <Input
-                  id={referralCodeId}
-                  name="referralCode"
-                  type="text"
-                  value={referralCode}
-                  disabled
-                  readOnly
-                />
-                {/* Bloque Claridad de producto V1 — el código ya se
-                    mostraba, pero sin ninguna explicación de qué hace ni
-                    qué gana el usuario. Deliberadamente sin cifras: los
-                    montos siguen provisionales (lib/referrals/rules.ts,
-                    sin tocar en este bloque). */}
+                </span>
+                {/* UX-2 (World-Class Product Design) — Fase G: hallazgo ya
+                    documentado en VIAO_PREMIUM_DESIGN_UX_V1.md sección 22
+                    ("un Input disabled más, no se siente algo para
+                    compartir con orgullo"). Mismo lenguaje visual que el
+                    código de canje de Rewards (chip con borde, mono,
+                    tracking-wider — "si dos componentes hacen cosas
+                    parecidas, deben parecer pertenecer a la misma
+                    familia"): este también es un código que el usuario
+                    enseña/comparte, no un campo de formulario que rellena.
+                    Botón de copiar añadido — utilidad real, cero llamada
+                    de red nueva. Ningún dato ni cálculo cambia. */}
+                <div
+                  role="group"
+                  aria-labelledby={referralCodeId}
+                  className="flex items-center gap-2"
+                >
+                  <span className="flex-1 rounded-md border border-border bg-muted px-3 py-2.5 text-center font-mono text-lg font-semibold tracking-[0.15em]">
+                    {referralCode}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleCopyReferralCode}
+                    aria-label={t("profile.referralCodeCopyCta", activeLocale)}
+                  >
+                    {referralCodeCopied ? (
+                      <Check className="text-success" aria-hidden="true" />
+                    ) : (
+                      <Copy aria-hidden="true" />
+                    )}
+                  </Button>
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {t("profile.referralCodeExplainer", activeLocale)}
                 </p>
@@ -345,21 +393,30 @@ export default function ProfilePage() {
             </form>
           )}
 
+          {/* FASE J-B2.5 (Travel Legacy Purge) — se retira aquí el bloque
+              "Mis viajes" (CTA a /trips) que existía entre Rewards y
+              Cuenta: era la última referencia Travel visible en Perfil.
+              `/trips` no se elimina como ruta, solo pierde este punto de
+              entrada. `profile.tripsTitle`/`profile.viewTripsCta` quedan
+              huérfanas en lib/i18n (no se tocan en este bloque). */}
           {sessionStatus === "signed-in" && profileStatus === "ready" && (
             <div className="flex flex-col gap-2 border-t border-border pt-4">
               <span className="text-sm font-medium">
                 {t("profile.rewardsTitle", activeLocale)}
               </span>
               {rewardsBalance !== undefined && (
-                <>
-                  <p className="text-2xl font-semibold text-success">
-                    {rewardsBalance} {t("rewards.pointsUnit", activeLocale)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    ≈ {pointsToEuroValue(rewardsBalance).toFixed(2)} €{" "}
-                    {t("rewards.valueSuffix", activeLocale)}
-                  </p>
-                </>
+                // UX-4 (Partners clarity + Points semantics) — se retira
+                // aquí el equivalente "≈X.XX€ de valor" que existía debajo
+                // del saldo: era la única pantalla Core activa donde
+                // Points se presentaba con una equivalencia monetaria
+                // explícita, contradiciendo "Points no son dinero"
+                // (comentario propio de lib/rewards/rules.ts). No se toca
+                // `pointsToEuroValue()` ni `rewards.valueSuffix` — ambos
+                // siguen teniendo consumidores reales en Travel/Booking.
+                <p className="text-2xl font-semibold text-success">
+                  <span className="font-mono tabular-nums">{rewardsBalance}</span>{" "}
+                  {t("rewards.pointsUnit", activeLocale)}
+                </p>
               )}
               <Link
                 href="/rewards"
@@ -370,16 +427,27 @@ export default function ProfilePage() {
             </div>
           )}
 
+          {/* J-B7.5 (VIAO_V1_MASTER_ROADMAP.md, Condición #2 de J-B7) —
+              Product Decision Lock: colocación mínima y transitoria de
+              supervivencia, NO el hogar definitivo de Vision (Vision sigue
+              en estado DECOUPLE, sin integración con Goals/Points/Rewards/
+              Missions/Partners/Wallet — no se inventa ninguna aquí). Único
+              objetivo: que Vision no quede inalcanzable cuando Trips se
+              retire. Mismo patrón que el bloque Rewards de arriba, en el
+              mismo hueco estructural que ocupaba "Mis viajes" antes de
+              J-B2.5. El CTA Trips → Vision (app/trips/[id]/page.tsx) NO se
+              toca en este bloque — ver PENDIENTE FUTURO en el informe de
+              la fase. */}
           {sessionStatus === "signed-in" && profileStatus === "ready" && (
             <div className="flex flex-col gap-2 border-t border-border pt-4">
               <span className="text-sm font-medium">
-                {t("profile.tripsTitle", activeLocale)}
+                {t("vision.title", activeLocale)}
               </span>
               <Link
-                href="/trips"
+                href="/vision"
                 className={buttonVariants({ variant: "outline", size: "sm" })}
               >
-                {t("profile.viewTripsCta", activeLocale)}
+                {t("home.visionTeaserCta", activeLocale)}
               </Link>
             </div>
           )}

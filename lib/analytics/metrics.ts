@@ -30,6 +30,18 @@ import { createServiceRoleClient } from "../supabase/service";
 // infracontaban en silencio. `fetchAllRows()` pagina con `.range()` hasta
 // agotar la tabla, para que el resultado sea correcto a cualquier volumen,
 // no solo mientras la tabla es pequeña.
+//
+// F3.5 (Analytics Stability, hallazgo real durante la verificación de
+// UX-12): `.range()` por sí solo NO garantiza un orden estable entre
+// llamadas SELECT sucesivas sin una cláusula ORDER BY determinista — a
+// partir de cierto volumen (233.198 filas reales en esta sesión), el
+// plan de ejecución de Postgres puede variar entre páginas, perdiendo o
+// duplicando filas. Cada llamador de `fetchAllRows()` DEBE encadenar
+// `.order("id", { ascending: true })` justo antes de `.range(from, to)`
+// — `id` es la PK (`uuid`, ya indexada), única y estable por fila,
+// nunca repetida entre inserts en el mismo lote (a diferencia de
+// `created_at`, que SÍ puede repetirse entre filas del mismo INSERT
+// masivo).
 export const METRICS_PAGE_SIZE = 1000;
 const PAGE_SIZE = METRICS_PAGE_SIZE;
 
@@ -92,6 +104,7 @@ async function countRegisteredUsers(): Promise<number> {
       .select("user_id")
       .eq("event_name", "registered")
       .not("user_id", "is", null)
+      .order("id", { ascending: true })
       .range(from, to),
   );
   return new Set(rows.map((row) => row.user_id)).size;
@@ -126,6 +139,7 @@ export async function calculateActivationMetrics(): Promise<ActivationMetrics> {
       .select("user_id")
       .in("event_name", USEFUL_ACTION_EVENTS)
       .not("user_id", "is", null)
+      .order("id", { ascending: true })
       .range(from, to),
   );
 
@@ -158,7 +172,7 @@ export interface ConversionMetrics {
 export async function calculateConversionMetrics(): Promise<ConversionMetrics> {
   const service = createServiceRoleClient();
   const rows = await fetchAllRows<{ event_name: string }>((from, to) =>
-    service.from("analytics_events").select("event_name").range(from, to),
+    service.from("analytics_events").select("event_name").order("id", { ascending: true }).range(from, to),
   );
 
   const counts = new Map<string, number>();
@@ -203,6 +217,7 @@ export async function calculateRetentionMetrics(): Promise<RetentionMetrics> {
       .select("user_id")
       .eq("event_name", "return_visit")
       .not("user_id", "is", null)
+      .order("id", { ascending: true })
       .range(from, to),
   );
 

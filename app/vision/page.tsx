@@ -1,5 +1,6 @@
+import { PageContainer } from "@/components/layout/page-container";
+
 import { hasActiveVisionConsent } from "../../lib/vision/check-vision-consent";
-import { getUserTrips } from "../../lib/trips/get-user-trips";
 import { VisionView } from "./vision-view";
 
 // F10 (VIAO_ROADMAP.md) — Punto de entrada de VIAO Vision. El estado de
@@ -8,28 +9,27 @@ import { VisionView } from "./vision-view";
 // decide por su cuenta si hay consentimiento, solo refleja el resultado
 // real ya conocido por el servidor.
 //
-// Bloque 11 ("Conexión del MVP para piloto") — `getUserTrips()` (F11-01,
-// ya usada por `app/trips/page.tsx`) se reutiliza sin cambios para dar a
-// `VisionView` la lista real de viajes del usuario, reemplazando el campo
-// de texto libre donde antes había que teclear un UUID a mano. Sin sesión
-// real, `VisionView` cae al estado vacío, sin ningún caso especial nuevo
-// aquí (Bloque Claridad de producto V1: `getUserTrips()` ahora devuelve
-// `undefined` sin sesión en vez de `[]`, para que `app/trips/page.tsx`
-// pueda distinguirlo — Vision no necesita esa distinción, así que se
-// normaliza aquí mismo a `[]`, sin cambiar el comportamiento ya existente
-// de esta página).
-//
 // Bloque 19 ("Identidad visual") — título/descripción ya no viven sueltos
 // aquí: se movieron dentro de la Card de cabecera de `VisionView` (mismo
 // criterio que VIAO AI) para que Vision se perciba como una herramienta
 // propia. Ningún dato ni lógica nueva.
+//
+// FASE J-B6 (Vision Decouple, 2026-08-27) — se retira `getUserTrips()` y
+// el prop `trips`: Vision ya no necesita conocer los viajes del usuario
+// para abrirse ni para funcionar (imagen -> consentimiento -> validación
+// -> OCR/traducción -> resultado, sin ninguna dependencia de Trips). El
+// único punto de entrada visible a esta página sigue siendo, por ahora,
+// el enlace dentro de `app/trips/[id]/page.tsx` — dónde debería vivir una
+// nueva entrada es una decisión de producto explícitamente fuera de
+// alcance de este bloque (ver el informe de la fase).
 export default async function VisionPage() {
   const initialHasConsent = await hasActiveVisionConsent();
-  const trips = (await getUserTrips()) ?? [];
 
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
-      <VisionView initialHasConsent={initialHasConsent} trips={trips} />
+    <main className="flex flex-1 flex-col">
+      <PageContainer variant="default" className="flex flex-1 flex-col gap-4 p-6">
+        <VisionView initialHasConsent={initialHasConsent} />
+      </PageContainer>
     </main>
   );
 }

@@ -50,7 +50,7 @@ async function createTestPartner(): Promise<string> {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const { data, error } = await service
     .from("partners")
-    .insert({ name: `Test Partner ${suffix}`, slug: `test-partner-${suffix}`, category: "restaurant" })
+    .insert({ name: `Test Partner ${suffix}`, slug: `test-partner-${suffix}`, category: "restaurant", is_test: true })
     .select("id")
     .single();
   assert.equal(error, null, `crear Partner de test falló: ${error?.message}`);

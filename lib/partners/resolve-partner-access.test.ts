@@ -28,7 +28,7 @@ async function createTestPartner(status: "active" | "inactive" = "active"): Prom
   const category = "restaurant";
   const { data, error } = await service
     .from("partners")
-    .insert({ name, slug: `test-partner-access-${suffix}`, category, status })
+    .insert({ name, slug: `test-partner-access-${suffix}`, category, status, is_test: true })
     .select("id, access_token")
     .single();
   assert.equal(error, null, `crear Partner de test falló: ${error?.message}`);

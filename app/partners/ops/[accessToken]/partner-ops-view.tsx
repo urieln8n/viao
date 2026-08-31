@@ -100,7 +100,8 @@ export function PartnerOpsView({ partner, accessToken }: PartnerOpsViewProps) {
         <CardContent className="flex flex-col gap-3">
           {hasPoints ? (
             <p className="text-lg font-semibold text-success">
-              {t("partnerOps.resultPointsAwarded")}: {view.pointsAwarded} {t("rewards.pointsUnit")}
+              {t("partnerOps.resultPointsAwarded")}:{" "}
+              <span className="font-mono tabular-nums">{view.pointsAwarded}</span> {t("rewards.pointsUnit")}
             </p>
           ) : (
             <>

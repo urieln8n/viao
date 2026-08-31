@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/state/empty-state";
 import { ErrorState } from "@/components/state/error-state";
+import { PageContainer } from "@/components/layout/page-container";
 import { t } from "@/lib/i18n";
 
 import { getUserTrips } from "../../lib/trips/get-user-trips";
@@ -25,66 +26,70 @@ export default async function TripsPage() {
 
   if (trips === undefined) {
     return (
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
-        <ErrorState
-          title={t("trips.unauthenticatedTitle")}
-          message={t("trips.unauthenticatedMessage")}
-          action={
-            <Link href="/login" className={buttonVariants({ variant: "default" })}>
-              {t("trips.loginCta")}
-            </Link>
-          }
-        />
+      <main className="flex flex-1 flex-col">
+        <PageContainer variant="default" className="flex flex-1 flex-col gap-4 p-6">
+          <ErrorState
+            title={t("trips.unauthenticatedTitle")}
+            message={t("trips.unauthenticatedMessage")}
+            action={
+              <Link href="/login" className={buttonVariants({ variant: "default" })}>
+                {t("trips.loginCta")}
+              </Link>
+            }
+          />
+        </PageContainer>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 p-6">
-      <h1 className="text-xl font-semibold">{t("trips.title")}</h1>
+    <main className="flex flex-1 flex-col">
+      <PageContainer variant="default" className="flex flex-1 flex-col gap-4 p-6">
+        <h1 className="text-xl font-semibold">{t("trips.title")}</h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("trips.createTitle")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CreateTripForm />
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("trips.createTitle")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CreateTripForm />
+          </CardContent>
+        </Card>
 
-      {trips.length === 0 ? (
-        <EmptyState
-          title={t("trips.emptyTitle")}
-          message={t("trips.emptyMessage")}
-        />
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {trips.map((trip) => (
-            <li key={trip.id}>
-              <Link
-                href={`/trips/${trip.id}`}
-                className="block rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                <Card className="transition-colors hover:bg-muted/50">
-                  <CardHeader>
-                    <CardTitle>{trip.destination}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      {trip.startDate && trip.endDate
-                        ? `${trip.startDate} — ${trip.endDate}`
-                        : t("trips.datesUnset")}
-                    </p>
-                    <span className="mt-1 inline-block text-sm text-primary">
-                      {t("trips.viewTrip")}
-                    </span>
-                  </CardContent>
-                </Card>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+        {trips.length === 0 ? (
+          <EmptyState
+            title={t("trips.emptyTitle")}
+            message={t("trips.emptyMessage")}
+          />
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {trips.map((trip) => (
+              <li key={trip.id}>
+                <Link
+                  href={`/trips/${trip.id}`}
+                  className="block rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <Card className="transition-colors hover:bg-muted/50">
+                    <CardHeader>
+                      <CardTitle>{trip.destination}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">
+                        {trip.startDate && trip.endDate
+                          ? `${trip.startDate} — ${trip.endDate}`
+                          : t("trips.datesUnset")}
+                      </p>
+                      <span className="mt-1 inline-block text-sm text-primary">
+                        {t("trips.viewTrip")}
+                      </span>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </PageContainer>
     </main>
   );
 }

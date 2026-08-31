@@ -70,25 +70,29 @@ test("taxonomía: 'registered' se emite desde el trigger handle_new_user() (F3-0
   assert.ok(source.includes("'registered'"), "falta la emisión de 'registered'");
 });
 
-test("taxonomía: 'search_started' y 'search_completed' se emiten desde app/search/actions.ts", () => {
-  const source = readSource("app/search/actions.ts");
-  assert.ok(source.includes('logAnalyticsEvent("search_started"'));
-  assert.ok(source.includes('logAnalyticsEvent("search_completed"'));
-});
+// J-B8.1 (Travel Legacy Purge — Search & AI Recommendation) — se retira
+// aquí el test que comprobaba la emisión de 'search_started'/
+// 'search_completed' desde app/search/actions.ts: ese archivo se elimina
+// en este bloque, y con él desaparece el único emisor real de ambos
+// eventos. Se quedan sin punto de emisión de forma INTENCIONAL (igual
+// que 'reward_redeemed' más abajo, ausencia documentada, no un olvido) —
+// EXPECTED_TAXONOMY no se toca porque el CHECK constraint real de
+// analytics_events (supabase/migrations/, sin modificar en este bloque)
+// sigue permitiendo ambos valores.
 
-test("taxonomía: 'hotel_viewed' se emite desde app/properties/[id]/resolve.ts", () => {
-  const source = readSource("app/properties/[id]/resolve.ts");
-  assert.ok(source.includes('logAnalyticsEvent("hotel_viewed"'));
-});
+// J-B8.2 (Travel Legacy Purge — Properties) — se retiran aquí los tests
+// que comprobaban la emisión de 'hotel_viewed' (desde
+// app/properties/[id]/resolve.ts) y 'booking_clicked' (desde
+// app/properties/[id]/log-booking-clicked-action.ts): ambos archivos se
+// eliminan en este bloque, y con ellos desaparece su único emisor real.
+// Mismo tratamiento que 'search_started'/'search_completed' en B8.1:
+// ausencia documentada como intencional, no un olvido — EXPECTED_TAXONOMY
+// no se toca porque el CHECK constraint real de analytics_events (sin
+// modificar en este bloque) sigue permitiendo ambos valores.
 
 test("taxonomía: 'recommendation_requested' se emite desde lib/openai/log.ts", () => {
   const source = readSource("lib/openai/log.ts");
   assert.ok(source.includes('logAnalyticsEvent("recommendation_requested"'));
-});
-
-test("taxonomía: 'booking_clicked' se emite desde app/properties/[id]/log-booking-clicked-action.ts", () => {
-  const source = readSource("app/properties/[id]/log-booking-clicked-action.ts");
-  assert.ok(source.includes('logAnalyticsEvent("booking_clicked"'));
 });
 
 test("taxonomía: 'booking_completed' se emite desde app/booking/actions.ts", () => {
@@ -143,4 +147,18 @@ test("taxonomía (F12-02): 'referral_created' se emite desde el trigger de regis
 test("taxonomía (F12-05): 'return_visit' se emite desde lib/analytics/record-return-visit.ts", () => {
   const source = readSource("lib/analytics/record-return-visit.ts");
   assert.ok(source.includes('logAnalyticsEvent("return_visit"'));
+});
+
+// UX-12 (Partner Self-Service + Measurement) — 'partner_profile_viewed'
+// amplía la taxonomía DESPUÉS del CHECK original de F3-07
+// (20260831090000_add_partner_profile_viewed_event.sql, migración
+// aditiva y separada) — por eso no se añade a EXPECTED_TAXONOMY de
+// arriba (ese test verifica específicamente el CHECK original de
+// 20260817140010_create_analytics_events.sql, no el estado actual tras
+// migraciones posteriores). Mismo patrón que el resto de tests
+// individuales de esta suite: confirma que existe al menos un punto real
+// de emisión en el código.
+test("taxonomía (UX-12): 'partner_profile_viewed' se emite desde app/partners/[slug]/page.tsx", () => {
+  const source = readSource("app/partners/[slug]/page.tsx");
+  assert.ok(source.includes('logAnalyticsEvent("partner_profile_viewed"'));
 });

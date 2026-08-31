@@ -1,17 +1,20 @@
-import { Check } from "lucide-react";
+import Link from "next/link";
+import { Check, ArrowRight } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { t } from "@/lib/i18n";
 
 import type { MissionStatus } from "../lib/missions/get-missions-status";
 
 // Bloque Missions (Prompt Maestro 24/08/2026) — sección mínima de Home.
 // Solo lectura: las Missions se completan como efecto lateral de
-// acciones reales ya existentes (buscar, volver, ver un alojamiento,
-// crear un Goal) — esta sección nunca dispara nada, solo muestra el
-// estado ya calculado por `getMissionsStatus()`. Sin animaciones nuevas,
-// sin interacción — la jerarquía de Home se revisará en la Fase C.
+// acciones reales ya existentes (completar el perfil, volver, registrar
+// una actividad con un Partner, crear un Goal — FASE J-B4, Core Reset)
+// — esta sección nunca dispara nada, solo muestra el estado ya calculado
+// por `getMissionsStatus()`. Sin animaciones nuevas, sin interacción —
+// la jerarquía de Home se revisará en la Fase C.
 //
 // Bloque Claridad de producto V1 — `CardDescription` (mismo patrón ya
 // usado en la card de Vision de Home) explica en una línea qué son las
@@ -61,6 +64,30 @@ export function MissionsSummary({ missions }: { missions: MissionStatus[] }) {
             </Badge>
           </div>
         ))}
+        {/* UX-4 (Partners clarity + Points semantics) — caption breve,
+            dentro del mismo CardContent (sin Card/componente nuevo):
+            "Registra tu primera actividad con un Partner" (mission de
+            arriba) era la primera vez que un usuario nuevo veía la
+            palabra "Partner" en todo el producto, sin ninguna definición
+            previa en ningún punto del recorrido (Onboarding dice "tus
+            comercios favoritos", nunca "Partner") — hallazgo de la
+            auditoría UX-4. Nunca condicional a esa Mission en concreto:
+            se muestra siempre, igual que `missions.sectionDescription`
+            ya hace. */}
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">{t("missions.partnerExplainer")}</p>
+          {/* UX-10 (Partners Visible + Discovery + Registration) — §9:
+              responde "¿Dónde hago esto?" enlazando directamente a
+              Discovery — sin personalización Mission -> Partner concreto
+              (fuera de alcance de este bloque, §9). */}
+          <Link
+            href="/partners"
+            className={buttonVariants({ variant: "ghost", size: "sm", className: "shrink-0 gap-1" })}
+          >
+            {t("missions.viewPartnersCta")}
+            <ArrowRight className="size-3.5" aria-hidden="true" />
+          </Link>
+        </div>
       </CardContent>
     </Card>
   );

@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // dist/test-run: salida efímera de `npm test` (scripts/run-tests.mjs
+    // la borra y recompila en cada ejecución), ya en .gitignore — nunca
+    // código fuente real, no debe lintarse.
+    "dist/**",
   ]),
 ]);
 

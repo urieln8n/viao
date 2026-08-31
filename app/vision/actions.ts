@@ -10,7 +10,7 @@ import { VISION_SCAN_RATE_LIMIT_PROVISIONAL } from "../../lib/rate-limit/config"
 import { isVisionEnabled } from "../../lib/openai/config";
 import { generateVisionScan } from "../../lib/openai/vision";
 import { logVisionOutcome } from "../../lib/openai/log";
-import { isValidUuid } from "../properties/[id]/resolve";
+import { isValidUuid } from "../../lib/utils/is-valid-uuid";
 import { SUPPORTED_LOCALES, type Locale } from "../../lib/i18n/types";
 
 // F10-00→F10-05 (VIAO_ROADMAP.md) — Server Actions de VIAO Vision.
@@ -34,10 +34,15 @@ import { SUPPORTED_LOCALES, type Locale } from "../../lib/i18n/types";
 //    de OpenAI para Vision; el kill switch se revuelve a comprobar dentro
 //    (defensa en profundidad).
 // 7. Persistencia en `vision_scans` (F10-03) — `image_retained=false` por
-//    defecto: la fila de `vision_scans` en sí sigue sin guardar la
-//    imagen (solo texto) — la relación con una imagen real en Storage
-//    solo existe si el usuario decide "Guardar en Mi viaje" (`photos`,
-//    `vision_scan_id`), exactamente igual que antes de este bloque.
+//    defecto: la fila de `vision_scans` en sí nunca guarda la imagen,
+//    solo el resultado en texto.
+//
+// FASE J-B6 (Vision Decouple, 2026-08-27) — se retira el parseo de
+// `tripId` del FormData: Vision ya no depende de Trips para escanear.
+// `createVisionScanRecord()` (lib/vision/create-vision-scan-record.ts,
+// NO modificado en este bloque) ya trataba `tripId` como parámetro
+// opcional — al no recibirlo nunca, sigue insertando `trip_id: null` sin
+// ningún cambio de comportamiento propio.
 //
 // Corrección de arquitectura (bloque "Cámara como flujo principal de
 // Vision") — hallazgo real: esta Action recibía el `File` original
@@ -148,11 +153,6 @@ export async function scanVisionAction(
     return { status: "invalid_image", reason: validation.reason };
   }
 
-  const rawTripId = formData.get("tripId");
-  const tripId =
-    typeof rawTripId === "string" && isValidUuid(rawTripId)
-      ? rawTripId
-      : undefined;
   const targetLanguage = parseTargetLanguage(formData.get("targetLanguage"));
 
   const rateLimit = await checkAndConsumeRateLimit({
@@ -181,7 +181,6 @@ export async function scanVisionAction(
 
   const scanId = await createVisionScanRecord({
     userId,
-    tripId,
     sourceLanguage: wrapperResult.sourceLanguage || undefined,
     targetLanguage,
     translatedText: wrapperResult.translatedText,

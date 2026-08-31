@@ -23,6 +23,20 @@
 // constraint `UNIQUE(user_id, mission_key, period_key)` solo permite
 // una fila para siempre, sin importar cuántos Goals cree o cancele el
 // usuario después.
+//
+// FASE J-B4 (Core Reset — Dependency Exit, Product Decision Lock
+// 2026-08-27) — `search_started` y `hotel_viewed` dependían
+// exclusivamente de rutas Travel (`app/search`, `app/properties/[id]`,
+// ya sin entrada de navegación) y quedan sustituidas:
+// `partner_activity_registered` (reemplaza `hotel_viewed`, dispara
+// directamente el loop Partner->Points, `app/partners/actions.ts`, tras
+// un `complete_partner_activity()` exitoso) y `profile_completed`
+// (reemplaza `search_started`, activación temprana independiente de la
+// densidad real de Partners todavía baja en el piloto — deliberadamente
+// NO una segunda Mission de Partners, ver Product Decision Lock §B).
+// `return_visit` y `goal_created` no se tocan — mismo trigger, mismos
+// Points, mismo `key`. Migración SQL correspondiente:
+// `supabase/migrations/20260827140000_update_complete_mission_rpc_core_reset.sql`.
 export type MissionPeriodicity = "weekly" | "lifetime";
 
 export interface MissionDefinition {
@@ -33,9 +47,9 @@ export interface MissionDefinition {
 }
 
 export const MISSIONS: readonly MissionDefinition[] = [
-  { key: "search_started", name: "Buscar tu próximo destino", points: 10, periodicity: "weekly" },
+  { key: "profile_completed", name: "Completa tu perfil", points: 10, periodicity: "lifetime" },
   { key: "return_visit", name: "Volver esta semana", points: 10, periodicity: "weekly" },
-  { key: "hotel_viewed", name: "Ver un alojamiento", points: 10, periodicity: "weekly" },
+  { key: "partner_activity_registered", name: "Registra tu primera actividad con un Partner esta semana", points: 10, periodicity: "weekly" },
   { key: "goal_created", name: "Definir tu objetivo de viaje", points: 50, periodicity: "lifetime" },
 ];
 

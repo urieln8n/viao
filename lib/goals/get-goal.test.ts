@@ -87,6 +87,17 @@ async function createTestReward(pointsCost: number): Promise<string> {
   return data!.id as string;
 }
 
+// rewards_catalog no concede DELETE a ningún rol (mismo criterio "nunca
+// borrar" ya aplicado al resto de tablas tipo ledger/catálogo del
+// proyecto): la única forma de retirar una fila de prueba es active=false,
+// la misma que usaría el producto real para retirar un Reward. Evita que
+// cada ejecución de la suite deje basura permanente y creciente en el
+// catálogo real.
+async function deactivateTestReward(rewardId: string) {
+  const service = createServiceRoleClient();
+  await service.from("rewards_catalog").update({ active: false }).eq("id", rewardId);
+}
+
 // ── H/I. calculateGoalProgressPercent(): casos puramente aritméticos ──
 test("calculateGoalProgressPercent: capado a 100% cuando el wallet supera el target", () => {
   assert.equal(calculateGoalProgressPercent(1500, 1000), 100, "H: wallet > target nunca debe superar 100%");
@@ -106,10 +117,11 @@ test("calculateGoalProgressPercent: casos base 0%/50%/100% (A/B/C)", () => {
 // ── D/E/F. Redeem reduce el progreso, de extremo a extremo con Rewards real ──
 test("goals V1: redeem 300 sobre wallet=1000 -> progreso 70% (D)", async () => {
   const { userId, sessionClient } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     await fundWalletTo(sessionClient, userId, 1000);
 
-    const rewardId = await createTestReward(300);
+    rewardId = await createTestReward(300);
     const result = await redeemReward(userId, rewardId, crypto.randomUUID());
     assert.equal(result.outcome, "success");
 
@@ -118,14 +130,16 @@ test("goals V1: redeem 300 sobre wallet=1000 -> progreso 70% (D)", async () => {
     assert.equal(calculateGoalProgressPercent(balanceAfter, 1000), 70, "D: redeem 300 sobre 1000 debe bajar el progreso a 70%");
   } finally {
     await deleteTestUser(userId);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });
 
 test("goals V1: redeem 800 sobre wallet=1000 -> progreso 20% (E)", async () => {
   const { userId, sessionClient } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     await fundWalletTo(sessionClient, userId, 1000);
-    const rewardId = await createTestReward(800);
+    rewardId = await createTestReward(800);
     const result = await redeemReward(userId, rewardId, crypto.randomUUID());
     assert.equal(result.outcome, "success");
 
@@ -134,14 +148,16 @@ test("goals V1: redeem 800 sobre wallet=1000 -> progreso 20% (E)", async () => {
     assert.equal(calculateGoalProgressPercent(balanceAfter, 1000), 20, "E: redeem 800 sobre 1000 debe bajar el progreso a 20%");
   } finally {
     await deleteTestUser(userId);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });
 
 test("goals V1: redeem 1000 sobre wallet=1000 -> progreso 0%, ninguna promesa falsa de meta alcanzada (F)", async () => {
   const { userId, sessionClient } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     await fundWalletTo(sessionClient, userId, 1000);
-    const rewardId = await createTestReward(1000);
+    rewardId = await createTestReward(1000);
     const result = await redeemReward(userId, rewardId, crypto.randomUUID());
     assert.equal(result.outcome, "success");
 
@@ -154,15 +170,17 @@ test("goals V1: redeem 1000 sobre wallet=1000 -> progreso 0%, ninguna promesa fa
     );
   } finally {
     await deleteTestUser(userId);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });
 
 // ── G. Refund devuelve el progreso, sin ninguna exclusión especial ──
 test("goals V1: redeem 300 seguido de refund -> el progreso vuelve exactamente a donde estaba (G)", async () => {
   const { userId, sessionClient } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     await fundWalletTo(sessionClient, userId, 1000);
-    const rewardId = await createTestReward(300);
+    rewardId = await createTestReward(300);
     const redeemResult = await redeemReward(userId, rewardId, crypto.randomUUID());
     assert.equal(redeemResult.outcome, "success");
     if (redeemResult.outcome !== "success") return;
@@ -183,6 +201,7 @@ test("goals V1: redeem 300 seguido de refund -> el progreso vuelve exactamente a
     );
   } finally {
     await deleteTestUser(userId);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });
 

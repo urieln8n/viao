@@ -41,7 +41,7 @@ async function createTestPartner(status: "active" | "inactive" = "active"): Prom
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const { data, error } = await service
     .from("partners")
-    .insert({ name: `Test Partner PB4 ${suffix}`, slug: `test-partner-pb4-${suffix}`, category: "restaurant", status })
+    .insert({ name: `Test Partner PB4 ${suffix}`, slug: `test-partner-pb4-${suffix}`, category: "restaurant", status, is_test: true })
     .select("id, access_token")
     .single();
   assert.equal(error, null, `crear Partner de test falló: ${error?.message}`);

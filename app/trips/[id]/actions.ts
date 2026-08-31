@@ -3,7 +3,7 @@
 import { createClient as createSessionClient } from "../../../lib/supabase/server";
 import { getTripById } from "../../../lib/trips/get-trip-by-id";
 import { associateBookingWithTrip } from "../../../lib/bookings/associate-trip";
-import { isValidUuid } from "../../properties/[id]/resolve";
+import { isValidUuid } from "../../../lib/utils/is-valid-uuid";
 
 // F11-02 (VIAO_ROADMAP.md) — Server Action de asociación de reserva a
 // viaje.

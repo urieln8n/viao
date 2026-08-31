@@ -16,7 +16,6 @@ import {
   deleteVisionScanAction,
   type ScanVisionActionResult,
 } from "./actions";
-import type { TripListItem } from "../../lib/trips/get-user-trips";
 
 // F10-00→F10-04 (VIAO_ROADMAP.md) — Único punto de la app que invoca las
 // Server Actions de Vision.
@@ -75,12 +74,9 @@ function extensionFor(mimeType: string): string {
 
 export function VisionView({
   initialHasConsent,
-  trips,
 }: {
   initialHasConsent: boolean;
-  trips: TripListItem[];
 }) {
-  const tripSelectId = useId();
   const languageSelectId = useId();
   const cameraInputId = useId();
   const galleryInputId = useId();
@@ -88,11 +84,9 @@ export function VisionView({
   const [hasConsent, setHasConsent] = useState(initialHasConsent);
   const [file, setFile] = useState<File | null>(null);
   const [targetLanguage, setTargetLanguage] = useState("es");
-  const [tripId, setTripId] = useState("");
   const [scanResult, setScanResult] = useState<ScanVisionActionResult | null>(null);
   const [uploadedPath, setUploadedPath] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -117,7 +111,6 @@ export function VisionView({
     setScanResult(null);
     setUploadedPath(null);
     setUploadError(null);
-    setSaveMessage(null);
     setDeleteMessage(null);
     if (clearInputs) {
       if (cameraInputRef.current) cameraInputRef.current.value = "";
@@ -181,10 +174,8 @@ export function VisionView({
       const formData = new FormData();
       formData.append("imagePath", storagePath);
       formData.append("targetLanguage", targetLanguage);
-      if (tripId) formData.append("tripId", tripId);
       const result = await scanVisionAction(formData);
       setScanResult(result);
-      setSaveMessage(null);
       setDeleteMessage(null);
 
       // Si el escaneo falló, el archivo ya subido no sirve para nada
@@ -194,35 +185,6 @@ export function VisionView({
         await supabase.storage.from("photos").remove([storagePath]);
         setUploadedPath(null);
       }
-    });
-  }
-
-  function handleSave() {
-    if (scanResult?.status !== "success" || !tripId || !uploadedPath) return;
-    startTransition(async () => {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setSaveMessage(t("vision.errorUnauthenticated"));
-        return;
-      }
-
-      // El archivo YA está en Storage desde handleScan — aquí solo se
-      // registra la fila en `photos`, sin volver a subir nada.
-      const { error: insertError } = await supabase.from("photos").insert({
-        user_id: user.id,
-        trip_id: tripId,
-        vision_scan_id: scanResult.scanId,
-        storage_path: uploadedPath,
-      });
-      if (insertError) {
-        setSaveMessage(insertError.message);
-        return;
-      }
-
-      setSaveMessage(t("vision.saveSuccessMessage"));
     });
   }
 
@@ -354,32 +316,6 @@ export function VisionView({
                 </select>
               </div>
 
-              {trips.length > 0 ? (
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor={tripSelectId} className="text-sm font-medium">
-                    {t("vision.tripSelectLabel")}
-                  </label>
-                  <select
-                    id={tripSelectId}
-                    value={tripId}
-                    onChange={(event) => setTripId(event.target.value)}
-                    className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
-                  >
-                    <option value="">{t("vision.tripSelectNoneOption")}</option>
-                    {trips.map((trip) => (
-                      <option key={trip.id} value={trip.id}>
-                        {trip.destination}
-                        {trip.startDate && trip.endDate
-                          ? ` · ${trip.startDate} — ${trip.endDate}`
-                          : ` · ${t("trips.datesUnset")}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">{t("vision.tripSelectEmptyState")}</p>
-              )}
-
               <div className="flex gap-2">
                 <Button onClick={handleScan} disabled={isPending}>
                   {isPending ? t("vision.scanButtonLoading") : t("vision.scanButton")}
@@ -427,9 +363,6 @@ export function VisionView({
             </p>
             <p className="text-sm text-muted-foreground">{scanResult.explanation}</p>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={handleSave} disabled={isPending || !tripId}>
-                {t("vision.saveButton")}
-              </Button>
               <Button variant="outline" onClick={handleDeleteScan} disabled={isPending}>
                 {t("vision.deleteButton")}
               </Button>
@@ -437,7 +370,6 @@ export function VisionView({
                 {t("vision.scanAgainButton")}
               </Button>
             </div>
-            {saveMessage && <p role="status" className="text-sm">{saveMessage}</p>}
             {deleteMessage && <p role="status" className="text-sm">{deleteMessage}</p>}
           </CardContent>
         </Card>

@@ -29,6 +29,18 @@ async function deleteTestUser(userId: string) {
   await service.auth.admin.deleteUser(userId);
 }
 
+// rewards_catalog no concede DELETE a ningún rol (ni siquiera service_role
+// — mismo criterio "nunca borrar" ya aplicado al resto de tablas tipo
+// ledger/catálogo del proyecto): la única forma de retirar una fila de
+// prueba es la misma que usaría el producto real para retirar un Reward,
+// `active=false` (ya filtrado por getRewardsCatalog() y por
+// redeem_reward()). Evita que cada ejecución de la suite deje basura
+// permanente y creciente en el catálogo real.
+async function deactivateTestReward(rewardId: string) {
+  const service = createServiceRoleClient();
+  await service.from("rewards_catalog").update({ active: false }).eq("id", rewardId);
+}
+
 // ── 1. Catálogo accesible para usuario autenticado ──
 test("rewards_catalog: un usuario autenticado puede leer un Reward activo real", async () => {
   const service = createServiceRoleClient();
@@ -53,12 +65,14 @@ test("rewards_catalog: un usuario autenticado puede leer un Reward activo real",
     assert.equal(data!.title, title);
   } finally {
     await deleteTestUser(userId);
+    await deactivateTestReward(created!.id as string);
   }
 });
 
 // ── 2. Catálogo no modificable por cliente ──
 test("rewards_catalog: el cliente de sesión no puede insertar ni modificar Rewards", async () => {
   const { userId, sessionClient } = await signUpUser();
+  let realRewardId: string | undefined;
   try {
     const { error: insertError } = await sessionClient
       .from("rewards_catalog")
@@ -71,6 +85,7 @@ test("rewards_catalog: el cliente de sesión no puede insertar ni modificar Rewa
       .insert({ title: `Bloque 1 RLS update test ${Date.now()}`, points_cost: 50, funding_type: "partner" })
       .select("id")
       .single();
+    realRewardId = real!.id as string;
 
     const { error: updateError } = await sessionClient
       .from("rewards_catalog")
@@ -79,5 +94,6 @@ test("rewards_catalog: el cliente de sesión no puede insertar ni modificar Rewa
     assert.ok(updateError, "el UPDATE desde el cliente debe fallar (sin GRANT de update para authenticated)");
   } finally {
     await deleteTestUser(userId);
+    if (realRewardId) await deactivateTestReward(realRewardId);
   }
 });

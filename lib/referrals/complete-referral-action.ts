@@ -4,6 +4,7 @@ import { logAnalyticsEvent } from "../analytics/log-event";
 import {
   REFERRED_REWARD_POINTS_PROVISIONAL,
   REFERRER_REWARD_POINTS_PROVISIONAL,
+  PARTNER_ACTIVITY_REFERRAL_TRIGGER,
 } from "./rules";
 
 // F8-04 (VIAO_ROADMAP.md) — Cuando el usuario referido completa la acción
@@ -126,4 +127,32 @@ export async function completeReferralActionIfPending(
       `No se pudo marcar la referral "${referral.id}" como rewarded: ${updateError.message}`,
     );
   }
+}
+
+// FASE J-B4 (Core Reset — Dependency Exit) — puerta de entrada del nuevo
+// modelo de umbral (`PARTNER_ACTIVITY_REFERRAL_TRIGGER`): cuenta las
+// Partner activities confirmadas del usuario referido y, solo si ya
+// alcanzó el mínimo exigido, delega en `completeReferralActionIfPending`
+// (sin cambios) — que ya es, por sí mismo, un no-op seguro si el usuario
+// nunca fue referido o su referral ya se resolvió. No añade ninguna
+// escritura nueva ni ningún ledger paralelo: cuenta filas de
+// `partner_activities` (cada una ya nacida confirmada por el propio
+// Partner, PMM3) con el cliente `service_role`, mismo criterio de
+// autoridad ya usado en el resto de este archivo. Llamado desde
+// `app/partners/actions.ts`, mismo punto (Server Action, tras una
+// Partner Activity registrada con éxito) donde antes se enganchaba
+// `app/booking/actions.ts` con el modelo de evento único.
+export async function checkAndCompleteReferralIfThresholdMet(userId: string): Promise<void> {
+  const service = createServiceRoleClient();
+
+  const { count, error } = await service
+    .from("partner_activities")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  if (error || count === null || count < PARTNER_ACTIVITY_REFERRAL_TRIGGER.minCount) {
+    return;
+  }
+
+  await completeReferralActionIfPending(userId);
 }

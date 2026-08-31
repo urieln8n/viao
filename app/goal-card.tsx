@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { ErrorState } from "@/components/state/error-state";
 import { t } from "@/lib/i18n";
 
 import { createGoalAction, cancelGoalAction } from "./goals/actions";
@@ -104,16 +105,26 @@ function ActiveGoalCard({
               `progressPercent` (WALLET_BALANCE, calculateGoalProgressPercent)
               no cambia — solo cambia la representación visual. */}
           <Progress value={progressPercent} />
-          {/* Micro-bloque 2 (Home Beta) — línea corta puramente de copy:
-              no participa en `progressPercent` ni en ningún cálculo. */}
-          <p className="text-xs text-muted-foreground">{t("goals.progressMotivation")}</p>
+          {/* UX-3 (World-Class Core Screen Design) — hallazgo de la
+              auditoría: acumulado y objetivo ya eran visibles arriba,
+              pero el porcentaje (pedido explícitamente por el brief:
+              "Points acumulados, Points restantes, porcentaje") solo
+              existía como el ancho de relleno de la barra — nunca como
+              número. Mismo `progressPercent` ya calculado, ningún cálculo
+              nuevo; mono/tabular, mismo criterio numérico de UX-2. */}
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">{t("goals.progressMotivation")}</p>
+            <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-success">
+              {progressPercent}%
+            </span>
+          </div>
         </div>
 
         {confirmingCancel ? (
           <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
             <p className="text-sm font-medium">{t("goals.cancelConfirmTitle")}</p>
             <p className="text-xs text-muted-foreground">{t("goals.cancelConfirmMessage")}</p>
-            {error && <p className="text-xs text-destructive">{error}</p>}
+            {error && <ErrorState message={error} className="p-0 text-left items-start" />}
             <div className="flex gap-2">
               <Button
                 variant="destructive"

@@ -9,6 +9,8 @@ import { t } from "@/lib/i18n";
 
 import type { PartnerAccessContext } from "../../../../lib/partners/resolve-partner-access";
 import type { PartnerDashboardData } from "../../../../lib/partners/get-partner-dashboard";
+import type { PartnerEditableProfile } from "../../../../lib/partners/get-partner-for-editing";
+import { MyBusinessForm } from "./my-business-form";
 
 // Bloque Partners PB6 (VIAO_PARTNERS_IMPLEMENTATION_STATUS.md) — Server
 // Component puro (sin "use client"): el Dashboard es estrictamente de
@@ -34,9 +36,10 @@ interface PartnerDashboardViewProps {
   partner: PartnerAccessContext;
   accessToken: string;
   dashboard: PartnerDashboardData;
+  editableProfile: PartnerEditableProfile;
 }
 
-export function PartnerDashboardView({ partner, accessToken, dashboard }: PartnerDashboardViewProps) {
+export function PartnerDashboardView({ partner, accessToken, dashboard, editableProfile }: PartnerDashboardViewProps) {
   return (
     <div className="flex flex-col gap-4">
       <Card>
@@ -54,19 +57,53 @@ export function PartnerDashboardView({ partner, accessToken, dashboard }: Partne
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard label={t("partnerDashboard.newCustomersLabel")} value={dashboard.clientesNuevos} />
-        <StatCard label={t("partnerDashboard.returningCustomersLabel")} value={dashboard.clientesRecurrentes} />
-        <StatCard
-          label={t("partnerDashboard.declaredSalesLabel")}
-          value={formatEur(dashboard.ventasDeclaradasEur)}
-          tone="positive"
-        />
-        <StatCard
-          label={t("partnerDashboard.confirmedSalesLabel")}
-          value={formatEur(dashboard.ventasConfirmadasReservaEur)}
-          tone="positive"
-        />
+      {/* UX-3 (World-Class Core Screen Design) — hallazgo de la
+          auditoría: 4 StatCards en un único grid 2x2 mezclaban dos
+          categorías distintas (clientes vs. ventas) sin ninguna señal
+          visual de que son grupos diferentes — "información secundaria
+          compitiendo con primaria" (brief §8). Ningún dato ni cálculo
+          cambia, solo se agrupan bajo un eyebrow — el mismo tratamiento
+          `text-xs uppercase tracking-wide` que ya usaban las labels de
+          Missions/Goal, formalizado aquí como encabezado de grupo. */}
+      {/* UX-12 (Partner Self-Service + Measurement) — §9: grupo nuevo,
+          antes de Clientes/Ventas a propósito (orden de embudo:
+          Visibilidad -> Clientes -> Ventas). Una sola StatCard: el único
+          dato real disponible hoy es el total de vistas
+          (`partner_profile_viewed`) — visitantes únicos queda fuera de
+          alcance de este bloque por instrucción explícita. */}
+      <div className="flex flex-col gap-2">
+        <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          {t("partnerDashboard.visibilityGroupLabel")}
+        </span>
+        <StatCard label={t("partnerDashboard.profileViewsLabel")} value={dashboard.profileViews} />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          {t("partnerDashboard.customersGroupLabel")}
+        </span>
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard label={t("partnerDashboard.newCustomersLabel")} value={dashboard.clientesNuevos} />
+          <StatCard label={t("partnerDashboard.returningCustomersLabel")} value={dashboard.clientesRecurrentes} />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          {t("partnerDashboard.salesGroupLabel")}
+        </span>
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard
+            label={t("partnerDashboard.declaredSalesLabel")}
+            value={formatEur(dashboard.ventasDeclaradasEur)}
+            tone="positive"
+          />
+          <StatCard
+            label={t("partnerDashboard.confirmedSalesLabel")}
+            value={formatEur(dashboard.ventasConfirmadasReservaEur)}
+            tone="positive"
+          />
+        </div>
       </div>
 
       <Card>
@@ -108,6 +145,12 @@ export function PartnerDashboardView({ partner, accessToken, dashboard }: Partne
           )}
         </CardContent>
       </Card>
+
+      {/* UX-12 (Partner Self-Service C1) — §7: sección "Mi comercio",
+          al final del Dashboard (solo lectura arriba, edición al final) —
+          mismo criterio de jerarquía ya usado en Wallet (saldo/canje
+          antes que historial). */}
+      <MyBusinessForm accessToken={accessToken} profile={editableProfile} />
     </div>
   );
 }

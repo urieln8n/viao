@@ -13,7 +13,7 @@
 // de reserva (`app/booking/actions.ts` es F6-02, no esta fase).
 //
 // `search_id` (F5-07): se valida como UUID (reutilizando `isValidUuid` de
-// app/properties/[id]/resolve.ts, sin duplicar el regex) — si no tiene
+// lib/utils/is-valid-uuid.ts, sin duplicar el regex) — si no tiene
 // formato válido, se trata como ausente, nunca provoca una excepción.
 //
 // Precarga best-effort de fechas/huéspedes/habitaciones y precio "si
@@ -40,7 +40,7 @@ import {
   TravelProviderError,
 } from "../../../lib/travel-provider/errors";
 import { getSearchById } from "../../../lib/searches/get-search-by-id";
-import { isValidUuid } from "../../properties/[id]/resolve";
+import { isValidUuid } from "../../../lib/utils/is-valid-uuid";
 import type { PriceQuote, Property } from "../../../types/travel";
 
 export interface BookingPrefill {

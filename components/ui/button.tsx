@@ -69,7 +69,18 @@ const buttonVariants = cva(
         xs: "h-9 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: "h-11 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
         lg: "h-12 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        icon: "size-8",
+        // UX-2 (World-Class Product Design) — subido de size-8 (32px) a
+        // size-11 (44px): mismo mínimo táctil ya aplicado a Button
+        // `default`/Input (Apple HIG/Material), pendiente aquí solo
+        // porque, tal como documentaba el comentario original de este
+        // archivo, `icon` no tenía ningún consumidor real todavía (su
+        // único uso era el botón de cerrar de Dialog, que a su vez nunca
+        // se renderiza en ningún sitio de la app — verificado por grep).
+        // El botón de copiar código de referido (app/profile/page.tsx)
+        // es el primer consumidor real y tappable de esta variante — se
+        // corrige ahora exactamente por el mismo motivo que ya justificó
+        // corregir Input, no antes de tener un caso de uso real.
+        icon: "size-11",
         "icon-xs":
           "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
         "icon-sm":

@@ -84,13 +84,26 @@ async function createTestReward(options: CreateRewardOptions): Promise<string> {
   return data!.id as string;
 }
 
+// rewards_catalog no concede DELETE a ningún rol (mismo criterio "nunca
+// borrar" ya aplicado al resto de tablas tipo ledger/catálogo del
+// proyecto): la única forma de retirar una fila de prueba es active=false,
+// la misma que usaría el producto real para retirar un Reward (ya
+// filtrado por getRewardsCatalog() y por redeem_reward()). Evita que cada
+// ejecución de la suite deje basura permanente y creciente en el catálogo
+// real.
+async function deactivateTestReward(rewardId: string) {
+  const service = createServiceRoleClient();
+  await service.from("rewards_catalog").update({ active: false }).eq("id", rewardId);
+}
+
 // ── 1. Canje exitoso ──
 test("redeemReward: con saldo suficiente, descuenta correctamente y devuelve un código único", async () => {
   const { userId } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     const balanceBefore = await getBalance(userId); // incluye el bono de registro (100), no se asume un valor fijo
     await grantPoints(userId, 1000);
-    const rewardId = await createTestReward({ pointsCost: 400 });
+    rewardId = await createTestReward({ pointsCost: 400 });
 
     const result = await redeemReward(userId, rewardId, crypto.randomUUID());
 
@@ -104,15 +117,17 @@ test("redeemReward: con saldo suficiente, descuenta correctamente y devuelve un 
     assert.equal(balanceAfter, balanceBefore + 1000 - 400);
   } finally {
     await deleteTestUser(userId);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });
 
 // ── 2. Saldo insuficiente ──
 test("redeemReward: saldo insuficiente no modifica el ledger ni crea redención", async () => {
   const { userId } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     await grantPoints(userId, 100);
-    const rewardId = await createTestReward({ pointsCost: 100_000 });
+    rewardId = await createTestReward({ pointsCost: 100_000 });
 
     const balanceBefore = await getBalance(userId);
     const result = await redeemReward(userId, rewardId, crypto.randomUUID());
@@ -122,6 +137,7 @@ test("redeemReward: saldo insuficiente no modifica el ledger ni crea redención"
     assert.equal(balanceBefore, balanceAfter, "el saldo no debe cambiar si el canje falla");
   } finally {
     await deleteTestUser(userId);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });
 
@@ -130,6 +146,8 @@ test("redeemReward: un Reward inactivo no puede canjearse", async () => {
   const { userId } = await signUpUser();
   try {
     await grantPoints(userId, 1000);
+    // Ya se crea con active:false — nada que desactivar después, no deja
+    // ninguna fila activa en el catálogo.
     const rewardId = await createTestReward({ pointsCost: 100, active: false });
 
     const result = await redeemReward(userId, rewardId, crypto.randomUUID());
@@ -154,10 +172,11 @@ test("redeemReward: un reward_catalog_id inexistente se rechaza igual que uno in
 // ── 3. Idempotencia ──
 test("redeemReward: reintentar con el MISMO attemptId nunca descuenta dos veces", async () => {
   const { userId } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     const balanceBefore = await getBalance(userId);
     await grantPoints(userId, 1000);
-    const rewardId = await createTestReward({ pointsCost: 300 });
+    rewardId = await createTestReward({ pointsCost: 300 });
     const attemptId = crypto.randomUUID();
 
     const first = await redeemReward(userId, rewardId, attemptId);
@@ -172,15 +191,17 @@ test("redeemReward: reintentar con el MISMO attemptId nunca descuenta dos veces"
     assert.equal(balanceAfter, balanceBefore + 1000 - 300, "descontado UNA sola vez, a pesar de dos llamadas con el mismo attemptId");
   } finally {
     await deleteTestUser(userId);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });
 
 // ── limit_per_user ──
 test("redeemReward: limit_per_user impide un segundo canje del mismo Reward al alcanzar el límite", async () => {
   const { userId } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     await grantPoints(userId, 10_000);
-    const rewardId = await createTestReward({ pointsCost: 100, limitPerUser: 1 });
+    rewardId = await createTestReward({ pointsCost: 100, limitPerUser: 1 });
 
     const first = await redeemReward(userId, rewardId, crypto.randomUUID());
     assert.equal(first.outcome, "success");
@@ -189,6 +210,7 @@ test("redeemReward: limit_per_user impide un segundo canje del mismo Reward al a
     assert.equal(second.outcome, "limit_per_user_exceeded");
   } finally {
     await deleteTestUser(userId);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });
 
@@ -199,9 +221,10 @@ test("redeemReward: limit_per_user impide un segundo canje del mismo Reward al a
 // leyendo el RPC.
 test("redeemReward: limit_per_user sigue contando una redención ya fulfilled, no solo pending", async () => {
   const { userId } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     await grantPoints(userId, 10_000);
-    const rewardId = await createTestReward({ pointsCost: 100, limitPerUser: 1 });
+    rewardId = await createTestReward({ pointsCost: 100, limitPerUser: 1 });
 
     const first = await redeemReward(userId, rewardId, crypto.randomUUID());
     assert.equal(first.outcome, "success");
@@ -214,24 +237,27 @@ test("redeemReward: limit_per_user sigue contando una redención ya fulfilled, n
     assert.equal(second.outcome, "limit_per_user_exceeded", "una redención fulfilled sigue contando contra el límite, igual que una pending");
   } finally {
     await deleteTestUser(userId);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });
 
 // ── 4. Concurrencia real: EXACTAMENTE 1 éxito, nunca saldo negativo ──
 test("redeemReward: N intentos concurrentes reales para el mismo saldo exacto -> exactamente 1 éxito, saldo nunca negativo", async () => {
   const { userId } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     // Saldo EXACTO para 1 sola redención — si el lock fallara, más de
     // una llamada concurrente "vería" saldo suficiente.
     const startingBalance = await getBalance(userId);
     const rewardCost = 500;
     await grantPoints(userId, rewardCost);
-    const rewardId = await createTestReward({ pointsCost: rewardCost });
+    rewardId = await createTestReward({ pointsCost: rewardCost });
+    const rewardIdForConcurrentCalls = rewardId;
 
     const CONCURRENT_CALLS = 10;
     const results = await Promise.all(
       Array.from({ length: CONCURRENT_CALLS }, () =>
-        redeemReward(userId, rewardId, crypto.randomUUID()),
+        redeemReward(userId, rewardIdForConcurrentCalls, crypto.randomUUID()),
       ),
     );
 
@@ -254,12 +280,14 @@ test("redeemReward: N intentos concurrentes reales para el mismo saldo exacto ->
     assert.ok(finalBalance >= 0, "el saldo nunca puede quedar negativo");
   } finally {
     await deleteTestUser(userId);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });
 
 // ── 5. Kill-switch ──
 test("redeemReward: un Reward VIAO-financiado cuyo real_cost_eur supera el techo mensual restante es rechazado (pool_exhausted)", async () => {
   const { userId } = await signUpUser();
+  let rewardId: string | undefined;
   try {
     const balanceBefore = await getBalance(userId);
     await grantPoints(userId, 100_000);
@@ -269,7 +297,7 @@ test("redeemReward: un Reward VIAO-financiado cuyo real_cost_eur supera el techo
     // (Fase D: constraint del 30%, 20260824091000_*.sql) únicamente para
     // que 150€ siga siendo ≤30% de su valor nominal — no cambia qué
     // prueba este test (el techo mensual, no la regla del 30%).
-    const rewardId = await createTestReward({
+    rewardId = await createTestReward({
       pointsCost: 100_000,
       fundingType: "viao",
       realCostEur: 150,
@@ -283,6 +311,7 @@ test("redeemReward: un Reward VIAO-financiado cuyo real_cost_eur supera el techo
     assert.equal(balanceAfter, balanceBefore + 100_000, "sin ningún descuento");
   } finally {
     await deleteTestUser(userId);
+    if (rewardId) await deactivateTestReward(rewardId);
   }
 });
 
@@ -320,6 +349,8 @@ async function getPoolSpentThisMonth(): Promise<number> {
 test("redeemReward: dos usuarios canjeando Rewards VIAO a la vez nunca superan el techo mensual por una carrera", async () => {
   const { userId: userA } = await signUpUser();
   const { userId: userB } = await signUpUser();
+  let rewardA: string | undefined;
+  let rewardB: string | undefined;
   try {
     await grantPoints(userA, 100_000);
     await grantPoints(userB, 100_000);
@@ -334,8 +365,15 @@ test("redeemReward: dos usuarios canjeando Rewards VIAO a la vez nunca superan e
       // no hay DELETE) — el propio kill-switch ya está demostrado por el
       // test anterior; aquí solo se puede confirmar que NINGÚN canje
       // VIAO-financiado tiene éxito mientras el pool siga agotado, que es
-      // el comportamiento correcto, no un fallo del test.
-      const rewardA = await createTestReward({ pointsCost: 100, fundingType: "viao", realCostEur: 1 });
+      // el comportamiento correcto, no un fallo del test. `pointsCost:
+      // 1000` (no 100) por la misma razón de la rama de abajo: mantiene
+      // real_cost_eur=1 dentro del 30% de su valor nominal (10€) — CORE-4
+      // corrigió este valor porque la combinación original (pointsCost:
+      // 100, realCostEur: 1 => ratio 100%) violaba
+      // rewards_catalog_viao_real_cost_within_30_percent y dejaba una fila
+      // permanentemente activa e indesactivable (mismo defecto que las 3
+      // fixtures históricas de antes de esa constraint).
+      rewardA = await createTestReward({ pointsCost: 1000, fundingType: "viao", realCostEur: 1 });
       const result = await redeemReward(userA, rewardA, crypto.randomUUID());
       assert.equal(result.outcome, "pool_exhausted");
       return;
@@ -350,8 +388,8 @@ test("redeemReward: dos usuarios canjeando Rewards VIAO a la vez nunca superan e
     // siga siendo ≤30% de su valor nominal, sin cambiar qué prueba este
     // test (la carrera sobre el pool, no la regla del 30%).
     const pointsCostForRatio = Math.ceil((eachCost / 0.3) * 100) + 1000;
-    const rewardA = await createTestReward({ pointsCost: pointsCostForRatio, fundingType: "viao", realCostEur: eachCost });
-    const rewardB = await createTestReward({ pointsCost: pointsCostForRatio, fundingType: "viao", realCostEur: eachCost });
+    rewardA = await createTestReward({ pointsCost: pointsCostForRatio, fundingType: "viao", realCostEur: eachCost });
+    rewardB = await createTestReward({ pointsCost: pointsCostForRatio, fundingType: "viao", realCostEur: eachCost });
 
     const [resultA, resultB] = await Promise.all([
       redeemReward(userA, rewardA, crypto.randomUUID()),
@@ -367,6 +405,8 @@ test("redeemReward: dos usuarios canjeando Rewards VIAO a la vez nunca superan e
   } finally {
     await deleteTestUser(userA);
     await deleteTestUser(userB);
+    if (rewardA) await deactivateTestReward(rewardA);
+    if (rewardB) await deactivateTestReward(rewardB);
   }
 });
 

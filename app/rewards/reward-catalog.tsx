@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,11 +63,23 @@ export function RewardCatalog({ catalog, walletBalance }: RewardCatalogProps) {
         <CardHeader>
           <CardTitle>{t("rewards.redeem.resultTitle")}</CardTitle>
         </CardHeader>
+        {/* UX-2 (World-Class Product Design) — Fase F: el único momento de
+            celebración con "overshoot" (--animate-celebrate,
+            app/globals.css) de todo VIAO — el propio brief lo señala como
+            uno de los momentos más importantes del producto. Se anima el
+            bloque del código (lo que el usuario realmente vino a buscar),
+            no toda la Card ni el layout alrededor — breve, contenido,
+            nunca infantil. `motion-safe:` (variante nativa de Tailwind)
+            respeta `prefers-reduced-motion` sin código adicional: con
+            movimiento reducido, el bloque aparece directamente, sin
+            salto ni parpadeo. Ningún cambio de datos: mismo
+            `redeemRewardAction`, mismo `RedeemRewardResult`. */}
         <CardContent className="flex flex-col gap-3">
           <p className="text-lg font-semibold">{view.reward.title}</p>
-          <div className="rounded-lg bg-accent p-4 text-center">
+          <div className="motion-safe:animate-celebrate flex flex-col items-center gap-2 rounded-lg border border-success/20 bg-success/5 p-5 text-center">
+            <CheckCircle2 className="size-8 text-success" aria-hidden="true" />
             <p className="text-xs text-muted-foreground">{t("rewards.redeem.codeLabel")}</p>
-            <p className="text-2xl font-mono font-semibold tracking-wider">
+            <p className="rounded-md border border-border bg-card px-4 py-2 font-mono text-2xl font-semibold tracking-wider">
               {view.redemption.redemptionCode}
             </p>
           </div>
@@ -95,10 +108,10 @@ export function RewardCatalog({ catalog, walletBalance }: RewardCatalogProps) {
         <CardContent className="flex flex-col gap-3">
           <p className="text-lg font-semibold">{view.reward.title}</p>
           <p className="text-sm text-muted-foreground">
-            {t("rewards.redeem.costLabel")}: {view.reward.pointsCost} {t("rewards.pointsUnit")}
+            {t("rewards.redeem.costLabel")}: <span className="font-mono tabular-nums">{view.reward.pointsCost}</span> {t("rewards.pointsUnit")}
           </p>
           <p className="text-sm text-muted-foreground">
-            {t("rewards.redeem.remainingLabel")}: {remaining} {t("rewards.pointsUnit")}
+            {t("rewards.redeem.remainingLabel")}: <span className="font-mono tabular-nums">{remaining}</span> {t("rewards.pointsUnit")}
           </p>
           <div className="flex gap-2">
             <Button
@@ -169,8 +182,18 @@ export function RewardCatalog({ catalog, walletBalance }: RewardCatalogProps) {
                   {reward.description && (
                     <span className="text-xs text-muted-foreground">{reward.description}</span>
                   )}
+                  {/* UX-10 (Partners Visible + Discovery + Registration) —
+                      §11: `partnerName` ya llegaba desde
+                      getRewardsCatalog() pero nunca se renderizaba. Sin
+                      convertir `partner_name` a una FK real: sigue siendo
+                      texto libre, solo se muestra tal cual. */}
+                  {reward.partnerName && (
+                    <span className="text-xs text-muted-foreground">
+                      {t("rewards.catalog.partnerLabel")}: {reward.partnerName}
+                    </span>
+                  )}
                   <span className="text-xs text-muted-foreground">
-                    {reward.pointsCost} {t("rewards.pointsUnit")}
+                    <span className="font-mono tabular-nums">{reward.pointsCost}</span> {t("rewards.pointsUnit")}
                   </span>
                 </div>
                 <Button

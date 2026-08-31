@@ -49,6 +49,7 @@ export interface PartnerDashboardData {
   ventasConfirmadasReservaEur: number;
   actividadReciente: PartnerActivitySummary[];
   partnerActivo: boolean;
+  profileViews: number;
 }
 
 export async function getPartnerDashboard(partnerId: string): Promise<PartnerDashboardData> {
@@ -61,6 +62,26 @@ export async function getPartnerDashboard(partnerId: string): Promise<PartnerDas
 
   if (error) {
     throw new Error(`No se pudo calcular el dashboard del Partner: ${error.message}`);
+  }
+
+  // UX-12 (Partner Self-Service + Measurement) — "Vistas de perfil":
+  // cuenta filas reales de `analytics_events` (`partner_profile_viewed`,
+  // 20260831090000_add_partner_profile_viewed_event.sql), filtrando por
+  // `metadata->>partnerId` (sintaxis de filtro JSONB de PostgREST) — sin
+  // tabla ni sistema de analytics nuevo, reutilizando la infraestructura
+  // ya existente (mismo `service_role`, mismo GRANT ya concedido en
+  // 20260817200000_grant_service_role_analytics_events.sql). Cuenta
+  // TOTAL de vistas, no visitantes únicos — deliberadamente, por
+  // instrucción explícita de UX-12 de no construir una agregación
+  // "importante" para esto todavía.
+  const { count: profileViewsCount, error: profileViewsError } = await service
+    .from("analytics_events")
+    .select("*", { count: "exact", head: true })
+    .eq("event_name", "partner_profile_viewed")
+    .eq("metadata->>partnerId", partnerId);
+
+  if (profileViewsError) {
+    throw new Error(`No se pudo calcular las vistas de perfil del Partner: ${profileViewsError.message}`);
   }
 
   const rows = data ?? [];
@@ -103,5 +124,6 @@ export async function getPartnerDashboard(partnerId: string): Promise<PartnerDas
     ventasConfirmadasReservaEur,
     actividadReciente,
     partnerActivo,
+    profileViews: profileViewsCount ?? 0,
   };
 }

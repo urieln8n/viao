@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import { t } from "@/lib/i18n";
 
 import { GoalForm } from "../goal-card";
@@ -35,7 +36,7 @@ export default function OnboardingPage() {
 
       <Link
         href="/"
-        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+        className={buttonVariants({ variant: "ghost", size: "sm", className: "text-muted-foreground" })}
       >
         {t("onboarding.skip")}
       </Link>

@@ -20,11 +20,13 @@ import assert from "node:assert/strict";
 import { createClient } from "@supabase/supabase-js";
 
 import { createServiceRoleClient } from "../supabase/service";
-import { completeReferralActionIfPending } from "./complete-referral-action";
+import { completeReferralActionIfPending, checkAndCompleteReferralIfThresholdMet } from "./complete-referral-action";
 import {
   REFERRED_REWARD_POINTS_PROVISIONAL,
   REFERRER_REWARD_POINTS_PROVISIONAL,
+  PARTNER_ACTIVITY_REFERRAL_TRIGGER,
 } from "./rules";
+import { registerQrActivity } from "../partners/register-partner-activity";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -336,6 +338,203 @@ test("service_role NO tiene GRANT de DELETE sobre referrals", async () => {
     const service = createServiceRoleClient();
     const { error } = await service.from("referrals").delete().eq("id", referralId);
     assert.ok(error, "se esperaba que Postgres rechazara el DELETE");
+  } finally {
+    await deleteTestUser(referrerId);
+    await deleteTestUser(referredId);
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// FASE J-B4 (Core Reset — Dependency Exit) — checkAndCompleteReferralIfThresholdMet()
+// Nuevo modelo de umbral: PARTNER_ACTIVITY_REFERRAL_TRIGGER.minCount
+// Partner activities confirmadas del referido, en vez del evento único
+// "booking_confirmed". Mismo patrón de usuarios/referrals reales ya
+// usado en el resto de este archivo, más un Partner de test real (mismo
+// helper que lib/partners/register-partner-activity.test.ts).
+// ═══════════════════════════════════════════════════════════════════
+
+async function createTestPartner(): Promise<{ accessToken: string }> {
+  const service = createServiceRoleClient();
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const { data, error } = await service
+    .from("partners")
+    .insert({ name: `Test Partner J-B4 ${suffix}`, slug: `test-partner-jb4-${suffix}`, category: "restaurant", status: "active", is_test: true })
+    .select("access_token")
+    .single();
+  assert.equal(error, null, `crear Partner de test falló: ${error?.message}`);
+  return { accessToken: data!.access_token as string };
+}
+
+function newAttemptId(): string {
+  return crypto.randomUUID();
+}
+
+async function registerNPartnerActivities(userId: string, accessToken: string, n: number): Promise<void> {
+  for (let i = 0; i < n; i++) {
+    const result = await registerQrActivity(userId, accessToken, newAttemptId(), 10);
+    assert.equal(result.outcome, "registered", `registrar la actividad #${i + 1} de ${n} falló`);
+  }
+}
+
+async function countReferralRewardTransactions(referralId: string): Promise<number> {
+  const service = createServiceRoleClient();
+  const { count } = await service
+    .from("rewards_transactions")
+    .select("id", { count: "exact", head: true })
+    .eq("reference_type", "referral")
+    .eq("reference_id", referralId);
+  return count ?? 0;
+}
+
+// ── CASE 1: 0 activities -> no reward ──
+test("checkAndCompleteReferralIfThresholdMet: referido con 0 Partner activities -> ninguna recompensa, referral sigue pending", async () => {
+  const { referrerId, referredId, referralId } = await createReferralPair();
+  try {
+    await checkAndCompleteReferralIfThresholdMet(referredId);
+
+    assert.equal(await countReferralRewardTransactions(referralId), 0);
+    const service = createServiceRoleClient();
+    const { data: referral } = await service.from("referrals").select("status").eq("id", referralId).single();
+    assert.equal(referral?.status, "pending");
+  } finally {
+    await deleteTestUser(referrerId);
+    await deleteTestUser(referredId);
+  }
+});
+
+// ── CASE 2: 1 activity (por debajo del umbral, minCount=2) -> no reward ──
+test("checkAndCompleteReferralIfThresholdMet: referido con 1 Partner activity (por debajo del umbral) -> ninguna recompensa todavía", async () => {
+  const { referrerId, referredId, referralId } = await createReferralPair();
+  const { accessToken } = await createTestPartner();
+  try {
+    await registerNPartnerActivities(referredId, accessToken, 1);
+    await checkAndCompleteReferralIfThresholdMet(referredId);
+
+    assert.equal(await countReferralRewardTransactions(referralId), 0);
+    const service = createServiceRoleClient();
+    const { data: referral } = await service.from("referrals").select("status").eq("id", referralId).single();
+    assert.equal(referral?.status, "pending");
+  } finally {
+    await deleteTestUser(referrerId);
+    await deleteTestUser(referredId);
+  }
+});
+
+// ── CASE 3: 2 activities (== minCount) -> reward para ambas partes ──
+test("checkAndCompleteReferralIfThresholdMet: referido alcanza el umbral (2 activities) -> recompensa para referrer y referido, referral rewarded", async () => {
+  assert.equal(PARTNER_ACTIVITY_REFERRAL_TRIGGER.minCount, 2, "este test asume el umbral aprobado (Product Decision Lock, 2026-08-27)");
+  const { referrerId, referredId, referralId } = await createReferralPair();
+  const { accessToken } = await createTestPartner();
+  try {
+    await registerNPartnerActivities(referredId, accessToken, 2);
+    await checkAndCompleteReferralIfThresholdMet(referredId);
+
+    assert.equal(await countReferralRewardTransactions(referralId), 2, "1 reward para el referrer + 1 para el referido");
+
+    const service = createServiceRoleClient();
+    const { data: referral } = await service.from("referrals").select("status").eq("id", referralId).single();
+    assert.equal(referral?.status, "rewarded");
+
+    const { data: referrerReward } = await service
+      .from("rewards_transactions")
+      .select("amount")
+      .eq("reference_type", "referral")
+      .eq("reference_id", referralId)
+      .eq("user_id", referrerId)
+      .single();
+    assert.equal(referrerReward?.amount, REFERRER_REWARD_POINTS_PROVISIONAL);
+
+    const { data: referredReward } = await service
+      .from("rewards_transactions")
+      .select("amount")
+      .eq("reference_type", "referral")
+      .eq("reference_id", referralId)
+      .eq("user_id", referredId)
+      .single();
+    assert.equal(referredReward?.amount, REFERRED_REWARD_POINTS_PROVISIONAL);
+  } finally {
+    await deleteTestUser(referrerId);
+    await deleteTestUser(referredId);
+  }
+});
+
+// ── CASE 4: 3+ activities -> NO segunda recompensa ──
+test("checkAndCompleteReferralIfThresholdMet: una 3ª Partner activity tras ya recompensado -> ninguna recompensa adicional", async () => {
+  const { referrerId, referredId, referralId } = await createReferralPair();
+  const { accessToken } = await createTestPartner();
+  try {
+    await registerNPartnerActivities(referredId, accessToken, 2);
+    await checkAndCompleteReferralIfThresholdMet(referredId);
+    assert.equal(await countReferralRewardTransactions(referralId), 2, "recompensado tras la 2ª actividad");
+
+    // 3ª actividad real, con un SEGUNDO Partner de test: el mismo Partner ya
+    // recibió 2 actividades de este usuario hoy, así que reutilizarlo
+    // chocaría con el kill-switch real v_daily_activity_limit=2 por
+    // (user, partner, día) de complete_partner_activity() — un límite que
+    // este test no pretende ejercitar (eso ya lo cubre
+    // lib/partners/register-partner-activity.test.ts). Un Partner distinto
+    // simula fielmente "el usuario referido tiene una 3ª actividad real en
+    // VIAO" sin tocar ese kill-switch. El mismo hook que dispara
+    // app/partners/actions.ts vuelve a llamar a
+    // checkAndCompleteReferralIfThresholdMet — debe seguir siendo un no-op
+    // seguro (completeReferralActionIfPending ya no encuentra ninguna
+    // referral 'pending' para este usuario).
+    const { accessToken: secondAccessToken } = await createTestPartner();
+    await registerNPartnerActivities(referredId, secondAccessToken, 1);
+    await checkAndCompleteReferralIfThresholdMet(referredId);
+
+    assert.equal(await countReferralRewardTransactions(referralId), 2, "sigue siendo exactamente 2, nunca 4");
+  } finally {
+    await deleteTestUser(referrerId);
+    await deleteTestUser(referredId);
+  }
+});
+
+// ── CASE 5: self-referral sigue bloqueado (constraint real, no tocada) — confirmado también a través del nuevo camino ──
+test("checkAndCompleteReferralIfThresholdMet: un usuario sin ninguna referral real (p. ej. tras un intento de autorreferencia rechazado) nunca genera una recompensa de referido", async () => {
+  // El bloqueo real de autorreferencia (referrer_id = referred_id) vive en
+  // una constraint de DB, ya probada y NO modificada en esta fase
+  // (lib/referrals/referral-registration.test.ts, F8-05 Caso 6). Este
+  // test confirma que, para un usuario que nunca llegó a tener una
+  // referral real (mismo estado final que produce ese bloqueo), el nuevo
+  // camino de umbral tampoco inventa ninguna recompensa aunque el usuario
+  // sí tenga Partner activities reales.
+  const { userId } = await signUpUser();
+  const { accessToken } = await createTestPartner();
+  try {
+    await registerNPartnerActivities(userId, accessToken, 2);
+    await assert.doesNotReject(() => checkAndCompleteReferralIfThresholdMet(userId));
+
+    const service = createServiceRoleClient();
+    const { count } = await service
+      .from("rewards_transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("reason", "referral");
+    assert.equal(count, 0, "sin ninguna referral real, nunca debe crearse una recompensa 'referral'");
+  } finally {
+    await deleteTestUser(userId);
+  }
+});
+
+// ── CASE 6: repetir el proceso -> no farming adicional (idempotencia + concurrencia real vía el nuevo camino) ──
+test("checkAndCompleteReferralIfThresholdMet: llamadas repetidas y concurrentes tras alcanzar el umbral nunca duplican la recompensa", async () => {
+  const { referrerId, referredId, referralId } = await createReferralPair();
+  const { accessToken } = await createTestPartner();
+  try {
+    await registerNPartnerActivities(referredId, accessToken, 2);
+
+    await Promise.all([
+      checkAndCompleteReferralIfThresholdMet(referredId),
+      checkAndCompleteReferralIfThresholdMet(referredId),
+      checkAndCompleteReferralIfThresholdMet(referredId),
+    ]);
+
+    assert.equal(await countReferralRewardTransactions(referralId), 2, "una carrera real nunca debe producir más de 1 reward por parte");
+
+    const service = createServiceRoleClient();
+    const { data: referral } = await service.from("referrals").select("status").eq("id", referralId).single();
+    assert.equal(referral?.status, "rewarded");
   } finally {
     await deleteTestUser(referrerId);
     await deleteTestUser(referredId);

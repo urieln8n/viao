@@ -14,9 +14,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// FASE J-B2.5 (Travel Legacy Purge) — la descripción anterior ("compañero
+// de viaje inteligente") era la referencia Travel más visible de todo el
+// producto (meta description: pestaña del navegador, buscadores, previews
+// sociales). Alineada con el nuevo core: Goals -> Points -> Missions ->
+// Rewards, sin mención de viajes/hoteles.
 export const metadata: Metadata = {
   title: "VIAO",
-  description: "VIAO — compañero de viaje inteligente.",
+  description: "VIAO — cumple objetivos, gana Points con tu actividad y consigue Rewards en tus comercios favoritos.",
 };
 
 // Declaración explícita del viewport mobile-first (F2-01, VIAO_ROADMAP.md).
@@ -31,7 +36,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="es" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <PostHogProvider>
           <AppShell>{children}</AppShell>

@@ -43,7 +43,7 @@ import type { BookingStatus } from "../../../../types/travel";
 // `providerPropertyId` (a pesar del nombre de la carpeta que lo contiene)
 // sino el UUID interno de `bookings.id` — de ahí el `propertyId: bookingId`
 // del destructuring de abajo, para no arrastrar el nombre confuso al resto
-// del archivo. Reutiliza `isValidUuid` (app/properties/[id]/resolve.ts)
+// del archivo. Reutiliza `isValidUuid` (lib/utils/is-valid-uuid.ts)
 // dentro de `resolveBookingStatus` para tratar cualquier valor sin forma
 // de UUID como inexistente, igual que el resto de rutas de la Fase 5/6.
 interface BookingStatusPageProps {

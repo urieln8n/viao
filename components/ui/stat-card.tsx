@@ -40,7 +40,12 @@ export function StatCard({
       <span className="text-xs text-muted-foreground">{label}</span>
       <span
         className={cn(
-          "text-3xl font-semibold",
+          // UX-2 (World-Class Product Design) — Fase B: font-mono +
+          // tabular-nums, mismo criterio ya aplicado en Home/GoalCard —
+          // StatCard es precisamente el componente pensado para un
+          // número protagonista (comentario original del bloque 4), así
+          // que es el sitio de mayor impacto para este tratamiento.
+          "font-mono text-3xl font-semibold tabular-nums",
           tone === "positive" && "text-success",
         )}
       >

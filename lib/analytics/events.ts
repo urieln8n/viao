@@ -20,4 +20,7 @@ export type AnalyticsEventName =
   | "reward_earned"
   | "reward_redeemed"
   | "referral_created"
-  | "return_visit";
+  | "return_visit"
+  // UX-12 (Partner Self-Service + Measurement) — amplía la taxonomía
+  // cerrada, ver 20260831090000_add_partner_profile_viewed_event.sql.
+  | "partner_profile_viewed";

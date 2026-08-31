@@ -482,12 +482,12 @@ test("sin sesión real, con un searchId con formato válido: sigue devolviendo u
   assert.equal(result.status, "unauthenticated");
 });
 
-// ── No duplica el modelo de precisión de F6-01: reutiliza isValidUuid de F5-07 ──
-test("actions.ts (booking) reutiliza isValidUuid de app/properties/[id]/resolve.ts, no duplica el regex", () => {
+// ── No duplica el modelo de precisión de F6-01: reutiliza isValidUuid del módulo neutral (J-B7.3) ──
+test("actions.ts (booking) reutiliza isValidUuid de lib/utils/is-valid-uuid.ts, no duplica el regex", () => {
   const source = readFileSync(path.join(process.cwd(), "app/booking/actions.ts"), "utf-8");
 
   assert.ok(
-    /import \{ isValidUuid \} from "\.\.\/properties\/\[id\]\/resolve"/.test(source),
+    /import \{ isValidUuid \} from "\.\.\/\.\.\/lib\/utils\/is-valid-uuid"/.test(source),
     "actions.ts debe importar isValidUuid en vez de redefinir la validación de formato UUID",
   );
 });

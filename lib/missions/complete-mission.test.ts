@@ -70,7 +70,7 @@ test("completeMission: Mission válida otorga los Points correctos y crea el led
   const { userId } = await signUpUser();
   try {
     const balanceBefore = await getBalance(userId);
-    const result = await completeMission(userId, "search_started");
+    const result = await completeMission(userId, "partner_activity_registered");
     assert.equal(result.outcome, "completed");
     if (result.outcome !== "completed") return;
     assert.equal(result.pointsAwarded, 10);
@@ -147,13 +147,58 @@ test("completeMission: Mission lifetime (goal_created) otorga 50 Points", async 
   }
 });
 
+// ── FASE J-B4 — Mission lifetime (profile_completed) ──
+test("completeMission: Mission lifetime (profile_completed) otorga 10 Points", async () => {
+  const { userId } = await signUpUser();
+  try {
+    const balanceBefore = await getBalance(userId);
+    const result = await completeMission(userId, "profile_completed");
+    assert.equal(result.outcome, "completed");
+    if (result.outcome !== "completed") return;
+    assert.equal(result.pointsAwarded, 10);
+
+    const balanceAfter = await getBalance(userId);
+    assert.equal(balanceAfter, balanceBefore + 10);
+  } finally {
+    await deleteTestUser(userId);
+  }
+});
+
+// ── FASE J-B4 — profile_completed nunca se puede farmear guardando el perfil repetidas veces ──
+test("completeMission: 'profile_completed' nunca se puede farmear repitiendo el evento (period_key='lifetime')", async () => {
+  const { userId } = await signUpUser();
+  try {
+    const balanceBefore = await getBalance(userId);
+    // Simula 3 disparos reales del evento "perfil guardado" — exactamente
+    // lo que ocurriría si el usuario edita y guarda su perfil varias veces
+    // (flujo 100% legítimo, ver app/profile/actions.ts).
+    await completeMission(userId, "profile_completed");
+    await completeMission(userId, "profile_completed");
+    const third = await completeMission(userId, "profile_completed");
+    assert.equal(third.outcome, "completed");
+
+    const balanceAfter = await getBalance(userId);
+    assert.equal(balanceAfter, balanceBefore + 10, "10 Points UNA sola vez, sin importar cuántas veces se guarde el perfil");
+
+    const service = createServiceRoleClient();
+    const { data: completions } = await service
+      .from("mission_completions")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("mission_key", "profile_completed");
+    assert.equal(completions?.length, 1, "una sola fila para siempre, nunca una por cada guardado");
+  } finally {
+    await deleteTestUser(userId);
+  }
+});
+
 // ── 3/5/6. Doble ejecución / retry: mismo periodo nunca duplica ──
 test("completeMission: repetir la misma Mission en el mismo periodo nunca duplica Points ni filas", async () => {
   const { userId } = await signUpUser();
   try {
     const balanceBefore = await getBalance(userId);
-    const first = await completeMission(userId, "hotel_viewed");
-    const second = await completeMission(userId, "hotel_viewed");
+    const first = await completeMission(userId, "partner_activity_registered");
+    const second = await completeMission(userId, "partner_activity_registered");
     assert.equal(first.outcome, "completed");
     assert.equal(second.outcome, "completed");
 
@@ -165,14 +210,14 @@ test("completeMission: repetir la misma Mission en el mismo periodo nunca duplic
       .from("mission_completions")
       .select("id")
       .eq("user_id", userId)
-      .eq("mission_key", "hotel_viewed");
+      .eq("mission_key", "partner_activity_registered");
     assert.equal(completions?.length, 1, "exactamente 1 fila de completion, nunca 2");
 
     const { data: transactions } = await service
       .from("rewards_transactions")
       .select("id")
       .eq("user_id", userId)
-      .eq("reason", "mission:hotel_viewed");
+      .eq("reason", "mission:partner_activity_registered");
     assert.equal(transactions?.length, 1, "exactamente 1 transacción, nunca 2");
   } finally {
     await deleteTestUser(userId);
@@ -218,12 +263,12 @@ test("completeMission: la misma Mission semanal en DOS periodos distintos SÍ ot
     // que completeMission() haría en dos semanas ISO reales distintas.
     const week1 = await service.rpc("complete_mission", {
       p_user_id: userId,
-      p_mission_key: "search_started",
+      p_mission_key: "partner_activity_registered",
       p_period_key: "TEST-W1",
     });
     const week2 = await service.rpc("complete_mission", {
       p_user_id: userId,
-      p_mission_key: "search_started",
+      p_mission_key: "partner_activity_registered",
       p_period_key: "TEST-W2",
     });
     assert.equal(week1.error, null, week1.error?.message);
@@ -243,7 +288,7 @@ test("completeMission: N llamadas concurrentes reales para la misma Mission/peri
     const balanceBefore = await getBalance(userId);
     const CONCURRENT_CALLS = 10;
     const results = await Promise.all(
-      Array.from({ length: CONCURRENT_CALLS }, () => completeMission(userId, "search_started")),
+      Array.from({ length: CONCURRENT_CALLS }, () => completeMission(userId, "partner_activity_registered")),
     );
 
     for (const result of results) {
@@ -259,14 +304,14 @@ test("completeMission: N llamadas concurrentes reales para la misma Mission/peri
       .from("mission_completions")
       .select("id")
       .eq("user_id", userId)
-      .eq("mission_key", "search_started");
+      .eq("mission_key", "partner_activity_registered");
     assert.equal(completions?.length, 1, "exactamente 1 fila en mission_completions bajo concurrencia real");
 
     const { data: transactions } = await service
       .from("rewards_transactions")
       .select("id")
       .eq("user_id", userId)
-      .eq("reason", "mission:search_started");
+      .eq("reason", "mission:partner_activity_registered");
     assert.equal(transactions?.length, 1, "exactamente 1 transacción en el ledger bajo concurrencia real");
   } finally {
     await deleteTestUser(userId);
@@ -278,7 +323,7 @@ test("mission_completions: un usuario no puede leer las completions de otro (RLS
   const { userId: userA } = await signUpUser();
   const { userId: userB, sessionClient: sessionB } = await signUpUser();
   try {
-    await completeMission(userA, "search_started");
+    await completeMission(userA, "partner_activity_registered");
 
     const { data, error } = await sessionB.from("mission_completions").select("id").eq("user_id", userA);
     assert.equal(error, null, error?.message);
@@ -294,7 +339,7 @@ test("mission_completions: el cliente de sesión no puede insertar directamente 
   try {
     const { error } = await sessionClient.from("mission_completions").insert({
       user_id: userId,
-      mission_key: "search_started",
+      mission_key: "partner_activity_registered",
       period_key: "FAKE-CLIENT-INSERT",
       points_awarded: 999,
     });
@@ -309,7 +354,7 @@ test("complete_mission: no es invocable directamente por un cliente autenticado 
   try {
     const { error } = await sessionClient.rpc("complete_mission", {
       p_user_id: userId,
-      p_mission_key: "search_started",
+      p_mission_key: "partner_activity_registered",
       p_period_key: "FAKE-CLIENT-RPC",
     });
     assert.ok(error, "un cliente autenticado no debe poder invocar complete_mission() directamente — EXECUTE revocado");
@@ -340,7 +385,7 @@ test("completeMission: el kill-switch del pool mensual rechaza una Mission que s
       // aquí solo se puede confirmar que NINGUNA Mission nueva tiene
       // éxito mientras el pool siga agotado, que es el comportamiento
       // correcto, no un fallo del test.
-      const result = await completeMission(userId, "search_started");
+      const result = await completeMission(userId, "partner_activity_registered");
       assert.equal(result.outcome, "pool_exhausted");
       return;
     }
@@ -357,7 +402,7 @@ test("completeMission: el kill-switch del pool mensual rechaza una Mission que s
       assert.equal(error, null, error?.message);
     }
 
-    const result = await completeMission(userId, "search_started");
+    const result = await completeMission(userId, "partner_activity_registered");
     assert.equal(result.outcome, "pool_exhausted", "con menos margen que el coste de la Mission, debe rechazarse");
 
     const balanceAfter = await getBalance(userId);
@@ -395,7 +440,7 @@ test("completeMission: exactamente en el límite mensual SÍ se permite (<=, no 
       assert.equal(error, null, error?.message);
     }
 
-    const result = await completeMission(userId, "hotel_viewed");
+    const result = await completeMission(userId, "partner_activity_registered");
     assert.equal(result.outcome, "completed", "otorgar exactamente hasta el límite (sin superarlo) debe permitirse");
   } finally {
     await deleteTestUser(userId);

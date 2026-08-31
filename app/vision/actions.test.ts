@@ -84,3 +84,43 @@ test("app/vision/vision-view.tsx (Client Component) nunca importa openai ni next
   assert.ok(!/from ["']openai["']/.test(source));
   assert.ok(!/next\/headers/.test(source));
 });
+
+// ══════════════════════════ FASE J-B6 — Vision Decouple ══════════════════════════
+// Vision deja de depender de Trips: sin getUserTrips(), sin tripId, sin
+// "Guardar en Mi viaje". El flujo imagen -> consentimiento -> validación
+// -> OCR/traducción -> resultado no cambia; consentimiento, validación,
+// rate-limit y kill-switch se verifican en sus propios tests (lib/vision/*,
+// lib/rate-limit/*, lib/openai/vision.test.ts), no tocados en este bloque.
+
+test("scanVisionAction: nunca lee tripId del FormData del cliente (Vision desacoplado de Trips)", () => {
+  const source = readFileSync(path.join(process.cwd(), "app/vision/actions.ts"), "utf-8");
+  assert.ok(
+    !/formData\.get\(["']tripId["']\)/.test(source),
+    "scanVisionAction ya no debe leer tripId del FormData",
+  );
+});
+
+test("app/vision/actions.ts nunca importa lib/trips/*", () => {
+  const source = readFileSync(path.join(process.cwd(), "app/vision/actions.ts"), "utf-8");
+  assert.ok(!/lib\/trips\//.test(source), "actions.ts no debe depender de ningún módulo de Trips");
+});
+
+test("app/vision/page.tsx nunca importa ningún módulo de lib/trips/", () => {
+  // Comprueba la sentencia `import ... from ".../lib/trips/..."` real, no
+  // cualquier mención textual de "getUserTrips" (el propio comentario de
+  // este bloque nombra la función retirada como documentación, sin que
+  // eso sea una dependencia real).
+  const source = readFileSync(path.join(process.cwd(), "app/vision/page.tsx"), "utf-8");
+  assert.ok(!/from ["'].*lib\/trips\//.test(source), "page.tsx no debe importar ningún módulo de Trips");
+});
+
+test("app/vision/vision-view.tsx nunca referencia trips/tripId ni el flujo 'Guardar en Mi viaje'", () => {
+  const source = readFileSync(path.join(process.cwd(), "app/vision/vision-view.tsx"), "utf-8");
+  assert.ok(!/TripListItem/.test(source), "vision-view.tsx no debe importar TripListItem");
+  assert.ok(!/\btripId\b/.test(source), "vision-view.tsx no debe tener ningún estado ni referencia a tripId");
+  assert.ok(!/handleSave/.test(source), "vision-view.tsx no debe tener ninguna función handleSave ('Guardar en Mi viaje' retirado)");
+  assert.ok(
+    !/\.from\(\s*["']photos["']\s*\)\s*\.insert/.test(source),
+    "vision-view.tsx ya no debe insertar directamente en photos (ese INSERT pertenecía al flujo de guardado en Trips)",
+  );
+});
