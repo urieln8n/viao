@@ -10,6 +10,7 @@ import { getActiveGoal } from "../lib/goals/get-goal";
 import { getMissionsStatus } from "../lib/missions/get-missions-status";
 import { GoalCard } from "./goal-card";
 import { MissionsSummary } from "./missions-summary";
+import { HomeLanding } from "./home-landing";
 
 // Corrección estratégica permanente (VIAO no es una app de viajes) — Home
 // deja de leer/renderizar nada relacionado con Travel (viajes destacados,
@@ -78,12 +79,16 @@ export default async function Home() {
           )}
 
           {balance === undefined ? (
-            <Link
-              href="/register"
-              className={buttonVariants({ variant: "default", className: "w-fit" })}
+            // UX-14 (Landing educativa + First Experience) — el Hero deja
+            // de enlazar directo a /register: el CTA de registro se mueve
+            // al final de la First Experience (HomeLanding, más abajo).
+            // Este CTA secundario solo hace scroll a la explicación.
+            <a
+              href="#landing-points"
+              className={buttonVariants({ variant: "outline", className: "w-fit" })}
             >
-              {t("home.createAccountCta")}
-            </Link>
+              {t("home.landingSecondaryCta")}
+            </a>
           ) : (
             <Link
               href="#goal"
@@ -120,68 +125,72 @@ export default async function Home() {
           </div>
         )}
 
+        {/* UX-14 (Landing educativa + First Experience) — para el usuario
+            deslogueado, las dos filas teaser de abajo (Partners/Points)
+            quedan reemplazadas por HomeLanding: explicarían lo mismo dos
+            veces (Partners ya aparece en el ciclo + evidencia; Points ya
+            se explica en su propia sección), y HomeLanding es ahora la
+            experiencia principal para quien todavía no tiene cuenta. La
+            experiencia del usuario logueado no cambia en absoluto. */}
+        {balance === undefined && <HomeLanding />}
+
         {/* UX-10 (Partners Visible + Discovery + Registration) — §19: fila
             compacta, mismo tratamiento visual que la fila de Points de
             abajo (nunca una Card nueva) — respeta "no convertir Home en
-            un dashboard de 10 cards". Se muestra siempre (con o sin
-            sesión): Discovery (`/partners`) es una superficie pública,
-            igual que el propio Hero. Orden Hero -> Goal -> Mission ->
-            Partners -> Points/Reward, tal como pide la auditoría. */}
-        <div className="flex items-center justify-between gap-4 border-t border-border pt-6">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-xs text-muted-foreground">{t("home.partnersTeaserTitle")}</span>
-            <span className="text-sm text-muted-foreground">{t("home.partnersTeaserSubtitle")}</span>
+            un dashboard de 10 cards". Orden Hero -> Goal -> Mission ->
+            Partners -> Points/Reward, tal como pide la auditoría.
+            UX-14 — antes se mostraba siempre (con o sin sesión); ahora solo
+            con sesión, porque el usuario deslogueado ya ve la evidencia de
+            Partners dentro de HomeLanding (arriba). */}
+        {balance !== undefined && (
+          <div className="flex items-center justify-between gap-4 border-t border-border pt-6">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs text-muted-foreground">{t("home.partnersTeaserTitle")}</span>
+              <span className="text-sm text-muted-foreground">{t("home.partnersTeaserSubtitle")}</span>
+            </div>
+            <Link
+              href="/partners"
+              className={buttonVariants({ variant: "ghost", size: "sm", className: "gap-1" })}
+            >
+              {t("home.partnersTeaserCta")}
+              <ArrowRight className="size-3.5" aria-hidden="true" />
+            </Link>
           </div>
-          <Link
-            href="/partners"
-            className={buttonVariants({ variant: "ghost", size: "sm", className: "gap-1" })}
-          >
-            {t("home.partnersTeaserCta")}
-            <ArrowRight className="size-3.5" aria-hidden="true" />
-          </Link>
-        </div>
+        )}
 
         {/* Micro-bloque 2 — Rewards/Points sigue siendo una línea (sin
             Card grande), sin equivalencia en euros. Se añade una frase de
             conexión narrativa con Goal — mismo `balance`, ningún cálculo
             nuevo. Última sección de Home: cierra la jerarquía
             Goal -> Missions -> Points/Rewards sin ningún contenido de
-            Travel después. */}
-        <div className="flex items-center justify-between gap-4 border-t border-border pt-6">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-xs text-muted-foreground">{t("home.pointsTeaserTitle")}</span>
-            <span
-              className={
-                balance !== undefined
-                  ? "text-2xl font-semibold text-success"
-                  : "text-sm text-muted-foreground"
-              }
-            >
-              {balance !== undefined ? (
-                // UX-2 (World-Class Product Design) — Fase B: el número en
-                // sí (nunca la unidad "Points") en Geist Mono + tabular
-                // numerals, mismo criterio que StatCard/GoalCard/Rewards —
-                // dígitos de ancho fijo, sin el jitter visual de Geist Sans
-                // al actualizarse el saldo.
-                <>
-                  <span className="font-mono tabular-nums">{balance}</span> {t("rewards.pointsUnit")}
-                </>
-              ) : (
-                t("home.pointsTeaserSignedOut")
-              )}
-            </span>
-            {balance !== undefined && (
+            Travel después.
+            UX-14 — antes se mostraba también deslogueado (con
+            `home.pointsTeaserSignedOut`); ahora solo con sesión, ya que
+            "¿Qué son los Points?" (HomeLanding) explica el concepto mejor
+            para quien todavía no tiene saldo que mostrar. */}
+        {balance !== undefined && (
+          <div className="flex items-center justify-between gap-4 border-t border-border pt-6">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs text-muted-foreground">{t("home.pointsTeaserTitle")}</span>
+              <span className="text-2xl font-semibold text-success">
+                {/* UX-2 (World-Class Product Design) — Fase B: el número en
+                    sí (nunca la unidad "Points") en Geist Mono + tabular
+                    numerals, mismo criterio que StatCard/GoalCard/Rewards —
+                    dígitos de ancho fijo, sin el jitter visual de Geist Sans
+                    al actualizarse el saldo. */}
+                <span className="font-mono tabular-nums">{balance}</span> {t("rewards.pointsUnit")}
+              </span>
               <span className="text-xs text-muted-foreground">{t("home.pointsGoalConnection")}</span>
-            )}
+            </div>
+            <Link
+              href="/rewards"
+              className={buttonVariants({ variant: "ghost", size: "sm", className: "gap-1" })}
+            >
+              {t("home.pointsTeaserCta")}
+              <ArrowRight className="size-3.5" aria-hidden="true" />
+            </Link>
           </div>
-          <Link
-            href="/rewards"
-            className={buttonVariants({ variant: "ghost", size: "sm", className: "gap-1" })}
-          >
-            {t("home.pointsTeaserCta")}
-            <ArrowRight className="size-3.5" aria-hidden="true" />
-          </Link>
-        </div>
+        )}
       </PageContainer>
     </main>
   );

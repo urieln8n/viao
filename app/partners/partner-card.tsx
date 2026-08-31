@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Store } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +8,7 @@ import type { TranslationKey } from "@/lib/i18n/types";
 
 import type { ActivePartnerSummary } from "../../lib/partners/get-active-partners";
 import { CATEGORY_LABEL_KEY } from "./category-label";
+import { PartnerImage } from "./partner-image";
 import type { PartnerCategory } from "../../lib/partners/request-partner-registration";
 
 // UX-10 (Partners Visible + Discovery + Registration) — §7: responde en
@@ -22,18 +22,12 @@ export function PartnerCard({ partner }: { partner: ActivePartnerSummary }) {
     <Card>
       <CardContent className="flex flex-col gap-3">
         <div className="flex items-start gap-3">
-          {partner.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- URL de texto libre (sin bucket de Storage), no cabe en next/image sin configurar dominios remotos arbitrarios.
-            <img
-              src={partner.imageUrl}
-              alt=""
-              className="size-14 shrink-0 rounded-lg object-cover"
-            />
-          ) : (
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-muted">
-              <Store className="size-6 text-muted-foreground" aria-hidden="true" />
-            </div>
-          )}
+          <PartnerImage
+            src={partner.imageUrl}
+            imageClassName="size-14 shrink-0 rounded-lg object-cover"
+            placeholderClassName="flex size-14 shrink-0 items-center justify-center rounded-lg bg-muted"
+            iconClassName="size-6 text-muted-foreground"
+          />
           <div className="flex flex-col gap-1">
             <span className="text-base font-semibold">{partner.name}</span>
             <Badge variant="secondary">{categoryKey ? t(categoryKey) : partner.category}</Badge>

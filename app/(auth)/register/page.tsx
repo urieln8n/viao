@@ -1,11 +1,11 @@
 "use client";
 
-import { useId, useState, type FormEvent } from "react";
+import { Suspense, useId, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState } from "@/components/state/error-state";
 import { Input } from "@/components/ui/input";
 import { LoadingState } from "@/components/state/loading-state";
@@ -41,8 +41,16 @@ function mapSignUpError(error: { message: string; code?: string }): string {
   }
 }
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
+  // UX-17.1 — presencia conjunta de intent=partner + accessToken en la URL de
+  // origen (nunca guardados en estado/localStorage/cookies): determina el
+  // destino tras signUp() más abajo. Sin ambos, comportamiento idéntico al
+  // Usuario normal de siempre.
+  const searchParams = useSearchParams();
+  const partnerAccessToken =
+    searchParams.get("intent") === "partner" ? searchParams.get("accessToken") : null;
+
   const emailId = useId();
   const passwordId = useId();
   const referralCodeId = useId();
@@ -117,7 +125,16 @@ export default function RegisterPage() {
       // se mantiene el mensaje existente: no hay sesión todavía para
       // poder crear un Goal.
       if (data.session) {
-        router.push("/onboarding");
+        // UX-17.1 — la propia llamada a signUp() de arriba no cambia: es la
+        // misma alta de cuenta Usuario de siempre. Con intención Partner
+        // (accessToken presente), el destino es el Dashboard del Commerce en
+        // vez de /onboarding — allí el LinkAccountWidget ya construido en
+        // UX-16.3 permite completar la vinculación.
+        router.push(
+          partnerAccessToken
+            ? `/partners/dashboard/${partnerAccessToken}`
+            : "/onboarding",
+        );
         return;
       }
       setSuccessKind("pending-confirmation");
@@ -135,6 +152,12 @@ export default function RegisterPage() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>{t("register.title")}</CardTitle>
+          {/* UX-14.1 (P2 §13) — mejora mínima de continuidad narrativa:
+              una sola línea, redactada para tener sentido tanto si se
+              llega desde la landing como desde /login (no presupone que
+              el usuario vio la First Experience). Ningún cambio de
+              lógica/validación del formulario. */}
+          <CardDescription>{t("register.continuitySubtitle")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {status === "success" && successKind ? (
@@ -225,8 +248,33 @@ export default function RegisterPage() {
             <LoadingState message={t("register.submitButtonLoading")} />
           )}
           {status === "error" && submitError && <ErrorState message={submitError} />}
+
+          {/* UX-17.2 — mismo criterio exacto que login/page.tsx: CTA
+              secundario/discreto reutilizando partners.joinTeaser/
+              joinTeaserCta, oculto cuando partnerAccessToken existe (ya está
+              en el flujo de invitación de UX-17.1, no necesita descubrirlo). */}
+          {!partnerAccessToken && (
+            <p className="text-center text-sm text-muted-foreground">
+              {t("partners.joinTeaser")}{" "}
+              <Link href="/partners/join" className="text-primary underline-offset-4 hover:underline">
+                {t("partners.joinTeaserCta")}
+              </Link>
+            </p>
+          )}
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+// UX-17.1 — useSearchParams() en un Client Component exige un límite
+// <Suspense> para no forzar CSR de toda la página durante el prerender
+// (confirmado en la documentación de Next.js, no asumido). Envolver solo
+// aquí, en el punto de exportación, evita reestructurar el resto del árbol.
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterPageContent />
+    </Suspense>
   );
 }

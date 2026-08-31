@@ -63,9 +63,25 @@ export function LinkAccountWidget({ accessToken }: { accessToken: string }) {
         {sessionStatus === "signed-out" && (
           <div className="flex flex-col gap-2">
             <p className="text-sm text-muted-foreground">{t("partnerDashboard.linkAccountSignInPrompt")}</p>
-            <Link href="/login" className={buttonVariants({ variant: "outline", className: "w-fit" })}>
-              {t("partnerDashboard.linkAccountSignInCta")}
-            </Link>
+            {/* UX-17.1 — el copy de arriba ya prometía "inicia sesión o crea
+                una cuenta"; hasta ahora solo existía el enlace a /login. Ambos
+                enlaces conservan accessToken vía query param (nunca en
+                localStorage/cookies/estado) para que login/register.tsx
+                puedan redirigir de vuelta al Dashboard en vez de a /onboarding. */}
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Link
+                href={`/login?intent=partner&accessToken=${encodeURIComponent(accessToken)}`}
+                className={buttonVariants({ variant: "outline", className: "w-fit" })}
+              >
+                {t("partnerDashboard.linkAccountSignInCta")}
+              </Link>
+              <Link
+                href={`/register?intent=partner&accessToken=${encodeURIComponent(accessToken)}`}
+                className={buttonVariants({ variant: "outline", className: "w-fit" })}
+              >
+                {t("partnerDashboard.linkAccountCreateCta")}
+              </Link>
+            </div>
           </div>
         )}
 

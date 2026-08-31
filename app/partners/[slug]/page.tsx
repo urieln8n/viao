@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Store } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +12,7 @@ import { getPartnerBySlug } from "../../../lib/partners/get-partner-by-slug";
 import { getMissionDefinition } from "../../../lib/missions/rules";
 import { logAnalyticsEvent } from "../../../lib/analytics/log-event";
 import { CATEGORY_LABEL_KEY } from "../category-label";
+import { PartnerImage } from "../partner-image";
 import type { PartnerCategory } from "../../../lib/partners/request-partner-registration";
 
 // UX-10 (Partners Visible + Discovery + Registration) — §8: Partner
@@ -61,18 +61,12 @@ export default async function PartnerProfilePage({
   return (
     <main className="flex flex-1 flex-col">
       <PageContainer variant="default" className="flex flex-1 flex-col gap-6 p-6">
-        {partner.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- URL de texto libre (sin bucket de Storage), no cabe en next/image sin configurar dominios remotos arbitrarios.
-          <img
-            src={partner.imageUrl}
-            alt=""
-            className="h-40 w-full rounded-xl object-cover"
-          />
-        ) : (
-          <div className="flex h-40 w-full items-center justify-center rounded-xl bg-muted">
-            <Store className="size-10 text-muted-foreground" aria-hidden="true" />
-          </div>
-        )}
+        <PartnerImage
+          src={partner.imageUrl}
+          imageClassName="h-40 w-full rounded-xl object-cover"
+          placeholderClassName="flex h-40 w-full items-center justify-center rounded-xl bg-muted"
+          iconClassName="size-10 text-muted-foreground"
+        />
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">

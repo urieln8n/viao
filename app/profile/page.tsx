@@ -505,6 +505,22 @@ export default function ProfilePage() {
             </div>
           )}
 
+          {/* UX-17.2 — hermano mutuamente excluyente del bloque de arriba:
+              solo cuando hasOwnedCommerce es explícitamente false (nunca
+              mientras está undefined/sin comprobar todavía, mismo criterio
+              que el resto de esta pantalla). Reutiliza las mismas claves
+              i18n que login/register.tsx y app/partners/page.tsx. */}
+          {sessionStatus === "signed-in" && profileStatus === "ready" && hasOwnedCommerce === false && (
+            <div className="flex flex-col gap-2 border-t border-border pt-4">
+              <p className="text-sm text-muted-foreground">
+                {t("partners.joinTeaser", activeLocale)}{" "}
+                <Link href="/partners/join" className="text-primary underline-offset-4 hover:underline">
+                  {t("partners.joinTeaserCta", activeLocale)}
+                </Link>
+              </p>
+            </div>
+          )}
+
           {sessionStatus === "signed-in" && profileStatus === "ready" && (
             <div className="flex flex-col gap-2 border-t border-border pt-4">
               <span className="text-sm font-medium">

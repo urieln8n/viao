@@ -566,6 +566,7 @@ export const es = {
     "No se pudo vincular. Inicia sesión con el email de contacto de este negocio, ya verificado, e inténtalo de nuevo.",
   "partnerDashboard.linkAccountSignInPrompt": "Inicia sesión o crea una cuenta VIAO para continuar.",
   "partnerDashboard.linkAccountSignInCta": "Iniciar sesión",
+  "partnerDashboard.linkAccountCreateCta": "Crear cuenta",
   "partnerDashboard.accountLinkedLabel": "Cuenta VIAO vinculada",
   // /partners/dashboard sin token (Camino B) — entrada para un Commerce
   // ya vinculado, resuelto por sesión.
@@ -573,6 +574,11 @@ export const es = {
   "partnerDashboard.noOwnedPartnersMessage":
     "Si ya tienes un negocio en VIAO, entra desde el enlace que recibiste al darlo de alta y vincula tu cuenta desde allí.",
   "partnerDashboard.chooseCommerceTitle": "Elige un negocio",
+  // UX-16.6 (Commerce UX Pro Max) — CommerceChrome (components/layout/
+  // commerce-chrome.tsx). `fallbackTitle` se usa solo cuando no hay
+  // `businessName` resuelto (ruta sin token, o token no válido).
+  "commerceChrome.fallbackTitle": "Panel de negocio",
+  "commerceChrome.exitCta": "Salir a VIAO",
   // UX-10 (Partners Visible + Discovery + Registration) — Discovery
   // pública `/partners` (§6-7). Nombre de la entidad "Partners" +
   // subtítulo explicativo, en vez de renombrar el término ya establecido

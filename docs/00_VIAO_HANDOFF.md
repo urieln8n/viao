@@ -1,14 +1,22 @@
 ---
 STATUS: CURRENT
-ERA: Esta sesión (post-reorganización documental)
+ERA: Partners Two-Sided Ecosystem (post-Core Reset, post-Release Baseline)
 DOMAIN: Meta / Continuidad
 AUTHORITY: Punto de entrada de continuidad — NO tiene autoridad sobre código, Decision Locks ni CURRENT. Es un mapa de navegación y estado, no una fuente de decisiones.
 SUPERSEDES: —
 SUPERSEDED BY: —
-LAST REVIEWED: 2026-08-25
+LAST REVIEWED: 2026-08-31
 ---
 
 # VIAO — HANDOFF
+
+> ## ⚠️ RECORDATORIO PARTNERS (leer antes de cualquier bloque de Partners)
+>
+> **Cuando un negocio envía una solicitud para convertirse en Partner, ¿dónde llega la solicitud, quién la revisa, cómo se aprueba/rechaza y cómo se responde al negocio y se le entrega su acceso?**
+>
+> Respuesta actual (Beta, 2026-08-31, verificada contra código real — ver §7.1 y el Runbook Operativo en `VIAO_PARTNERS_CONTINUITY_MASTER.md` §17): **manual, 100%, vía Supabase Studio.** Sin panel interno, sin notificación automática, sin estado `rejected` en el schema, sin entrega automática de `access_token`. Es una decisión deliberada para el volumen actual (0-5 Partners), no un bug — pero cualquier bloque que toque Partners debe partir de este hecho, no asumir que existe una herramienta que no existe.
+
+---
 
 ## 1. Purpose
 
@@ -18,6 +26,7 @@ Este documento es el **punto de entrada oficial de continuidad** de VIAO para cu
 - los documentos `CURRENT` de cada dominio
 - los Decision Locks
 - el código, las migraciones y los tests
+- `docs/01_CURRENT/partners/VIAO_PARTNERS_CONTINUITY_MASTER.md` (continuidad operativa específica de Partners — este HANDOFF es el mapa global, ese documento es el detalle de fase-por-fase de Partners)
 
 Es un mapa: dice **dónde está cada cosa y qué estado tiene**, no decide nada por sí mismo. Ninguna afirmación de este documento debe tratarse como una decisión nueva — si algo aquí parece una decisión, la decisión real vive en el documento fuente citado.
 
@@ -25,13 +34,13 @@ Es un mapa: dice **dónde está cada cosa y qué estado tiene**, no decide nada 
 
 ## 2. Current project state
 
-- **Fase/bloque actual**: cierre de la reorganización documental y formalización de Rewards V1 (CURRENT + Decision Lock, ya auditados independientemente). Este propio HANDOFF es el bloque en curso.
-- **Último bloque cerrado**: Rewards V1 — `docs/01_CURRENT/rewards/VIAO_REWARDS_V1.md` + `docs/02_DECISION_LOCKS/rewards/VIAO_REWARDS_V1_DECISION_LOCK.md`, con auditoría independiente y correcciones ya aplicadas.
-- **Siguiente bloque autorizado**: **ninguno todavía** — ver sección 11. El siguiente bloque *lógico* (Missions) no está autorizado hasta que se pida explícitamente.
-- **Último commit documental conocido**: `3b09d49` — "docs: reorganize VIAO documentation and establish governance". Existen cambios posteriores sin commitear (ver `git status` en cada sesión — este documento no fija ese estado porque cambia con cada bloque).
-- **Estado documental**: `REVIEW REQUIRED = 0`. Quedan 2 documentos en `docs/` raíz sin archivar formalmente, ambos con nota de supersesión parcial ya aplicada, pendientes de tu confirmación explícita para moverlos: `VIAO_PARTNERS_MASTER.md` y `VIAO_V1_LOOP_DECISION.md` — ver sección 15 de `00_GOVERNANCE.md`.
-- **Estado técnico**: Rewards y Missions implementados y probados en código (ver sección 6). Missions **no tiene todavía** documentación `CURRENT` ni Decision Lock propios — es un gap documental confirmado, no un gap de implementación.
-- **Pendiente de auditoría**: Missions (documentación, no código — el código ya fue auditado en el bloque combinado "Rewards + Missions V1" de esta sesión). Goals tiene Decision Lock pero no documento `CURRENT` propio — mismo tipo de gap.
+- **Fase/bloque actual**: ninguna en curso. El último bloque cerrado es el **V2 Release Checkpoint** — Commerce Identity (UX-16.x) + Partner Auth Entry (UX-17.1) + Partner Discovery CTA (UX-17.2), auditado, testeado, E2E verificado, documentado, commiteado, pusheado y desplegado (ver §21 para el commit/deploy exactos).
+- **Último bloque cerrado (código)**: V2 Release Checkpoint — ver §21 para el commit exacto de este bloque.
+- **Último bloque cerrado (documentación)**: sincronización de `VIAO_PARTNERS_CONTINUITY_MASTER.md` (§3, §16, §18 nuevo) y este HANDOFF con el estado real de Commerce Identity/UX-17.1/UX-17.2 — corrige la afirmación previa (ya obsoleta) de que Partner era "sin `auth.users`, sin `profiles`" de forma absoluta.
+- **Siguiente bloque autorizado**: **ninguno todavía**. UX-13 (Self-Service C2 + oferta textual) sigue siendo el siguiente bloque *lógico*, no autorizado.
+- **Decisión explícita de este bloque**: se auditó si el ciclo de solicitudes Partner (`/partners/join` → revisión → aprobación → acceso) necesitaba un panel administrativo nuevo. Conclusión: el ciclo ya funciona completo vía Supabase Studio (decisión ya tomada, ver §7.1) — se confirmó explícitamente con el propietario **no construir panel admin en este release**, sin reabrir esa decisión.
+- **Estado documental**: este HANDOFF estaba desactualizado antes de esta revisión — no mencionaba Commerce Identity, UX-16.x, UX-17.1 ni UX-17.2 en absoluto. Corregido en las secciones 6-7, 13 y 21 de este documento.
+- **Estado técnico**: Rewards V1, Goals V1, Missions V1, Partners (Foundation + V2 hasta Self-Service C1 + F3.5), y ahora Commerce Identity + Partner Auth Entry + Partner Discovery CTA implementados y probados en código — ver sección 5-7.
 
 ---
 
@@ -42,11 +51,9 @@ Es un mapa: dice **dónde está cada cosa y qué estado tiene**, no decide nada 
 | 1 | Código + migraciones + tests | `lib/`, `supabase/migrations/` | Todo lo demás, siempre |
 | 2 | Decision Locks | `docs/02_DECISION_LOCKS/**` | CURRENT, MASTER_PRODUCT_CONTEXT, GOVERNANCE |
 | 3 | CURRENT | `docs/01_CURRENT/**` | MASTER_PRODUCT_CONTEXT (en su propio dominio técnico), HISTORICAL |
-| 4 | `VIAO_MASTER_PRODUCT_CONTEXT.md` | — | Autoridad de producto/estrategia global; no manda sobre el dominio técnico de un CURRENT específico |
+| 4 | `VIAO_MASTER_PRODUCT_CONTEXT.md` / `VIAO_MASTER_CONTEXT_V1.md` | — | Autoridad de producto/estrategia global; no manda sobre el dominio técnico de un CURRENT específico. **Ver anomalía §15 — ambos reclaman este nivel sin supersesión formal declarada entre ellos.** |
 | 5 | `00_GOVERNANCE.md` | — | Reglas de gobernanza documental, no decisiones de producto |
 | 6 | `99_ARCHIVE_V1/` / histórico | — | Ninguno — referencia, nunca autoridad vigente |
-
-**Caso especial ya resuelto**: `docs/VIAO_MVP_MASTER.md` (checkpoint técnico/ingeniería) y `VIAO_MASTER_PRODUCT_CONTEXT.md` (producto/estrategia) son complementarios, no hay uno superior al otro — cada uno manda en su propio dominio (ver `00_GOVERNANCE.md`, sección "MVP_MASTER vs MASTER_PRODUCT_CONTEXT").
 
 ---
 
@@ -54,17 +61,15 @@ Es un mapa: dice **dónde está cada cosa y qué estado tiene**, no decide nada 
 
 | Prioridad | Documento | Para qué leerlo |
 |---|---|---|
-| 1 | `docs/00_GOVERNANCE.md` | Reglas de autoridad y estado documental global |
+| 1 | `docs/00_GOVERNANCE.md` | Reglas de autoridad y estado documental global (ver §15 de este HANDOFF: contiene una sección "Gap identificado" ya desactualizada) |
 | 2 | Este documento (`docs/00_VIAO_HANDOFF.md`) | Estado y navegación actual |
-| 3 | `docs/01_CURRENT/product/VIAO_MASTER_PRODUCT_CONTEXT.md` | Propósito de producto, qué es VIAO hoy, Decision Register global |
-| 4 | `docs/VIAO_MVP_MASTER.md` | Estado técnico/ingeniería granular (checkpoint) |
-| 5 | `docs/01_CURRENT/rewards/VIAO_REWARDS_V1.md` | Cómo funciona Rewards hoy |
-| 6 | `docs/02_DECISION_LOCKS/rewards/VIAO_REWARDS_V1_DECISION_LOCK.md` | Qué de Rewards está bloqueado |
-| 7 | `docs/02_DECISION_LOCKS/goals/VIAO_GOALS_V1_DECISION_LOCK.md` | Qué de Goals está bloqueado |
-| 8 | `docs/01_CURRENT/partners/VIAO_PARTNERS_MASTER_V2.md` + `VIAO_PARTNERS_TECHNICAL_SPEC.md` | Partners — producto y diseño técnico |
-| 9 | `docs/02_DECISION_LOCKS/partners/VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md` | Partners — economía bloqueada |
-
-*(Añadir aquí `docs/01_CURRENT/missions/VIAO_MISSIONS_V1.md` y `docs/02_DECISION_LOCKS/missions/VIAO_MISSIONS_V1_DECISION_LOCK.md` en cuanto existan.)*
+| 3 | `docs/01_CURRENT/partners/VIAO_PARTNERS_CONTINUITY_MASTER.md` | Continuidad operativa de Partners fase-por-fase (UX-9→F3.5, roadmap F4-F9) — el documento más actualizado del repositorio a día de hoy |
+| 4 | `docs/VIAO_MASTER_CONTEXT_V1.md` | Identidad de producto post-Core Reset — "VIAO ya no es un producto de viajes"; **de mayor autoridad práctica que `VIAO_MASTER_PRODUCT_CONTEXT.md` en todo lo referente a Travel, sin supersesión formal declarada (ver §15)** |
+| 5 | `docs/01_CURRENT/product/VIAO_MASTER_PRODUCT_CONTEXT.md` | Propósito de producto original — **desactualizado en su marco Travel-como-núcleo**, útil para el resto de su contenido (Decision Register, Partners) |
+| 6 | `docs/01_CURRENT/rewards/VIAO_REWARDS_V1.md` + Decision Lock | Cómo funciona Rewards hoy / qué está bloqueado |
+| 7 | `docs/01_CURRENT/goals/VIAO_GOALS_V1.md` + Decision Lock | Cómo funciona Goals hoy / qué está bloqueado |
+| 8 | `docs/01_CURRENT/missions/VIAO_MISSIONS_V1.md` + Decision Lock | Cómo funciona Missions hoy / qué está bloqueado — **nota: el propio documento data del 2026-08-25, anterior al Core Reset que sustituyó 2 de las 4 Missions (`hotel_viewed`→`partner_activity_registered`, `search_started`→`profile_completed`); confirmar contra `lib/missions/rules.ts` antes de citarlo** |
+| 9 | `docs/01_CURRENT/partners/VIAO_PARTNERS_MASTER_V2.md` + `VIAO_PARTNERS_TECHNICAL_SPEC.md` + `VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md` | Partners — producto, diseño técnico y economía bloqueada (fundación PB0-PB7; para lo posterior, usar la Continuity Master, prioridad 3) |
 
 ---
 
@@ -72,14 +77,16 @@ Es un mapa: dice **dónde está cada cosa y qué estado tiene**, no decide nada 
 
 | Bloque | Estado | Autoridad | Siguiente acción |
 |---|---|---|---|
-| Documentación / gobernanza | Cerrado y committeado (`3b09d49`) | `00_GOVERNANCE.md` | Mantener al cerrar cada bloque futuro |
-| Producto (propósito global) | `CURRENT` | `VIAO_MASTER_PRODUCT_CONTEXT.md` | Ninguna pendiente |
-| Rewards | `CURRENT` + Decision Lock, auditados | `VIAO_REWARDS_V1.md` / `VIAO_REWARDS_V1_DECISION_LOCK.md` | Ninguna pendiente |
-| Missions | Implementado y probado en **código**; **sin** `CURRENT` ni Decision Lock propios | Código + tests (`lib/missions/`) | Crear `CURRENT`/Decision Lock — no autorizado todavía |
-| Goals | Decision Lock existe; **sin** `CURRENT` propio | `VIAO_GOALS_V1_DECISION_LOCK.md` | Crear `CURRENT` — no autorizado todavía |
-| Partners | `CURRENT` (Master V2, Technical Spec, MVP Master) + Decision Lock económico | `VIAO_PARTNERS_MASTER_V2.md` / `VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md` | `VIAO_PARTNERS_MVP_MASTER.md` con veredicto parcialmente desactualizado (PMM3/4/6/10 ya resueltos) |
-| Travel | `FROZEN` | `VIAO_MASTER_PRODUCT_CONTEXT.md` §15, `HOTELBEDS_CERTIFICATION_STATUS.md` | Ninguna — depende de respuesta externa de Hotelbeds |
-| Vision | `FROZEN`/funcional, sin acoplarse a Missions | `VIAO_MASTER_PRODUCT_CONTEXT.md` §15 | Ninguna |
+| Documentación / gobernanza | Cerrado, parcialmente desactualizado (ver §15) | `00_GOVERNANCE.md` | Actualizar su sección "Gap identificado" (Rewards/Missions ya tienen CURRENT) — no autorizado en este bloque |
+| Producto (propósito global) | `CURRENT`, con contradicción de identidad sin resolver formalmente (§15) | `VIAO_MASTER_PRODUCT_CONTEXT.md` / `VIAO_MASTER_CONTEXT_V1.md` | Resolver supersesión formal — no autorizado en este bloque |
+| Rewards | `CURRENT` + Decision Lock, cerrados | `VIAO_REWARDS_V1.md` / Decision Lock | Ninguna pendiente |
+| Goals | `CURRENT` + Decision Lock, cerrados | `VIAO_GOALS_V1.md` / Decision Lock | Ninguna pendiente |
+| Missions | `CURRENT` + Decision Lock existen, pero **desactualizados frente al Core Reset** (2 de 4 Missions cambiaron de trigger) | Código (`lib/missions/rules.ts`) — máxima autoridad, prevalece sobre el documento | Actualizar `VIAO_MISSIONS_V1.md` para reflejar `partner_activity_registered`/`profile_completed` — no autorizado en este bloque |
+| Partners — Foundation (PB0-PB7) | ✅ COMPLETADO | `VIAO_PARTNERS_IMPLEMENTATION_STATUS.md`, código + tests | Ninguna pendiente |
+| Partners — V2 (Discovery/Registration/Self-Service/Measurement) | ✅ COMPLETADO hasta F3.5 inclusive | `VIAO_PARTNERS_CONTINUITY_MASTER.md`, código + tests | UX-13, no autorizado |
+| Travel | ❄️ FROZEN / legacy purgado de navegación y Core, código congelado en el repo | `VIAO_MASTER_CONTEXT_V1.md` §11-13, `HOTELBEDS_CERTIFICATION_STATUS.md` | Ninguna — depende de decisión estratégica explícita futura |
+| Vision | ❄️ FROZEN, funcional, desacoplado de Missions (recomendado DECOUPLE, no ejecutado formalmente) | `VIAO_MASTER_CONTEXT_V1.md` §9 | Ninguna |
+| Release Baseline | ✅ COMPLETADO | Ver §11 | Verificación E2E de Partners en producción — bloqueada, ver §15 |
 
 ---
 
@@ -87,76 +94,124 @@ Es un mapa: dice **dónde está cada cosa y qué estado tiene**, no decide nada 
 
 | ID | Decisión | Autoridad |
 |---|---|---|
-| RW1 | `POINTS_PER_EURO = 100` | `VIAO_REWARDS_V1_DECISION_LOCK.md` |
-| RW2 | Ledger append-only | `VIAO_REWARDS_V1_DECISION_LOCK.md` |
-| RW3 | `rewards_wallets` como VIEW derivada | `VIAO_REWARDS_V1_DECISION_LOCK.md` |
-| RW4 | Idempotencia del ledger | `VIAO_REWARDS_V1_DECISION_LOCK.md` |
-| RW5 | `MAX_REWARD_REAL_COST_PERCENT = 30%` | `VIAO_REWARDS_V1_DECISION_LOCK.md` |
-| RW6 | Pool VIAO mensual = 100€/mes | `VIAO_REWARDS_V1_DECISION_LOCK.md` |
-| MI1 | 4 Missions exactas, sin motor configurable | Código (`lib/missions/rules.ts`) + `99_ARCHIVE_V1/checkpoints/VIAO_V1_EXECUTION_LOCK.md` §5.1 — **sin Decision Lock propio todavía** |
-| MI2 | `vision_used` fuera de Missions V1 | Código (ausencia confirmada) + `VIAO_V1_EXECUTION_LOCK.md` §5.2 — **sin Decision Lock propio todavía** |
-| MI3 | Pool Missions = 3.000 Points/mes, independiente de Rewards | Código (`complete_mission()` RPC) — **sin Decision Lock propio todavía** |
-| MI4 | `goal_created` con `period_key='lifetime'` (anti-farming) | Código + tests — **sin Decision Lock propio todavía** |
-| GOALS-V1 | `GOAL_PROGRESS_MODEL = WALLET_BALANCE` | `VIAO_GOALS_V1_DECISION_LOCK.md`, `APPROVED/IMPLEMENTED` |
-| L1-L19 | Partners Beta (3-5 piloto, categorías, onboarding manual, QR+Reserva, gratis, ledger reutilizado, etc.) | `VIAO_PARTNERS_MASTER_V2.md` §21 |
-| P1-P8 | Economía de Partner Activity (tasa por €, límites diario/mensual, semántica de agotamiento) | `VIAO_PARTNERS_TECHNICAL_SPEC.md` §24 |
-| PMM3/PMM4/PMM6/PMM10 | Atribución, economía, dashboard mínimo, refunds de Partners | `VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md` |
-
-**Nota**: MI1-MI4 son decisiones reales, verificadas directamente en código y tests, pero **no tienen todavía un Decision Lock formal propio** — su autoridad hoy es el código mismo más el precedente histórico ya archivado. Esto es exactamente el gap que motiva el siguiente bloque lógico (sección 11).
+| RW1-RW8 | Economía de Rewards (`POINTS_PER_EURO=100`, ledger append-only, `rewards_wallets` VIEW, idempotencia, `MAX_REWARD_REAL_COST_PERCENT=30%`, pool 100€/mes, 50/50 `DEPRECATED`, `POINTS_PERCENTAGE_OF_COMMISSION` dormant) | `VIAO_REWARDS_V1_DECISION_LOCK.md` |
+| GOALS-V1 | `GOAL_PROGRESS_MODEL = WALLET_BALANCE`, auto-cancelación, 1 Goal activo | `VIAO_GOALS_V1_DECISION_LOCK.md`, `APPROVED/IMPLEMENTED` |
+| MI1-MI4 | 4 Missions exactas sin motor configurable, `vision_used` fuera, pool 3.000 Points/mes, `goal_created` con `period_key='lifetime'` | `VIAO_MISSIONS_V1_DECISION_LOCK.md` (ya formalizado — corrige el gap que el HANDOFF anterior señalaba) |
+| L1-L19, P1-P8, PMM3/PMM4/PMM6/PMM10 | Partners Beta: alta manual/curada, QR+Reserva, gratis (€0), tasa por €, límites diario (2/Partner/usuario/día) y mensual (3.000 Points/mes, pool propio), dashboard mínimo solo lectura, `access_token` LOCKED como mecanismo de acceso permanente | `VIAO_PARTNERS_MASTER_V2.md` §21, `VIAO_PARTNERS_TECHNICAL_SPEC.md` §24, `VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md` — **nota 2026-08-31**: el inciso "(sin Supabase Auth para Partners)" queda superado parcialmente por Commerce Identity (UX-16.3, `owner_id`+`link_partner_owner()`) — `access_token` sigue LOCKED como mecanismo, pero un Usuario Auth ya puede vincularse opcionalmente a un Commerce sin rol nuevo sobre `profiles`. Ver `VIAO_PARTNERS_CONTINUITY_MASTER.md` §3/§18 |
+| — | `partners.status`/`access_token`/`is_test`/`slug`/`id` nunca editables por Self-Service | Código (`lib/partners/update-partner-profile.ts`, allowlist por construcción) + tests (`update-partner-profile.test.ts`) — sin Decision Lock formal propio, misma situación que MI1-MI4 antes de formalizarse |
+| — | VIAO no vuelve a Travel como núcleo salvo decisión estratégica explícita futura | `VIAO_MASTER_CONTEXT_V1.md` §1, §21 |
 
 ---
 
-## 7. Future
+## 7. Estado real de Partners
 
-- `POINTS_PERCENTAGE_OF_COMMISSION = 25%` (`lib/rewards/rules.ts`) — dormant, cero flujo que lo consuma. Autoridad: `VIAO_REWARDS_V1_DECISION_LOCK.md` (RW7), `VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md`. No es un roadmap obligatorio — solo queda centralizado para cuando exista, si se decide activarlo.
-- Pool de Partners (P4, 3.000 Points/mes) — `LOCKED` a nivel de documento, **sin implementación en código todavía**.
-- OCR, POS/API de Partners, CRM avanzado de Partners — `FUTURE`, explícitamente fuera de Beta (`VIAO_PARTNERS_MASTER_V2.md` §20).
+### Implementado (verificado en código + tests, no solo en documentación)
 
----
+Discovery pública (`/partners`), Partner Registration pública (`/partners/join` → `pending`), Partner Profile público (`/partners/[slug]`), Partner Dashboard de solo lectura (clientes nuevos/recurrentes, ventas declaradas/confirmadas, actividad reciente), Analytics (`partner_profile_viewed`, agregado como `profileViews` en el Dashboard), Partner Self-Service C1 (edición de nombre/categoría/descripción/teléfono/dirección/`image_url` vía `access_token`, con `status`/`access_token`/`is_test`/`slug`/`id` protegidos por allowlist verificado con tests), aislamiento `is_test` (fixtures nunca aparecen en Discovery/Profile). **Añadido 2026-08-31**: Commerce Identity (`owner_id`+`link_partner_owner()`, UX-16.3), Partner Auth Entry (`intent=partner`+`accessToken` en Login/Register redirigiendo al Dashboard en vez de `/onboarding`, UX-17.1), Partner Discovery CTA discreto en Login/Register/Profile (UX-17.2) — ver `VIAO_PARTNERS_CONTINUITY_MASTER.md` §18.
 
-## 8. Deprecated / superseded
+### NO implementado (confirmado, no asumido)
 
-- **Cofinanciación 50/50 Partner/VIAO** — origen `docs/VIAO_V1_LOOP_DECISION.md`; nunca implementada en schema real; formalmente retirada por `docs/02_DECISION_LOCKS/partners/VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md` (también referenciada como RW8 en `VIAO_REWARDS_V1_DECISION_LOCK.md`).
-- **QR/token rotativo diario escaneado por el usuario** — origen `VIAO_V1_LOOP_DECISION.md`; sustituido por código fijo + confirmación del Partner (`PMM3 LOCKED`, `VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md`).
-- **"Sin dashboard de Partner en V1"** — origen `VIAO_V1_LOOP_DECISION.md`; sustituido por dashboard mínimo de solo lectura (`PMM6 LOCKED`, mismo documento).
+Self-Service C2 (subida real de imágenes/Storage, logo, galería), horario/web/redes sociales (sin columna en `partners`), oferta estructurada (la tasa €→Points sigue fija en SQL, no configurable por Partner), QR, promociones/multiplicadores, favoritos, notificaciones, geolocalización, reviews, billing/suscripciones, CRM, blockchain/token, navegación principal para Partners en Sidebar/MainNav (sigue sin ítem fijo — solo existe el CTA discreto de UX-17.2 en Login/Register/Profile, sin umbral cumplido), panel administrativo para aprobar/rechazar solicitudes Partner (decisión explícita, ver §7.1 — el ciclo ya funciona vía Supabase Studio, y construirlo exigiría además un mecanismo de autenticación de administrador inexistente hoy).
 
----
+**Ya no aplica** ("login separado Usuario/Partner" retirado de esta lista): Commerce Identity + UX-17.1 resuelven esto de forma distinta a "arquitectura viable, no construida" — sin pantalla nueva de elección de identidad ni Auth unificada, mediante vinculación opcional (`owner_id`) y routing (`intent=partner`). Ver §6 y `VIAO_PARTNERS_CONTINUITY_MASTER.md` §18.
 
-## 9. Frozen
+### 7.1 Operational Gap — Partner Onboarding (auditado 2026-08-31)
 
-- **Travel/HotelProvider en su totalidad**: `Trips`, `TravelProvider`/`HotelProvider`, `HotelbedsProvider`, `MockHotelProvider`, `Search`, `Bookings`/`Booking Intents` — `FROZEN`, código intacto, sin trabajo activo (`VIAO_MASTER_PRODUCT_CONTEXT.md` §15).
-- **Hotelbeds**: 🟡 congelado, caso `#60019483`, cero llamadas reales hasta respuesta oficial externa (`docs/01_CURRENT/providers/HOTELBEDS_CERTIFICATION_STATUS.md`).
-- **Travelgate / RateHawk**: investigación `FROZEN` (Travelgate VERDICT GREEN solo sandbox; RateHawk VERDICT YELLOW, credenciales privadas no obtenidas) — `docs/03_RESEARCH_VALIDATION/providers/`.
-- **Vision**: funcional, `FROZEN` en el sentido de que no se diseña alrededor de él ni se acopla a Missions.
+El tramo `solicitud pending → revisión → aprobación/rechazo → comunicación → entrega de access_token` es **100% manual vía Supabase Studio** — confirmado por auditoría de código (ver recordatorio al inicio de este documento). Sin panel interno, sin notificación automática, sin estado `rejected` en el schema (solo `pending`/`active`/`inactive`), sin entrega automática de `access_token`, sin regeneración de token. **Decisión deliberada para el volumen actual (0-5 Partners), no un bug.** El procedimiento manual está ahora documentado en `docs/01_CURRENT/partners/VIAO_PARTNERS_CONTINUITY_MASTER.md` §17 ("Partner Onboarding Beta — Runbook Operativo"). Umbral identificado para cuando esto deje de ser suficiente: ~10-20 solicitudes simultáneas (ver auditoría del bloque "Partner Operational Flow / Next Block Audit").
 
 ---
 
-## 10. Do not touch
+## 8. Estado de validación (local vs. producción — no confundir)
 
-Sin nueva decisión explícita del propietario:
+**Local (Supabase Docker + `npm test`)**: `817 tests · 813 pass · 0 fail · 4 skipped`, `tsc`/`lint`/`build` en verde — verificado repetidamente, la evidencia más reciente es de este mismo bloque de auditoría de continuidad.
 
-- `rewards_transactions`, `rewards_wallets`, `rewards_catalog`, `reward_redemptions` (schema, RLS, GRANTs).
-- `redeem_reward()`, `cancel_redemption()`.
-- `complete_mission()`, las 4 Missions de `lib/missions/rules.ts` (Points/periodicidad).
-- Pools económicos: `100€/mes` (Rewards), `3.000 Points/mes` (Missions) — ni sus valores ni sus advisory locks.
-- `POINTS_PERCENTAGE_OF_COMMISSION` — no activar.
-- Cualquier migración existente en `supabase/migrations/`.
-- Cualquier test existente en `lib/`.
-- Hotelbeds — no reactivar, no tocar credenciales/endpoints/producción.
+**Producción (`https://viao.vercel.app`)**:
+- Deployment del commit `bde1663` (que incluye `c809584`): **Ready**, verificado en este bloque (`vercel ls`).
+- Home, Goal, Missions, Wallet/Rewards, `/partners` (Discovery), `/partners/[slug]` (404 correcto): **NO VERIFICADO en este bloque concreto** (sí en el bloque RELEASE BASELINE anterior, sin errores de consola).
+- Esquema de base de datos de producción: **is_test/description/category confirmados sincronizados** (prueba de caja negra vía `/partners/join`, bloque RELEASE BASELINE — una solicitud real se insertó sin error). El resto del esquema (incluida la migración de `partner_profile_viewed`) **no tiene confirmación directa**, solo inferencia razonable por aplicación secuencial de migraciones.
+- Partner Dashboard, `profileViews` en producción, Self-Service C1 en producción, persistencia tras recarga, protección de campos sensibles en producción: **NO VERIFICADO** — bloqueado por falta de acceso a la base de datos de producción (ver §15). Sí verificado exhaustivamente en local con tests automatizados equivalentes.
 
----
-
-## 11. Current work
-
-**Rewards V1 (CURRENT + Decision Lock) está cerrado y auditado.** No requiere más trabajo salvo que surja una contradicción real.
-
-**Siguiente bloque *lógico* según esta auditoría**: formalizar Missions — Decision Lock (MI1-MI4) y documento `CURRENT` — siguiendo exactamente el mismo patrón ya validado con Rewards (auditoría de código → Decision Lock → CURRENT → auditoría independiente → correcciones). Después, el mismo patrón aplicaría a Goals (tiene Decision Lock, falta `CURRENT`).
-
-**Esto es una observación, no una autorización.** Ningún bloque de implementación o documentación se ejecuta por el simple hecho de estar identificado aquí como "siguiente lógico" — requiere una instrucción explícita en su propio turno, exactamente como se exigió para cada bloque anterior de esta sesión.
+**No se debe leer "Vercel Ready" como "producción completamente validada".** Un build de Next.js correcto no depende del estado del esquema de base de datos.
 
 ---
 
-## 12. Standard block protocol
+## 9. FUTURE
+
+- `POINTS_PERCENTAGE_OF_COMMISSION = 25%` — dormant, sin flujo real.
+- Multiplicador de Points permanente por Partner (columna simple, sin ventana de tiempo) — diseño conceptual ya evaluado (`VIAO_PARTNERS_CONTINUITY_MASTER.md`), no implementado.
+- Evento `partner_viewed`/instrumentación de Discovery (distinto de `partner_profile_viewed`, que sí existe) — evaluado y descartado por ahora (sin precedente de medir impresiones de catálogo en el resto de VIAO).
+- Conversión Profile→Activity mostrada en el Dashboard — dato ya calculable, no expuesto todavía.
+
+---
+
+## 10. DEPRECATED / superseded
+
+- Cofinanciación 50/50 Partner/VIAO — `VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md`.
+- QR/token rotativo diario — sustituido por `access_token` fijo + confirmación del Partner.
+- "Sin dashboard de Partner en V1" — sustituido por dashboard mínimo (PMM6).
+- Missions `hotel_viewed`/`search_started` — sustituidas por `partner_activity_registered`/`profile_completed` (Core Reset, Product Decision Lock 2026-08-27) — **este cambio todavía no está reflejado en `VIAO_MISSIONS_V1.md`/su Decision Lock, ver §5**.
+
+---
+
+## 11. Release Baseline — evidencia real
+
+```
+Commit código:        c809584 — "feat: complete travel-to-partners core reset and partners v2 ecosystem"
+                       (Travel Legacy Purge + Core Reset + Premium Design System + Partners V2 + F3.5)
+Commit documentación:  bde1663 — "docs: record release baseline (c809584) in Partners Continuity Master"
+origin/main:           bde1663 (verificado en este bloque)
+Working tree:          limpio (verificado en este bloque)
+Vercel:                dpl_Gf25caNUTRw7BgxnDubMFyNvyUr9 y el deployment posterior del commit bde1663,
+                       ambos ● Ready, target production, alias https://viao.vercel.app
+                       (verificado en este bloque, vercel ls)
+Tests/tsc/lint/build:  PASS (817/813/0/4) — verificado repetidamente, última vez en este bloque
+```
+
+---
+
+## 12. FROZEN
+
+- Travel/HotelProvider en su totalidad (`Trips`, `TravelProvider`/`HotelProvider`, `HotelbedsProvider`, `MockHotelProvider`, `Search`, `Bookings`) — código presente, sin punto de entrada en navegación, sin trabajo activo.
+- Hotelbeds — caso `#60019483`, sin respuesta oficial externa.
+- Travelgate/RateHawk — investigación congelada.
+- Vision — funcional, desacoplado de Missions, sin nuevo entry point.
+
+---
+
+## 13. NOT NOW
+
+Favoritos, notificaciones, promociones/multiplicadores, QR, campañas, CRM, mapas/geolocalización, reviews, chat, loyalty tiers, blockchain/token, billing, panel admin de solicitudes Partner (reafirmado explícitamente en el V2 Release Checkpoint, 2026-08-31), Self-Service C2 (Storage/imágenes), oferta con Points configurables, navegación principal para Partners en Sidebar/MainNav (sin umbral cumplido), roles sobre `profiles`.
+
+**Retirado de esta lista 2026-08-31**: "login separado Usuario/Partner" — resuelto de forma distinta (vinculación opcional + routing, no una pantalla de elección de identidad) por Commerce Identity/UX-17.1. Ver §6, §7 y `VIAO_PARTNERS_CONTINUITY_MASTER.md` §18.
+
+---
+
+## 14. Current work / Next logical vs. Authorized
+
+- **NEXT LOGICAL**: UX-13 — Self-Service C2 (imágenes/Storage) + campo "oferta" (texto libre). Requiere auditar primero si las políticas de Storage existentes (pensadas para `auth.uid()`) son reutilizables para `access_token` — no asumirlo.
+- **AUTHORIZED**: ninguno.
+- **NOT AUTHORIZED**: UX-13 y todo lo listado en §13.
+
+Esto es una observación, no una autorización. Ningún bloque se ejecuta por estar identificado aquí como "siguiente lógico" — requiere instrucción explícita en su propio turno.
+
+---
+
+## 15. Contradicciones/anomalías detectadas en este bloque
+
+1. **`VIAO_MASTER_PRODUCT_CONTEXT.md` vs. `VIAO_MASTER_CONTEXT_V1.md`**: ambos reclaman el nivel 4 de la jerarquía de autoridad (producto/estrategia global) y ninguno declara formalmente `SUPERSEDES`/`SUPERSEDED BY` respecto al otro en su cabecera — ambos campos están vacíos en ambos documentos. Sustancialmente están en desacuerdo: el primero (2026-08-25) sigue enmarcando Travel como parte del núcleo; el segundo (2026-08-27) declara explícitamente "VIAO YA NO ES UN PRODUCTO DE VIAJES" y documenta esta misma contradicción en su propia sección 22-24. **No se resuelve aquí** — requiere que el propietario decida si `VIAO_MASTER_CONTEXT_V1.md` sustituye formalmente al primero, o si se fusionan.
+2. **`00_GOVERNANCE.md`, sección "Gap identificado"**: afirma que no existen documentos `CURRENT` para Rewards ni Missions. Es falso desde el commit `3a5b810` (2026-08-25, posterior a la redacción de esa sección) — ambos existen (`VIAO_REWARDS_V1.md`, `VIAO_MISSIONS_V1.md`) con sus Decision Locks. No se corrige `00_GOVERNANCE.md` en este bloque (fuera de alcance explícito) — se deja constancia aquí.
+3. **`VIAO_MISSIONS_V1.md` vs. código real**: el documento (LAST REVIEWED 2026-08-25) describe las 4 Missions originales; el código (`lib/missions/rules.ts`) ya refleja el Core Reset del 2026-08-27, con `hotel_viewed`→`partner_activity_registered` y `search_started`→`profile_completed`. Prevalece el código (principio 1 de gobernanza) — el documento queda identificado como desactualizado, no se corrige en este bloque.
+4. **Acceso a Supabase de producción**: la CLI de Supabase autenticada en esta sesión no lista ningún proyecto VIAO entre los proyectos accesibles (`supabase projects list` solo muestra `andres-web` y `barberia-saas`). La CLI de Vercel (autenticada como el propio propietario) puede *listar* los nombres de las variables de entorno de producción pero no *revelar* sus valores reales vía `vercel env pull` (las variables "Encrypted" llegan vacías). **No se puede verificar ni se ha intentado modificar el esquema de la base de datos de producción desde esta sesión.** La única evidencia positiva de sincronización de esquema es indirecta (una solicitud real vía `/partners/join` se insertó sin error, confirmando `is_test`/`description`/`category`). El resto de la cobertura de producción de Partners (Dashboard, Self-Service C1, `profileViews`, protección de campos) permanece **NO VERIFICADO**, no por fallo sino por falta de acceso — requiere que el propietario apruebe manualmente la solicitud de prueba ya creada y comparta su `access_token`, o confirme que la evidencia local ya reunida es suficiente.
+
+---
+
+## 16. Documentos leídos en esta actualización
+
+`docs/00_GOVERNANCE.md`, `docs/00_VIAO_HANDOFF.md` (versión anterior, íntegra), `docs/01_CURRENT/product/VIAO_MASTER_PRODUCT_CONTEXT.md` (cabecera), `docs/VIAO_MVP_MASTER.md` (cabecera), `docs/01_CURRENT/missions/VIAO_MISSIONS_V1.md` (cabecera), `docs/01_CURRENT/goals/VIAO_GOALS_V1.md` (cabecera), `docs/01_CURRENT/partners/VIAO_PARTNERS_CONTINUITY_MASTER.md` (íntegro, ya en contexto de esta sesión), `docs/VIAO_MASTER_CONTEXT_V1.md` (íntegro, ya en contexto de esta sesión), más `git status`/`git log`/`git branch`/`vercel ls` ejecutados en este mismo bloque. No se leyeron en profundidad los documentos `01_CURRENT/rewards/`, `01_CURRENT/partners/VIAO_PARTNERS_MASTER_V2.md`/`VIAO_PARTNERS_TECHNICAL_SPEC.md` en este bloque específico — su contenido ya estaba verificado contra el código real en bloques anteriores de esta misma sesión (UX-9→UX-12), no se ha vuelto a auditar aquí.
+
+---
+
+## 17. Standard block protocol
 
 ```
 BOOTSTRAP
@@ -168,16 +223,20 @@ BOOTSTRAP
   → INDEPENDENT AUDIT (auditoría separada, escéptica, no confía en el autor)
   → CORRECTIONS (solo lo que la auditoría identificó)
   → FINAL VALIDATION
-  → UPDATE HANDOFF (sección 16)
+  → OWNER AUTHORIZATION (commit/push/deploy son decisiones propias, no automáticas)
   → COMMIT (solo si se pide explícitamente)
+  → PUSH (solo si se pide explícitamente)
+  → VERCEL DEPLOY (automático al hacer push a main — no requiere acción propia, pero SÍ requiere autorización para el push que lo dispara)
+  → PRODUCTION VERIFICATION
+  → UPDATE HANDOFF (antes del HARD STOP de cualquier bloque importante)
   → HARD STOP
 ```
 
-Nunca se salta de un chat nuevo directamente a implementación.
+Nunca se salta de un chat nuevo directamente a implementación. Un bloque terminado técnicamente **no** implica automáticamente commit, push ni deploy — cada uno requiere autorización explícita propia, aunque el bloque anterior ya la haya dado para su propio alcance.
 
 ---
 
-## 13. New chat bootstrap
+## 18. New chat bootstrap
 
 Comando literal para iniciar cualquier chat nuevo:
 
@@ -187,8 +246,8 @@ VIAO — BOOTSTRAP / HANDOFF
 Antes de hacer cualquier modificación:
 
 1. Lee docs/00_VIAO_HANDOFF.md
-2. Lee los documentos que el HANDOFF indique como obligatorios.
-3. Ejecuta git status.
+2. Lee docs/01_CURRENT/partners/VIAO_PARTNERS_CONTINUITY_MASTER.md si el bloque toca Partners.
+3. Ejecuta git status / git log --oneline -10.
 4. Reconstruye el estado.
 5. Identifica bloque actual.
 6. Identifica siguiente bloque lógico.
@@ -204,9 +263,10 @@ E. FUTURE
 F. DEPRECATED
 G. FROZEN
 H. Qué NO tocar
-I. Siguiente bloque
-J. Documentos leídos
-K. Contradicciones/anomalías
+I. Siguiente bloque lógico
+J. Siguiente bloque autorizado
+K. Documentos leídos
+L. Contradicciones/anomalías
 
 Después:
 
@@ -215,30 +275,42 @@ HARD STOP.
 
 ---
 
-## 14. Update rule
+## 19. Update rule
 
-Este HANDOFF se actualiza **al cerrar cada bloque importante** (sección 16), nunca a mitad de un bloque. Cada actualización registra: fecha, bloque, resultado, documentos creados/modificados, si hubo auditoría independiente, si hubo commit, y el siguiente bloque lógico resultante. El HANDOFF **no introduce decisiones nuevas** — si una actualización necesitara afirmar algo que no está ya en un CURRENT o Decision Lock, eso pertenece a esos documentos, no aquí.
+Este HANDOFF se actualiza **al cerrar cada bloque importante**, nunca a mitad de un bloque. Cada actualización registra: fecha, bloque, resultado, documentos creados/modificados, si hubo auditoría independiente, si hubo commit/push/deploy, y el siguiente bloque lógico resultante. El HANDOFF **no introduce decisiones nuevas**.
 
 ---
 
-## 15. Conflict rule
+## 20. Conflict rule
 
 - **Código vs. documento**: gana el código/migraciones/tests, siempre.
-- **Decision Lock vs. documento CURRENT**: se revisa la jerarquía (sección 3) y la fecha/estado de cada uno — no se asume automáticamente que el más reciente gana si ambos tienen `LOCKED` vigente en dominios distintos.
-- **Dos Decision Locks en conflicto**: no se elige arbitrariamente — `HARD STOP`, se reporta el conflicto y se espera decisión del propietario.
-- **Producto vs. código**: se documenta la discrepancia; si implica un cambio de código, `HARD STOP` — no se resuelve silenciosamente.
+- **Decision Lock vs. documento CURRENT**: se revisa la jerarquía (§3) y la fecha/estado de cada uno.
+- **Dos Decision Locks en conflicto, o dos documentos reclamando el mismo nivel de autoridad** (ver §15.1): no se elige arbitrariamente — se reporta el conflicto y se espera decisión del propietario.
+- **Producto vs. código**: se documenta la discrepancia; si implica un cambio de código, se reporta — no se resuelve silenciosamente.
 
 Ninguna contradicción se corrige automáticamente en ningún bloque, nunca.
 
 ---
 
-## 16. Handoff history
+## 21. Handoff history
 
-| Fecha | Bloque | Resultado | Commit | Siguiente bloque |
-|---|---|---|---|---|
-| 2026-08-25 | Reorganización documental + gobernanza | Cerrado, auditado, committeado | `3b09d49` | Resolver REVIEW REQUIRED (MVP_MASTER vs MASTER_PRODUCT_CONTEXT) |
-| 2026-08-25 | Resolución REVIEW REQUIRED + limpieza de referencias | Cerrado | Sin commitear todavía | Rewards V1 (Decision Lock + CURRENT) |
-| 2026-08-25 | Rewards V1 — Decision Lock + CURRENT + auditoría independiente + correcciones | Cerrado, `PASS` tras correcciones | Sin commitear todavía | Este HANDOFF |
-| 2026-08-25 | Creación de `docs/00_VIAO_HANDOFF.md` | Cerrado | Sin commitear todavía | Missions (Decision Lock + CURRENT) — no autorizado todavía |
+| Fecha | Bloque | Resultado | Commit | Deploy | Siguiente bloque |
+|---|---|---|---|---|---|
+| 2026-08-25 | Reorganización documental + gobernanza | Cerrado, auditado, committeado | `3b09d49` | — | Resolver REVIEW REQUIRED |
+| 2026-08-25 | Resolución REVIEW REQUIRED + limpieza de referencias | Cerrado | Sin commitear en su momento | — | Rewards V1 |
+| 2026-08-25 | Rewards V1 — Decision Lock + CURRENT + auditoría independiente | Cerrado, `PASS` | Sin commitear en su momento | — | HANDOFF inicial |
+| 2026-08-25 | Creación de `docs/00_VIAO_HANDOFF.md` (versión inicial) | Cerrado | Sin commitear en su momento | — | Missions/Goals |
+| 2026-08-25 (posterior) | Missions V1 + Goals V1 — Decision Lock + CURRENT | Cerrado | `3a5b810` | — | Partners V1 (PB0-PB7) |
+| ~2026-08-26 | Partners V1 Foundation (PB0-PB7) | Cerrado, 816 tests/812 pass en su momento | `517088c` | — | Auditorías UX-6→UX-9 |
+| 2026-08-27→2026-08-30 | Core Reset (Travel Legacy Purge), Premium Design System, UX-6→UX-9 (Partners V2 foundation, schema) | Cerrado (auditorías + implementación por bloques, sin commit individual) | Consolidado después en `c809584` | — | UX-10 |
+| 2026-08-30→2026-08-31 | UX-10 (Discovery/Registration), UX-11 (auditorías engagement/roadmap), UX-12 (Measurement + Self-Service C1), F3.5 (Analytics Stability) | Cerrado, 817/813/0/4 | Consolidado en `c809584` | — | Release Baseline |
+| 2026-08-31 | RELEASE BASELINE — commit consolidado + push + Vercel + verificación parcial de producción | Cerrado, `PASS WITH CONDITIONS` (esquema de producción confirmado vía `/partners/join`; Dashboard/Self-Service en producción sin verificar) | `c809584` (código) + `bde1663` (docs) | Vercel Ready, `https://viao.vercel.app` | Production E2E Verification |
+| 2026-08-31 | Production Partner E2E Verification | **BLOQUEADO** — sin acceso a Supabase de producción ni a los valores reales de los secretos de Vercel (Encrypted, no revelables vía CLI) | Ninguno (solo lectura + 1 solicitud real vía `/partners/join`, ya documentada) | — | Requiere que el propietario apruebe la solicitud de prueba y comparta su `access_token`, o confirme que la cobertura local es suficiente |
+| 2026-08-31 | Actualización de HANDOFF (auditoría de continuidad post-Release Baseline) | Cerrado — auditoría, sin cambios de código | Sin commitear en su momento | — | Partner Operational Flow Audit |
+| 2026-08-31 | Partner Registration → Approval → Access → Response Audit | Cerrado — confirmó que el tramo intermedio es 100% manual, sin panel, sin notificación, sin `rejected` | Sin commitear (solo lectura + greps) | — | Partner Operational Flow / Next Block Audit |
+| 2026-08-31 | Partner Operational Flow / Next Block Audit (UX/producto/escalabilidad) | Cerrado — recomendó runbook manual (no código) antes que UX-13 o Partner Ops | Sin commitear (solo lectura) | — | Partner Onboarding Operational Closure |
+| 2026-08-31 | Partner Onboarding Operational Closure — Runbook Operativo Beta + este HANDOFF (este bloque) | Cerrado — puramente documental. Runbook creado en `VIAO_PARTNERS_CONTINUITY_MASTER.md` §17. NO se implementó Partner Ops, UX-13, estado `rejected`, regeneración de token, ni ningún cambio de schema/Decision Locks | Sin commitear (no autorizado en este bloque) | — | Ninguno autorizado |
 
 ---
+
+**Fin del documento. En este bloque se modificaron únicamente `docs/00_VIAO_HANDOFF.md` y `docs/01_CURRENT/partners/VIAO_PARTNERS_CONTINUITY_MASTER.md` (Runbook Operativo, §17 de ese documento) — ningún código, migración, test, schema ni Decision Lock fue tocado. No se ha hecho commit (no autorizado en este bloque).**

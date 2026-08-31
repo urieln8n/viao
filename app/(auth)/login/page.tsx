@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useId, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +31,16 @@ function mapSignInError(error: { message: string; code?: string }): string {
   }
 }
 
-export default function LoginPage() {
+function LoginPageContent() {
+  const router = useRouter();
+  // UX-17.1 — mismo criterio que register/page.tsx: presencia conjunta de
+  // intent=partner + accessToken (nunca guardados fuera de la URL) activa el
+  // mecanismo de redirección al Dashboard más abajo. Sin ambos, esta página
+  // se comporta exactamente igual que antes de este bloque.
+  const searchParams = useSearchParams();
+  const partnerAccessToken =
+    searchParams.get("intent") === "partner" ? searchParams.get("accessToken") : null;
+
   const emailId = useId();
   const passwordId = useId();
 
@@ -60,6 +70,20 @@ export default function LoginPage() {
 
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  // UX-17.1 — Casos 5 y 6 del plan: un único mecanismo cubre tanto "login
+  // recién completado con intención Partner" (signInWithPassword resuelve,
+  // el listener de arriba pasa sessionStatus a "signed-in", este efecto
+  // dispara) como "sesión ya iniciada al abrir /login?intent=partner&..."
+  // (sessionStatus ya es "signed-in" desde el primer getUser()) — ambos son
+  // el mismo estado observable, no dos rutas de código separadas. Sin
+  // partnerAccessToken, este efecto nunca se dispara: el Usuario normal
+  // sigue viendo la pantalla estática "sesión iniciada como X" de siempre.
+  useEffect(() => {
+    if (sessionStatus === "signed-in" && partnerAccessToken) {
+      router.push(`/partners/dashboard/${partnerAccessToken}`);
+    }
+  }, [sessionStatus, partnerAccessToken, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -223,8 +247,35 @@ export default function LoginPage() {
             <LoadingState message={t("login.submitButtonLoading")} />
           )}
           {submitError && <ErrorState message={submitError} />}
+
+          {/* UX-17.2 — CTA secundario/discreto, reutiliza las mismas claves
+              i18n ya usadas en app/partners/page.tsx (§13/§21). Oculto cuando
+              partnerAccessToken existe: alguien que llega vía invitación
+              Partner (UX-17.1) ya sabe que "tiene un negocio" — mostrárselo
+              sería redundante y rompería el criterio de "posibilidad
+              secundaria, no llamada comercial". No interfiere con el
+              mecanismo intent=partner/accessToken de arriba. */}
+          {!partnerAccessToken && (
+            <p className="text-center text-sm text-muted-foreground">
+              {t("partners.joinTeaser")}{" "}
+              <Link href="/partners/join" className="text-primary underline-offset-4 hover:underline">
+                {t("partners.joinTeaserCta")}
+              </Link>
+            </p>
+          )}
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+// UX-17.1 — mismo motivo que register/page.tsx: useSearchParams() exige un
+// límite <Suspense> para no forzar CSR de toda la página durante el
+// prerender (confirmado en la documentación de Next.js, no asumido).
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

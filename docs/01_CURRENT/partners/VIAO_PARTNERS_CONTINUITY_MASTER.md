@@ -35,12 +35,14 @@ Ecosistema de **dos lados**: Usuario (descubre → interactúa → gana Points �
 
 ## 3. Arquitectura
 
-Dos mecanismos de identidad **paralelos y deliberadamente separados**, LOCKED:
+**Actualizado 2026-08-31 (Commerce Identity, UX-16.3) — supersesión parcial, ver nota al final de esta sección.** Dos mecanismos de identidad **siguen paralelos y separados**, pero ya no son mutuamente excluyentes:
 
 - **Usuario**: Supabase Auth + `profiles` (`auth.getUser()`, sesión de cookies).
-- **Partner**: `access_token` opaco (UUID), sin `auth.users`, sin `profiles`, sin contraseña — mecanismo único de acceso (P7).
+- **Partner**: `access_token` opaco (UUID) — sigue siendo el mecanismo de acceso permanente al Dashboard/Ops (P7, sin cambios). Adicionalmente, desde UX-16.3, `partners.owner_id uuid NULL REFERENCES profiles(id) ON DELETE SET NULL` permite vincular, de forma opcional y explícita (`link_partner_owner()` RPC, `SECURITY DEFINER`), una sesión real de Usuario al Commerce — sin crear un rol nuevo sobre `profiles`, sin unificar Auth, sin contraseña propia de Partner. Un Partner sin vincular sigue funcionando exactamente igual que antes (por `access_token` solo).
 
-Esto permite ambas experiencias en el mismo ecosistema **sin roles unificados**. Escritura de `partners` sigue Patrón B puro: RLS activa, cero policies de cliente, todo pasa por `service_role` (Server Actions/funciones dedicadas), nunca por el cliente directamente — verificado con tests que intentan *smuggling* de campos sensibles (ver §13, F3).
+Esto permite ambas experiencias en el mismo ecosistema **sin roles unificados** — una misma cuenta Auth puede tener 0, 1 o varios Commerce vinculados (`owner_id` sin `UNIQUE`), pero `profiles` no gana ninguna columna de "rol Partner". Escritura de `partners` sigue Patrón B puro: RLS activa, cero policies de cliente para columnas sensibles, todo pasa por `service_role` (Server Actions/funciones dedicadas) salvo `owner_id`/nombre-categoría-etc. ya cubiertos por policies explícitas de `authenticated` con exclusión de columnas — verificado con tests que intentan *smuggling* de campos sensibles (ver §13, F3, y los 18 tests de `link-partner-owner.test.ts`).
+
+**Nota de gobernanza** (`docs/00_GOVERNANCE.md` principio 9): la frase original de esta sección ("sin `auth.users`, sin `profiles`") describía correctamente el estado hasta UX-16.3 y queda aquí superada solo en ese punto concreto — el resto de la arquitectura (Discovery, Self-Service, RPC económico, kill-switches) no cambia. Ver §18 para el detalle completo de Commerce Identity y los bloques UX-17.1/UX-17.2 que se apoyan en ella.
 
 Economía: `complete_partner_activity()` (RPC, `SECURITY DEFINER`, `service_role`-only) calcula Points = `importe_declarado × tasa` (1 Point/€ vía QR, 2 Points/€ vía Reserva), con kill-switch diario (P3, máx. 2 Actividades/usuario/Partner/día) y kill-switch mensual (P4, pool 3.000 Points/mes, independiente de Missions/Rewards) — ambos probados bajo **concurrencia real** (Promise.all, no mockeada).
 
@@ -320,10 +322,11 @@ Ver §10.1 para el detalle completo (problema, causa, solución, archivos, verif
 
 ```
 CURRENT PHASE:
-Ninguna en curso — F3.5 cerrada. Esperando autorización para F4/UX-13.
+Ninguna en curso — V2 Release Checkpoint cerrado (§18). Esperando autorización para F4/UX-13/UX-18.
 
 LAST COMPLETED:
-F3.5 — Analytics Stability (paginación determinista de analytics_events)
+V2 Release Checkpoint — Commerce Identity (UX-16.x) + Partner Auth Entry (UX-17.1)
++ Partner Discovery CTA (UX-17.2), commiteado, pusheado y desplegado (ver §18).
 ```
 
 ---
@@ -334,8 +337,9 @@ F3.5 — Analytics Stability (paginación determinista de analytics_events)
 NEXT AUTHORIZED WORK:
 NINGUNO TODAVÍA
 
-NEXT RECOMMENDED IMPLEMENTATION:
+NEXT RECOMMENDED IMPLEMENTATION (sin orden de prioridad implícito):
 UX-13 — Self-Service C2 (imágenes/Storage) + campo "oferta" (texto libre)
+V3 — Partner Engagement (tráfico → interacción → recurrencia → valor comercial), roadmap futuro, NO implementado (ver §18.4)
 ```
 
 **NO implementado.** Requiere autorización explícita en su propio turno, igual que cualquier otra fase — y, dado el Decision Lock §11, requiere auditar primero si las políticas de Storage existentes (pensadas para `auth.uid()`) son reutilizables para `access_token` antes de escribir ningún código.
@@ -343,6 +347,8 @@ UX-13 — Self-Service C2 (imágenes/Storage) + campo "oferta" (texto libre)
 ---
 
 ## 16. Features NOT NOW
+
+**Actualizado 2026-08-31**: "Partner Auth unificada / pantalla '¿Cómo quieres entrar?'" queda retirada de esta lista — Commerce Identity (UX-16.3) y el routing `intent=partner`+`accessToken` (UX-17.1) ya resuelven esto, pero **sin** unificar Auth ni crear esa pantalla explícita: es vinculación opcional vía `owner_id`, no una pantalla nueva de elección de identidad. Ver §18.
 
 ```
 DO NOT BUILD:
@@ -355,10 +361,10 @@ Billing
 Blockchain / Token
 CRM
 Roles sobre profiles
-Partner Auth unificada / pantalla "¿Cómo quieres entrar?"
-Navegación principal para Partners (sin nuevo umbral cumplido)
+Navegación principal para Partners (Sidebar/MainNav siguen sin ítem Partner — solo existe un CTA discreto en Login/Register/Profile, UX-17.2, sin nuevo umbral cumplido)
 Geolocalización
 Reviews
+Panel administrativo para revisar/aprobar/rechazar solicitudes Partner (decisión reafirmada explícitamente en el V2 Release Checkpoint, 2026-08-31 — ver §18: el ciclo completo ya funciona vía Supabase Studio, construir un panel exigiría además inventar un mecanismo de autenticación de administrador inexistente hoy)
 ```
 
 ---
@@ -393,6 +399,105 @@ tsc/lint/build: PASS
 
 ---
 
-**Fin del documento. Esta revisión registra el RELEASE BASELINE (commit `c809584`, push, deployment Vercel, esquema de producción verificado) además de la implementación real de F3.5.**
+## 17. Partner Onboarding Beta — Runbook Operativo
 
-**HARD STOP — RELEASE BASELINE COMPLETE — UX-13 NOT IMPLEMENTED.**
+Estado: proceso 100% manual, deliberado para el volumen actual (L3, "Onboarding manual/curado", `VIAO_PARTNERS_MASTER_V2.md` §21) — no un sustituto de un futuro Partner Ops con código, solo el procedimiento real hoy. Confirmado contra código real (`request-partner-registration.ts`, `resolve-partner-access.ts`, schema de `partners`) en la auditoría UX-12/F3.5/Partner Operational Flow (2026-08-31). Ejecutable en pocos minutos por cualquier persona autorizada de VIAO con acceso a Supabase Studio.
+
+### 1. Nueva solicitud
+
+Un comercio completa `/partners/join` → `PartnerJoinForm` → `submitPartnerRegistrationAction` → `requestPartnerRegistration()` → INSERT en `partners` con `status: "pending"`, `is_test: false` (ambos hardcodeados, no manipulables desde el formulario), `access_token` autogenerado (`gen_random_uuid()`, ya presente desde este momento aunque todavía inerte), `slug` derivado del nombre con resolución automática de colisiones, y los campos que el comercio rellenó (`name`, `category`, `description`, `address`, `contact_email`, `contact_phone`, `image_url` — todos opcionales salvo nombre y categoría). No se recibe ninguna notificación de esto — pasa a la fila siguiente.
+
+### 2. Localizar `pending`
+
+Abrir Supabase Studio del proyecto de producción de VIAO → tabla `partners` → filtrar `status = 'pending'`. No existe ningún filtro por defecto, ni orden por fecha preconfigurado — ordenar manualmente por `created_at` si hay varias.
+
+### 3. Revisar el negocio
+
+Checklist mínimo, basado únicamente en criterios ya existentes en la documentación de Partners (L3, categorías del CHECK real) — **no se inventa ningún criterio de calidad nuevo**:
+
+- `name`: no vacío, reconocible como un negocio real (no genérico/spam).
+- `category`: una de las 6 ya soportadas (`restaurant`, `experience`, `barbershop`, `gym`, `shop`, `service`).
+- `description`/`address`: presentes y coherentes con un negocio real, si se rellenaron (son opcionales).
+- `contact_email`/`contact_phone`: al menos uno presente para poder responder — si ambos están vacíos, no hay forma de contactar al solicitante; tratar como incidencia, no rechazar automáticamente.
+- Coherencia general: ¿el conjunto de campos describe un negocio real y localizable? (mismo criterio ya usado, sin panel, para los primeros Partners piloto).
+
+### 4. Aprobar (`pending → active`)
+
+En la fila localizada (paso 2), editar directamente el campo `status` a `active` desde Supabase Studio. No existe ninguna función de aplicación ni UI para esto — es una edición manual de la fila, con `service_role` implícito de Studio. No se toca ningún otro campo.
+
+### 5. Obtener acceso
+
+En la misma fila, copiar el valor de `access_token`. **Verificar dos veces que el token pertenece exactamente al Partner que se está aprobando** (comparar `id`/`name`/`slug` de la fila con el token copiado) antes de comunicarlo — no hay ningún mecanismo de aplicación que lo confirme por ti.
+
+### 6. Comunicar al Partner
+
+No existe ningún sistema de email/notificación (confirmado: sin dependencias de email/SMS en el proyecto, sin Edge Functions) — la comunicación es manual, por el canal que el propio comercio dejó (`contact_email`/`contact_phone`). Plantilla mínima sugerida:
+
+> Hola [nombre del negocio],
+>
+> Tu solicitud para ser Partner de VIAO ha sido aceptada.
+>
+> Ya puedes gestionar tu comercio en VIAO desde tu panel:
+> https://viao.vercel.app/partners/dashboard/[access_token]
+>
+> Desde ahí puedes ver tu actividad y editar la información de tu negocio (nombre, categoría, descripción, teléfono, dirección e imagen).
+>
+> Para registrar una visita o venta de un cliente, usa este otro enlace en tu comercio:
+> https://viao.vercel.app/partners/ops/[access_token]
+>
+> Si tienes cualquier problema para acceder, respóndenos a este mismo correo.
+
+No se inventa ningún email corporativo ni sistema de soporte — se envía desde el canal personal/de contacto que ya se esté usando hoy para gestionar Partners.
+
+### 7. Verificación
+
+Tras enviar el mensaje: abrir tú mismo `https://viao.vercel.app/partners/dashboard/[access_token]` con el token exacto copiado, confirmar que carga el Dashboard del Partner correcto (nombre visible coincide), y que "Mi comercio" muestra los datos ya enviados en la solicitud. Esto confirma que el enlace que se comunicó es válido antes de darlo por cerrado.
+
+### 8. Registro operativo (sin schema nuevo)
+
+Solución manual apropiada para Beta, sin columnas nuevas ni base de datos adicional: una hoja de cálculo simple (o cualquier medio ya en uso por VIAO) con columnas — `nombre del negocio`, `fecha de solicitud`, `estado` (recibida / aprobada / comunicada / incidencia), `fecha de comunicación`, `notas`. Es responsabilidad operativa, no una fuente de verdad técnica — `partners.status` en Supabase sigue siendo la autoridad real sobre si un Partner está activo.
+
+### 9. Solicitudes no aprobadas
+
+El schema real de `partners` **no tiene** un estado `rejected` — el CHECK solo admite `pending`/`active`/`inactive`. **No se crea ese estado en este bloque.** Convención operativa temporal de Beta, no una decisión de producto: dejar la fila en `pending` sin tocar (si se prefiere no dejar rastro de la decisión) o pasarla a `inactive` con una nota en el registro operativo del paso 8 aclarando "solicitud no aprobada" (para distinguirla, solo en el registro externo, de un futuro caso real de "Partner activo dado de baja"). Esta convención se abandona en cuanto exista una decisión de producto formal sobre rechazo.
+
+### 10. Token perdido o comprometido
+
+No existe ningún mecanismo de regeneración en la aplicación (**no implementado en este bloque, a propósito**). Si un Partner pierde su enlace o hay sospecha de que se filtró: localizar su fila en `partners` por `name`/`slug`, copiar de nuevo el `access_token` real (sigue siendo el mismo, no cambia solo) y reenviarlo. Si se sospecha compromiso real, no hay forma de invalidarlo sin editar manualmente el valor de la columna en Studio (fuera del alcance de este runbook — implicaría escribir un UUID nuevo a mano, algo que este documento no recomienda hacer sin una razón clara, dado que no hay ninguna función de aplicación que lo acompañe ni lo valide).
+
+---
+
+## 18. Commerce Identity & Partner Auth Entry — UX-16.x / UX-17.1 / UX-17.2 (2026-08-31)
+
+Bloque construido y verificado en la misma sesión que el RELEASE BASELINE (§16.1), documentado aquí junto con el V2 Release Checkpoint que lo consolida y despliega.
+
+### 18.1 Commerce Identity (UX-16.x)
+
+`partners.owner_id uuid NULL REFERENCES profiles(id) ON DELETE SET NULL` (sin `UNIQUE` — un Usuario puede poseer varios Commerce), RLS con GRANT explícito de columnas para `authenticated` (excluye `access_token`/`contact_email`/`owner_id` de lectura directa vía `SELECT *`), trigger `protect_partners_immutable_fields()`, RPC `link_partner_owner(p_access_token uuid)` (`SECURITY DEFINER`, `UPDATE` atómico condicionado a `owner_id IS NULL`, idempotente, respuestas uniformes anti-enumeración, `search_path=''`). Chrome visual separado (`CommerceChrome`, `AppShell` sin Sidebar/MainNav en rutas `/partners/dashboard`/`/partners/ops`). Ver §3 para el detalle de arquitectura y la nota de supersesión parcial.
+
+### 18.2 UX-17.1 — Partner Auth Entry
+
+Resuelve que un Partner con `access_token` sin vincular pueda crear/usar su cuenta VIAO sin caer en `/onboarding`: `app/(auth)/login/page.tsx` y `app/(auth)/register/page.tsx` leen `intent=partner`+`accessToken` de la URL (`useSearchParams()` + límite `Suspense` mínimo, confirmado necesario contra la documentación real de Next.js 16.3.1) y redirigen a `/partners/dashboard/<token>` en vez de `/onboarding`/pantalla estática. El `access_token` viaja únicamente en la URL — nunca en localStorage/cookies/estado/DB nueva. 7/7 casos E2E PASS, incluida verificación en BD de la vinculación real.
+
+### 18.3 UX-17.2 — Partner Discovery CTA
+
+CTA discreto "¿Tienes un negocio? Únete a VIAO como Partner" (claves i18n `partners.joinTeaser`/`partners.joinTeaserCta`, ya existentes, reutilizadas sin crear ninguna nueva) en Login, Register (oculto cuando `intent=partner` ya está presente) y Profile (solo cuando `hasOwnedCommerce === false`). Home, Sidebar y MainNav sin cambios — deliberado, no un olvido (ver §16). 10/10 casos E2E PASS.
+
+### 18.4 V2 Release Checkpoint — decisión sobre panel administrativo
+
+Auditado explícitamente si el ciclo `solicitud → recepción → revisión → aprobación → activación → Dashboard` estaba completo. Conclusión: **sí, funciona de punta a punta hoy**, vía Supabase Studio + el Runbook Operativo (§17) — igual que documentaba ya `request-partner-registration.ts` ("deliberadamente, sin panel admin nuevo"). Construir un panel en este bloque habría exigido además inventar un mecanismo de autenticación de administrador inexistente en el proyecto (RLS de `partners` confirmado: solo `owner_id = auth.uid()`, sin ningún concepto de rol admin) — se planteó explícitamente al propietario y **se decidió no construirlo en este release**, manteniendo la decisión original. Ver también §16.
+
+### 18.5 V2 — mapa de loops (referencia)
+
+```
+Usuario:  Goals → Points → Missions → Rewards → Partners
+Partner:  Discovery → Application → Approval (manual, Supabase Studio) → Dashboard → Commerce Identity
+```
+
+**V3 — FUTURO, NO IMPLEMENTADO, solo roadmap**: `Partner → tráfico → interacción → Missions → Rewards → visitas → recurrencia → engagement → métricas → valor comercial`. Coincide conceptualmente con F6-F9 (§10) — no se abre ningún trabajo nuevo aquí, es la misma futura línea ya documentada, sin renombrar Decision Locks existentes.
+
+---
+
+**Fin del documento. Esta revisión registra el RELEASE BASELINE (commit `c809584`, push, deployment Vercel, esquema de producción verificado), la implementación real de F3.5, el Runbook Operativo de Partner Onboarding Beta (§17), y — en esta actualización — Commerce Identity + UX-17.1 + UX-17.2 + el V2 Release Checkpoint (§18), incluida la decisión explícita de no construir panel administrativo en este release.**
+
+**HARD STOP — V2 RELEASE CHECKPOINT — VER `docs/00_VIAO_HANDOFF.md` §21 PARA EL COMMIT/PUSH/DEPLOY EXACTOS DE ESTE BLOQUE.**
