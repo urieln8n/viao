@@ -14,7 +14,7 @@ LAST REVIEWED: 2026-08-31
 >
 > **Cuando un negocio envía una solicitud para convertirse en Partner, ¿dónde llega la solicitud, quién la revisa, cómo se aprueba/rechaza y cómo se responde al negocio y se le entrega su acceso?**
 >
-> Respuesta actual (Beta, 2026-08-31, verificada contra código real — ver §7.1 y el Runbook Operativo en `VIAO_PARTNERS_CONTINUITY_MASTER.md` §17): la **revisión/aprobación en sí sigue siendo manual, 100%, vía Supabase Studio** — sin panel interno, sin estado `rejected` en el schema. **Actualizado (Email V2, §11.2)**: desde este bloque, el comercio SÍ recibe comunicación automática por email en 3 momentos (solicitud recibida, aprobado, rechazado vía `pending→inactive`) y el `access_token` SÍ se entrega automáticamente en el email de aprobación — pero solo entra en vigor de verdad cuando VIAO tenga un dominio propio verificado en Resend (sin él, Resend solo entrega a la dirección de la propia cuenta Resend, nunca a un `contact_email` real — ver §11.2). Sigue siendo una decisión deliberada para el volumen actual, no un bug.
+> Respuesta actual (Beta, 2026-08-31, verificada contra código real — ver §7.1 y el Runbook Operativo en `VIAO_PARTNERS_CONTINUITY_MASTER.md` §17): la **revisión/aprobación en sí sigue siendo manual, 100%, vía Supabase Studio** — sin panel interno, sin estado `rejected` en el schema. **Actualizado (Email V2, §11.2)**: desde ese bloque, el comercio SÍ recibe comunicación automática por email en 3 momentos (solicitud recibida, aprobado, rechazado vía `pending→inactive`) y el `access_token` SÍ se entrega automáticamente en el email de aprobación — pero solo entra en vigor de verdad cuando VIAO tenga un dominio propio verificado en Resend (sin él, Resend solo entrega a la dirección de la propia cuenta Resend, nunca a un `contact_email` real — ver §11.2). **Actualizado (Partner Application Notification V1, §11.3, pendiente de aprobación para commit)**: el último gap operativo real — "¿cómo se entera Andrés de que existe una solicitud nueva?" — ya tiene solución: `sendPartnerApplicationNotificationEmail()` envía un email a `PARTNER_NOTIFICATION_EMAIL` (variable de entorno, nunca hardcodeada) en cuanto se crea cada solicitud `pending`, con nombre/categoría/descripción/dirección/contacto/fecha — nunca `access_token`. Sujeto a la misma limitación de Resend sin dominio: solo entrega si `PARTNER_NOTIFICATION_EMAIL` coincide con la dirección autorizada por la cuenta de Resend. Sigue sin existir panel interno, deduplicación ni estado `rejected` — decisión deliberada, no un bug.
 
 ---
 
@@ -117,7 +117,9 @@ Self-Service C2 (subida real de imágenes/Storage, logo, galería), horario/web/
 
 ### 7.1 Operational Gap — Partner Onboarding (auditado 2026-08-31)
 
-El tramo `solicitud pending → revisión → aprobación/rechazo → comunicación → entrega de access_token` es **100% manual vía Supabase Studio** — confirmado por auditoría de código (ver recordatorio al inicio de este documento). Sin panel interno, sin notificación automática, sin estado `rejected` en el schema (solo `pending`/`active`/`inactive`), sin entrega automática de `access_token`, sin regeneración de token. **Decisión deliberada para el volumen actual (0-5 Partners), no un bug.** El procedimiento manual está ahora documentado en `docs/01_CURRENT/partners/VIAO_PARTNERS_CONTINUITY_MASTER.md` §17 ("Partner Onboarding Beta — Runbook Operativo"). Umbral identificado para cuando esto deje de ser suficiente: ~10-20 solicitudes simultáneas (ver auditoría del bloque "Partner Operational Flow / Next Block Audit").
+El tramo `solicitud pending → revisión → aprobación/rechazo → comunicación → entrega de access_token` es **100% manual vía Supabase Studio** — confirmado por auditoría de código (ver recordatorio al inicio de este documento). Sin panel interno, sin estado `rejected` en el schema (solo `pending`/`active`/`inactive`), sin entrega automática de `access_token` al comercio salvo en el email de aprobación (Email V2), sin regeneración de token. **Decisión deliberada para el volumen actual (0-5 Partners), no un bug.** El procedimiento manual está ahora documentado en `docs/01_CURRENT/partners/VIAO_PARTNERS_CONTINUITY_MASTER.md` §17 ("Partner Onboarding Beta — Runbook Operativo"). Umbral identificado para cuando esto deje de ser suficiente: ~10-20 solicitudes simultáneas (ver auditoría del bloque "Partner Operational Flow / Next Block Audit").
+
+**Corrección (Partner Application Notification V1, §11.3)**: la frase "sin notificación automática" de la versión anterior de este párrafo ya no es exacta — Andrés SÍ recibe un email en cuanto se crea una solicitud `pending` (`PARTNER_NOTIFICATION_EMAIL`, ver §11.3). Lo que sigue sin existir es cualquier interfaz para revisar/aprobar (Supabase Studio sigue siendo el único camino) y cualquier deduplicación de solicitudes repetidas.
 
 ---
 
@@ -234,6 +236,31 @@ Tests/tsc/lint/build:   PASS (860 tests / 856 pass / 0 fail / 4 skipped — 25 t
 6. Vercel: añadir `PARTNER_STATUS_WEBHOOK_SECRET` y `SITE_URL` (Production).
 
 **Smoke test producción**: Home (anónimo, `HomeLanding` visible — ver §11.1.1), Register, Login, `/confirm` (estado "enlace inválido" correcto), `/partners`, webhook (`401` sin secreto) — 6/6, 0 errores de consola. Deliberadamente **no** se envió ninguna solicitud Partner real en producción en este bloque (evita ruido/emails de prueba reales dado que `RESEND_API_KEY` ya está configurada ahí) — cobertura completa del mismo flujo ya verificada en local con un email real.
+
+---
+
+## 11.3 Partner Application Notification V1 — evidencia real (2026-08-31)
+
+```
+Commit:                pendiente — cambios en working tree, no commiteados (HARD STOP explícito,
+                       esperando aprobación del propietario)
+Tests/tsc/lint/build:  tsc/lint/build PASS (limpios). npm test: 867 tests / 863 pass / 0 fail /
+                       4 skipped (7 tests nuevos sobre el baseline de Email V2, 860/856/0/4),
+                       0 regresiones — verificado en frío, entorno local completo
+E2E local:             solicitud real vía /partners/join ("Café Barcelona E2E ...", navegador real,
+                       0 errores de consola) -> fila creada en `partners` con status:pending,
+                       is_test:false, todos los campos correctos (verificado por SELECT directo);
+                       pantalla "Solicitud recibida" mostrada correctamente; ambos emails
+                       (confirmación al comercio + notificación a Andrés) se dispararon inline sin
+                       bloquear ni romper la respuesta (best-effort, verificado por el propio
+                       resultado exitoso)
+```
+
+**Qué NO se pudo verificar de punta a punta, y por qué (no asumido)**: ni `RESEND_API_KEY` ni `PARTNER_NOTIFICATION_EMAIL` están configuradas en este entorno local (verificado sin imprimir sus valores) — sin la clave real de Resend, ningún email de Partner puede entregarse de verdad desde aquí, ni siquiera a Mailpit: Mailpit solo recibe los emails de **Supabase Auth** (confirmación/recuperación, vía el SMTP local de `supabase/config.toml`), nunca los de `lib/email/` (Resend es una API externa, no pasa por el SMTP local). La verificación real de "a quién se envía" y "qué contenido lleva" se hizo con inyección de dependencias (mismo patrón ya establecido, sin librería de mocking) en `lib/email/send-partner-emails.test.ts` y `lib/email/templates/partner-emails.test.ts` — no es una carencia de este bloque, es la misma limitación que ya afectaba a los 3 emails de Partner existentes desde Email V2.
+
+**Contenido del email a Andrés**: nombre, categoría (valor real del CHECK, p. ej. `restaurant` — sin traducir a etiqueta, para no invertir la dependencia `lib/` → `app/partners/category-label.ts`), descripción/dirección/email/teléfono (solo si el comercio los rellenó), fecha/hora de la solicitud, e instrucción textual para revisarla en Supabase Studio. Nunca `access_token` — ni siquiera puede filtrarse por error, el tipo de parámetros de la plantilla no lo contempla.
+
+**`request-partner-registration.test.ts`**: fixture de este bloque (`RPR Notification Resilience ...`) quedó marcada `is_test:true` correctamente (vía `createServiceRoleClient()`, no vía `supabase db query`). La fixture creada manualmente por el propio E2E de este bloque (`Café Barcelona E2E ...`) **no pudo marcarse `is_test:true`**: `supabase db query` sobre esa fila devolvió `partners_immutable_field_change` — el trigger `protect_partners_immutable_fields()` (`20260831140000_add_partners_owner_id_identity.sql`) bloquea cualquier cambio a `is_test` incondicionalmente, para cualquier conexión que no sea la propia Supabase Studio (fricción ya señalada como conocida y fuera de alcance en un bloque anterior de esta sesión). Queda como `status:pending`/`is_test:false` en local — visible en el propio flujo de revisión que este bloque documenta, sin ningún efecto en producción.
 
 ---
 
@@ -383,6 +410,7 @@ Ninguna contradicción se corrige automáticamente en ningún bloque, nunca.
 | 2026-08-31 | **V2 Release Checkpoint** — auditoría de intake de solicitudes Partner (decisión explícita: sin panel admin nuevo), sincronización documental (`VIAO_PARTNERS_CONTINUITY_MASTER.md` §3/§16/§18, este HANDOFF §2/§6/§7/§11.1/§13/§14), tests/build en frío, E2E (Usuario 6/6, Partner Application 1/1 + resto no ejecutable por diseño), commit, push, deploy automático, smoke test de producción (8/8 rutas, 0 errores) | **Cerrado, PASS** — ver §11.1 para el detalle completo | `9233fd7` + `17d6986` | Vercel `dpl_5x6z3porRuYc6fgvGpy7PebrmPB1`, ● Ready, `https://viao.vercel.app` | UX-14.2 (Home anónimo en producción) |
 | 2026-08-31 | **UX-14.2** — diagnóstico y corrección del desajuste `anon` local vs. producción (Caso A confirmado con la `anon key` real de producción, 14/14 tablas), `REVOKE` ejecutado por el propietario en Supabase Studio (fuera de mi acceso), reverificado 14/14 y con Home anónimo real | **Cerrado, PASS** — ver §11.1.1 | Ninguno (solo Supabase, sin cambios de repositorio) | — (mismo deploy) | Email V2 |
 | 2026-08-31 | **Email V2** — Resend (`lib/email/`), 3 emails Partner + webhook de aprobación/rechazo (`app/api/webhooks/partner-status/`), plantillas Auth VIAO + corrección real de `site_url`/redirect allow-list (verificada con un email de recuperación real de punta a punta), `/confirm`. 860/856/0/4 tests, build/E2E/smoke test producción PASS. Sin dominio propio: emails de Partner no entregan a destinatarios reales todavía (limitación de Resend confirmada, no de VIAO) | **Cerrado, PASS** — ver §11.2 | `5cb965f` | Vercel `dpl_5FsKj7wuZ2bRLi7aCGnTsdm8PPxr`, ● Ready, `https://viao.vercel.app` | Dominio propio de VIAO en Resend (siguiente paso lógico, no autorizado) |
+| 2026-08-31 | **Partner Application Notification V1** — `sendPartnerApplicationNotificationEmail()` (mismo patrón que los 3 emails de Partner ya existentes), único destinatario `PARTNER_NOTIFICATION_EMAIL`, cierra el gap "Andrés no se entera de una solicitud nueva" sin panel admin/roles/schema/RLS nuevos. tsc/lint/build limpios, tests nuevos PASS (ver §11.3), E2E local real (solicitud vía navegador -> fila `pending` correcta en BD) | Implementado — **NO commiteado, esperando aprobación explícita (HARD STOP)** | Ninguno todavía | Ninguno todavía | Commit/push/deploy de este bloque (si se aprueba) |
 
 ---
 

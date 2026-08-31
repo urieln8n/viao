@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   renderPartnerApplicationReceivedEmail,
+  renderPartnerApplicationNotificationEmail,
   renderPartnerApprovedEmail,
   renderPartnerRejectedEmail,
 } from "./partner-emails";
@@ -34,7 +35,7 @@ test("renderPartnerRejectedEmail: incluye el nombre del negocio, sin CTA", () =>
   assert.doesNotMatch(html, /<a href=/);
 });
 
-test("las 3 plantillas escapan HTML del nombre del negocio (nunca inyectan marcado sin escapar)", () => {
+test("las 4 plantillas escapan HTML del nombre del negocio (nunca inyectan marcado sin escapar)", () => {
   const malicious = 'Café <script>alert(1)</script> & "Cía"';
   const { html: received } = renderPartnerApplicationReceivedEmail({ businessName: malicious });
   const { html: approved } = renderPartnerApprovedEmail({
@@ -42,9 +43,53 @@ test("las 3 plantillas escapan HTML del nombre del negocio (nunca inyectan marca
     dashboardUrl: "https://viao.vercel.app/partners/dashboard/abc",
   });
   const { html: rejected } = renderPartnerRejectedEmail({ businessName: malicious });
+  const { html: notification } = renderPartnerApplicationNotificationEmail({
+    businessName: malicious,
+    category: "restaurant",
+    submittedAt: "2026-08-31T10:00:00.000Z",
+  });
 
-  for (const html of [received, approved, rejected]) {
+  for (const html of [received, approved, rejected, notification]) {
     assert.doesNotMatch(html, /<script>/);
     assert.match(html, /&lt;script&gt;/);
   }
+});
+
+test("renderPartnerApplicationNotificationEmail: incluye nombre, categoría y fecha; nunca menciona access_token", () => {
+  const { subject, html } = renderPartnerApplicationNotificationEmail({
+    businessName: "Café Barcelona",
+    category: "restaurant",
+    submittedAt: "2026-08-31T10:00:00.000Z",
+  });
+  assert.equal(subject, "Nueva solicitud de Partner en VIAO");
+  assert.match(html, /Café Barcelona/);
+  assert.match(html, /restaurant/);
+  assert.doesNotMatch(html, /access_token/i);
+  assert.doesNotMatch(html, /<a href=/, "esta plantilla nunca lleva un botón de aprobar");
+});
+
+test("renderPartnerApplicationNotificationEmail: incluye los campos opcionales solo cuando están presentes", () => {
+  const withOptionals = renderPartnerApplicationNotificationEmail({
+    businessName: "Café Barcelona",
+    category: "restaurant",
+    description: "Cafetería de especialidad",
+    address: "Calle Mayor 1",
+    contactEmail: "hola@cafebarcelona.example",
+    contactPhone: "+34 600 000 000",
+    submittedAt: "2026-08-31T10:00:00.000Z",
+  }).html;
+  assert.match(withOptionals, /Cafetería de especialidad/);
+  assert.match(withOptionals, /Calle Mayor 1/);
+  assert.match(withOptionals, /hola@cafebarcelona\.example/);
+  assert.match(withOptionals, /\+34 600 000 000/);
+
+  const withoutOptionals = renderPartnerApplicationNotificationEmail({
+    businessName: "Café Barcelona",
+    category: "restaurant",
+    submittedAt: "2026-08-31T10:00:00.000Z",
+  }).html;
+  assert.doesNotMatch(withoutOptionals, /Descripción/);
+  assert.doesNotMatch(withoutOptionals, /Dirección/);
+  assert.doesNotMatch(withoutOptionals, /Email de contacto/);
+  assert.doesNotMatch(withoutOptionals, /Teléfono/);
 });

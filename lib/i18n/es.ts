@@ -658,6 +658,23 @@ export const es = {
   "email.partnerRejected.body1": "Gracias por tu interés en unirte a VIAO como Partner.",
   "email.partnerRejected.body2":
     "Por ahora no vamos a continuar con tu solicitud. Puedes volver a escribirnos más adelante si tu situación cambia.",
+  // PARTNER APPLICATION NOTIFICATION V1 — único email de este grupo
+  // dirigido a Andrés (destinatario fijo por PARTNER_NOTIFICATION_EMAIL),
+  // no al comercio solicitante. Mismo criterio de locale que el resto de
+  // "email.*": siempre español, sin selector de idioma.
+  "email.partnerApplicationNotification.subject": "Nueva solicitud de Partner en VIAO",
+  "email.partnerApplicationNotification.previewText": "Un comercio quiere unirse a VIAO como Partner.",
+  "email.partnerApplicationNotification.title": "Nueva solicitud de Partner",
+  "email.partnerApplicationNotification.intro": "Un comercio ha solicitado unirse a VIAO como Partner.",
+  "email.partnerApplicationNotification.fieldName": "Nombre",
+  "email.partnerApplicationNotification.fieldCategory": "Categoría",
+  "email.partnerApplicationNotification.fieldDescription": "Descripción",
+  "email.partnerApplicationNotification.fieldAddress": "Dirección",
+  "email.partnerApplicationNotification.fieldContactEmail": "Email de contacto",
+  "email.partnerApplicationNotification.fieldContactPhone": "Teléfono",
+  "email.partnerApplicationNotification.fieldSubmittedAt": "Fecha de solicitud",
+  "email.partnerApplicationNotification.reviewInstructions":
+    "Revisa esta solicitud en Supabase Studio → Table Editor → partners → status = pending.",
   "confirm.checking": "Confirmando tu cuenta…",
   "confirm.invalidLink": "Este enlace no es válido o ha caducado.",
   // FASE UX-1.1 (Core UX Quick-Fix Pass) — copy del Error Boundary global

@@ -581,6 +581,22 @@ export const en = {
   "email.partnerRejected.body1": "Thanks for your interest in joining VIAO as a Partner.",
   "email.partnerRejected.body2":
     "We won't be moving forward with your application right now. Feel free to reach out again if things change.",
+  // PARTNER APPLICATION NOTIFICATION V1 — see es.ts for the rationale
+  // (this email is only ever sent in Spanish; these keys exist purely
+  // for Dictionary parity).
+  "email.partnerApplicationNotification.subject": "New Partner application on VIAO",
+  "email.partnerApplicationNotification.previewText": "A business wants to join VIAO as a Partner.",
+  "email.partnerApplicationNotification.title": "New Partner application",
+  "email.partnerApplicationNotification.intro": "A business has applied to join VIAO as a Partner.",
+  "email.partnerApplicationNotification.fieldName": "Name",
+  "email.partnerApplicationNotification.fieldCategory": "Category",
+  "email.partnerApplicationNotification.fieldDescription": "Description",
+  "email.partnerApplicationNotification.fieldAddress": "Address",
+  "email.partnerApplicationNotification.fieldContactEmail": "Contact email",
+  "email.partnerApplicationNotification.fieldContactPhone": "Phone",
+  "email.partnerApplicationNotification.fieldSubmittedAt": "Submitted at",
+  "email.partnerApplicationNotification.reviewInstructions":
+    "Review this application in Supabase Studio → Table Editor → partners → status = pending.",
   "confirm.checking": "Confirming your account…",
   "confirm.invalidLink": "This link is invalid or has expired.",
   // FASE UX-1.1 (Core UX Quick-Fix Pass) — copy for the global Error

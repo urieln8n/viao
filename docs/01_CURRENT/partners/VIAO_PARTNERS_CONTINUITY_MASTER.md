@@ -405,7 +405,9 @@ Estado: proceso 100% manual, deliberado para el volumen actual (L3, "Onboarding 
 
 ### 1. Nueva solicitud
 
-Un comercio completa `/partners/join` → `PartnerJoinForm` → `submitPartnerRegistrationAction` → `requestPartnerRegistration()` → INSERT en `partners` con `status: "pending"`, `is_test: false` (ambos hardcodeados, no manipulables desde el formulario), `access_token` autogenerado (`gen_random_uuid()`, ya presente desde este momento aunque todavía inerte), `slug` derivado del nombre con resolución automática de colisiones, y los campos que el comercio rellenó (`name`, `category`, `description`, `address`, `contact_email`, `contact_phone`, `image_url` — todos opcionales salvo nombre y categoría). No se recibe ninguna notificación de esto — pasa a la fila siguiente.
+Un comercio completa `/partners/join` → `PartnerJoinForm` → `submitPartnerRegistrationAction` → `requestPartnerRegistration()` → INSERT en `partners` con `status: "pending"`, `is_test: false` (ambos hardcodeados, no manipulables desde el formulario), `access_token` autogenerado (`gen_random_uuid()`, ya presente desde este momento aunque todavía inerte), `slug` derivado del nombre con resolución automática de colisiones, y los campos que el comercio rellenó (`name`, `category`, `description`, `address`, `contact_email`, `contact_phone`, `image_url` — todos opcionales salvo nombre y categoría).
+
+**Actualizado (Partner Application Notification V1)**: en cuanto el INSERT se confirma, `requestPartnerRegistration()` envía dos emails best-effort (nunca bloquean ni invalidan la solicitud ya creada): la confirmación al comercio de siempre (Email V2, si dejó `contact_email`), y **un aviso a `PARTNER_NOTIFICATION_EMAIL`** con nombre/categoría/descripción/dirección/contacto/fecha de la solicitud (nunca `access_token`) — así que sí se recibe una notificación de esto, aunque solo llegue de verdad mientras `PARTNER_NOTIFICATION_EMAIL` coincida con la dirección que Resend permite entregar sin dominio propio (misma limitación ya documentada en §11.2 de `docs/00_VIAO_HANDOFF.md`).
 
 ### 2. Localizar `pending`
 
@@ -431,7 +433,7 @@ En la misma fila, copiar el valor de `access_token`. **Verificar dos veces que e
 
 ### 6. Comunicar al Partner
 
-No existe ningún sistema de email/notificación (confirmado: sin dependencias de email/SMS en el proyecto, sin Edge Functions) — la comunicación es manual, por el canal que el propio comercio dejó (`contact_email`/`contact_phone`). Plantilla mínima sugerida:
+**Actualizado (Email V2 + Partner Application Notification V1) — la frase original de este paso ("no existe ningún sistema de email/notificación") ya no es exacta.** Si el Database Webhook de producción está configurado (`app/api/webhooks/partner-status/route.ts`, MANUAL ACTION REQUIRED, ver `docs/00_VIAO_HANDOFF.md` §11.2), el paso 4 (cambiar `status` a `active`) ya dispara automáticamente un email de aprobación al comercio con su `access_token`/enlace al Dashboard — la plantilla manual de abajo pasa a ser el **plan de respaldo** (webhook no configurado, o email de aprobación no entregado por la limitación de Resend sin dominio propio), no el único camino:
 
 > Hola [nombre del negocio],
 >
@@ -498,6 +500,6 @@ Partner:  Discovery → Application → Approval (manual, Supabase Studio) → D
 
 ---
 
-**Fin del documento. Esta revisión registra el RELEASE BASELINE (commit `c809584`, push, deployment Vercel, esquema de producción verificado), la implementación real de F3.5, el Runbook Operativo de Partner Onboarding Beta (§17), y — en esta actualización — Commerce Identity + UX-17.1 + UX-17.2 + el V2 Release Checkpoint (§18), incluida la decisión explícita de no construir panel administrativo en este release.**
+**Fin del documento. Esta revisión registra el RELEASE BASELINE (commit `c809584`, push, deployment Vercel, esquema de producción verificado), la implementación real de F3.5, el Runbook Operativo de Partner Onboarding Beta (§17), Commerce Identity + UX-17.1 + UX-17.2 + el V2 Release Checkpoint (§18), incluida la decisión explícita de no construir panel administrativo en este release — y, en esta actualización, **Partner Application Notification V1** (§17.1/§17.6 corregidos: Andrés ya recibe aviso de cada solicitud nueva vía `PARTNER_NOTIFICATION_EMAIL`; el webhook de aprobación de Email V2 ya notifica al comercio automáticamente cuando está configurado en producción) — ver `docs/00_VIAO_HANDOFF.md` §11.3 para la evidencia completa. Cambios de este bloque todavía sin commitear, pendientes de aprobación explícita.**
 
 **HARD STOP — V2 RELEASE CHECKPOINT — VER `docs/00_VIAO_HANDOFF.md` §21 PARA EL COMMIT/PUSH/DEPLOY EXACTOS DE ESTE BLOQUE.**

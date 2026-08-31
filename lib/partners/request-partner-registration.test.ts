@@ -83,6 +83,33 @@ test("requestPartnerRegistration: nombre vacío -> invalid_input", async () => {
   assert.equal(result.outcome, "invalid_input");
 });
 
+// PARTNER APPLICATION NOTIFICATION V1 — la solicitud debe crearse igual
+// aunque PARTNER_NOTIFICATION_EMAIL esté configurada y el envío falle
+// (aquí, sin RESEND_API_KEY real en el entorno de test): "INSERT correcto
+// > emails" verificado a nivel de integración real, no solo con dobles de
+// prueba (ver lib/email/send-partner-emails.test.ts para la cobertura
+// unitaria de los mismos 3 casos).
+test("requestPartnerRegistration: la solicitud se crea igual aunque falle el email de notificación a Andrés", async () => {
+  const original = process.env.PARTNER_NOTIFICATION_EMAIL;
+  process.env.PARTNER_NOTIFICATION_EMAIL = "andres@example.com";
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  try {
+    const result = await requestPartnerRegistration({
+      name: `RPR Notification Resilience ${suffix}`,
+      category: "shop",
+    });
+
+    assert.equal(result.outcome, "submitted", "el INSERT nunca debe verse afectado por un fallo del email de notificación");
+    if (result.outcome === "submitted") {
+      await markAsTestData(result.partnerId);
+    }
+  } finally {
+    if (original === undefined) delete process.env.PARTNER_NOTIFICATION_EMAIL;
+    else process.env.PARTNER_NOTIFICATION_EMAIL = original;
+  }
+});
+
 test("requestPartnerRegistration: dos solicitudes con el mismo nombre generan slugs distintos (sin colisión)", async () => {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const name = `RPR Duplicate Name ${suffix}`;

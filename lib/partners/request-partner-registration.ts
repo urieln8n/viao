@@ -1,5 +1,8 @@
 import { createServiceRoleClient } from "../supabase/service";
-import { sendPartnerApplicationReceivedEmail } from "../email/send-partner-emails";
+import {
+  sendPartnerApplicationReceivedEmail,
+  sendPartnerApplicationNotificationEmail,
+} from "../email/send-partner-emails";
 
 // UX-10 (Partners Visible + Discovery + Registration) — único punto de
 // escritura pública sobre `partners` en todo el proyecto. Sin GRANT
@@ -62,6 +65,17 @@ export async function requestPartnerRegistration(
     return { outcome: "invalid_input" };
   }
 
+  // PARTNER APPLICATION NOTIFICATION V1 — extraídos como variables (antes
+  // vivían solo dentro del objeto del insert) para que el email de
+  // notificación a Andrés reciba exactamente los mismos valores ya
+  // truncados/normalizados que quedan persistidos, sin duplicar la lógica
+  // de trim/slice en dos sitios. Cero cambio de comportamiento del insert.
+  const description = input.description?.trim().slice(0, 1000) || undefined;
+  const address = input.address?.trim().slice(0, 300) || undefined;
+  const contactEmail = input.contactEmail?.trim().slice(0, 200) || undefined;
+  const contactPhone = input.contactPhone?.trim().slice(0, 50) || undefined;
+  const imageUrl = input.imageUrl?.trim().slice(0, 2000) || undefined;
+
   const baseSlug = slugify(name) || "partner";
   const service = createServiceRoleClient();
 
@@ -84,11 +98,11 @@ export async function requestPartnerRegistration(
         category,
         status: "pending",
         is_test: false,
-        description: input.description?.trim().slice(0, 1000) || null,
-        address: input.address?.trim().slice(0, 300) || null,
-        contact_email: input.contactEmail?.trim().slice(0, 200) || null,
-        contact_phone: input.contactPhone?.trim().slice(0, 50) || null,
-        image_url: input.imageUrl?.trim().slice(0, 2000) || null,
+        description: description ?? null,
+        address: address ?? null,
+        contact_email: contactEmail ?? null,
+        contact_phone: contactPhone ?? null,
+        image_url: imageUrl ?? null,
       })
       .select("id")
       .single();
@@ -101,13 +115,30 @@ export async function requestPartnerRegistration(
       // escribir. `await` deliberado (no fire-and-forget): en un entorno
       // serverless, el proceso puede congelarse en cuanto esta función
       // devuelve, así que un envío sin esperar no está garantizado.
-      const trimmedContactEmail = input.contactEmail?.trim();
-      if (trimmedContactEmail) {
+      if (contactEmail) {
         await sendPartnerApplicationReceivedEmail({
-          to: trimmedContactEmail,
+          to: contactEmail,
           businessName: name,
         });
       }
+
+      // PARTNER APPLICATION NOTIFICATION V1 — mismo criterio best-effort
+      // y mismo `await` deliberado que arriba. Nunca condicional aquí:
+      // sendPartnerApplicationNotificationEmail() ya decide internamente
+      // si hay algo que hacer (PARTNER_NOTIFICATION_EMAIL configurada) —
+      // este punto de llamada no necesita saberlo. INSERT ya está
+      // confirmado en este punto (`!error && data`): ningún fallo de este
+      // email puede invalidar la solicitud ya creada.
+      await sendPartnerApplicationNotificationEmail({
+        businessName: name,
+        category,
+        description,
+        address,
+        contactEmail,
+        contactPhone,
+        submittedAt: new Date().toISOString(),
+      });
+
       return { outcome: "submitted", partnerId: data.id as string };
     }
 
