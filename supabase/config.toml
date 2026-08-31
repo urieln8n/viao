@@ -156,11 +156,23 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "http://127.0.0.1:3000"
+site_url = "http://localhost:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
-# A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# Email V2 — hallazgo real, verificado empíricamente en este bloque: el
+# valor original ("https://127.0.0.1:3000", esquema y host distintos de
+# los que realmente usa `npm run dev`, http://localhost:3000) hacía que
+# Auth rechazara cualquier redirectTo/emailRedirectTo no listado aquí
+# exactamente y cayera en silencio al site_url plano, sin ruta —
+# confirmado con un email de recuperación real cuyo enlace perdía
+# "/recover/update". Site URL corregido arriba a localhost (el origen
+# real); aquí se listan explícitamente los 2 destinos reales del
+# proyecto — la propia documentación de Supabase dice "exact URLs", así
+# que no se asume que el patrón "/**" esté soportado.
+additional_redirect_urls = [
+  "http://localhost:3000/recover/update",
+  "http://localhost:3000/confirm",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -247,6 +259,22 @@ otp_expiry = 3600
 # [auth.email.template.invite]
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
+
+# Email V2 — identidad VIAO para los 2 emails de Auth reales del proyecto
+# (confirmación de registro y recuperación de contraseña). Aplica también
+# en local (visible vía Inbucket, http://127.0.0.1:54324) — para
+# producción, el mismo contenido debe pegarse manualmente en el editor de
+# plantillas del Dashboard (Authentication -> Email Templates): esta ruta
+# de fichero es solo para `supabase start` local, no se sincroniza sola a
+# producción (ver EMAIL V2 IMPLEMENTATION REPORT, "MANUAL ACTION
+# REQUIRED").
+[auth.email.template.confirmation]
+subject = "Confirma tu cuenta VIAO"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Restablece tu contraseña de VIAO"
+content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]

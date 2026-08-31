@@ -96,17 +96,30 @@ function RegisterPageContent() {
     try {
       const supabase = createClient();
       const trimmedReferralCode = referralCode.trim();
+      // Email V2 — antes, signUp() no pasaba emailRedirectTo en ningún
+      // caso: si Supabase alguna vez requiere confirmación (hoy
+      // enable_confirmations=false en local; sin confirmar en
+      // producción), el enlace del email dependía enteramente del Site
+      // URL del proyecto, sin relación con el dominio real desde el que
+      // se registró el usuario. Mismo patrón ya usado en recover/page.tsx
+      // (${window.location.origin}), y misma lógica de UX-17.1: si hay
+      // intención Partner, /confirm debe conservarla para poder volver al
+      // Dashboard en vez de a /onboarding tras establecer la sesión.
+      const emailRedirectTo = partnerAccessToken
+        ? `${window.location.origin}/confirm?intent=partner&accessToken=${encodeURIComponent(partnerAccessToken)}`
+        : `${window.location.origin}/confirm`;
       const { data, error } = await supabase.auth.signUp({
         email: trimmedEmail,
         password,
-        // F8-02 — el ÚNICO dato de referido que el cliente puede enviar
-        // es este texto libre, guardado por Supabase Auth en
-        // `raw_user_meta_data` (verificado empíricamente antes de esta
-        // fase). Nunca un `referrer_id`: el backend resuelve el código a
-        // su propietario dentro del trigger de alta, server-side.
-        ...(trimmedReferralCode
-          ? { options: { data: { referral_code: trimmedReferralCode } } }
-          : {}),
+        options: {
+          emailRedirectTo,
+          // F8-02 — el ÚNICO dato de referido que el cliente puede
+          // enviar es este texto libre, guardado por Supabase Auth en
+          // `raw_user_meta_data` (verificado empíricamente antes de esa
+          // fase). Nunca un `referrer_id`: el backend resuelve el código
+          // a su propietario dentro del trigger de alta, server-side.
+          ...(trimmedReferralCode ? { data: { referral_code: trimmedReferralCode } } : {}),
+        },
       });
 
       if (error) {

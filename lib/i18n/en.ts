@@ -557,6 +557,32 @@ export const en = {
   "partnerJoin.successTitle": "Request received",
   "partnerJoin.successMessage": "VIAO will review your business and contact you to activate your Partner access.",
   "partnerJoin.backCta": "Back to Partners",
+  // Email V2 — see es.ts: Partner has no `locale` column, these emails
+  // are always sent in Spanish (DEFAULT_LOCALE). EN keys exist only for
+  // Dictionary parity, no real consumer yet.
+  "email.partnerApplicationReceived.subject": "We received your VIAO application",
+  "email.partnerApplicationReceived.previewText": "VIAO will review your business and get back to you soon.",
+  "email.partnerApplicationReceived.title": "Application received",
+  "email.partnerApplicationReceived.greeting": "Hi,",
+  "email.partnerApplicationReceived.body1": "We received your application to join VIAO as a Partner.",
+  "email.partnerApplicationReceived.body2":
+    "We'll review your business. This doesn't mean automatic approval — we'll reach out with our decision.",
+  "email.partnerApproved.subject": "Your business is now a VIAO Partner",
+  "email.partnerApproved.previewText": "You can now access your business dashboard on VIAO.",
+  "email.partnerApproved.title": "Welcome to VIAO!",
+  "email.partnerApproved.greeting": "Hi,",
+  "email.partnerApproved.body1": "Good news: your business is now a VIAO Partner.",
+  "email.partnerApproved.body2": "From your dashboard you can see your activity and manage your business information.",
+  "email.partnerApproved.cta": "Go to my Dashboard",
+  "email.partnerRejected.subject": "Your VIAO application",
+  "email.partnerRejected.previewText": "An update on your VIAO application.",
+  "email.partnerRejected.title": "Thanks for your interest in VIAO",
+  "email.partnerRejected.greeting": "Hi,",
+  "email.partnerRejected.body1": "Thanks for your interest in joining VIAO as a Partner.",
+  "email.partnerRejected.body2":
+    "We won't be moving forward with your application right now. Feel free to reach out again if things change.",
+  "confirm.checking": "Confirming your account…",
+  "confirm.invalidLink": "This link is invalid or has expired.",
   // FASE UX-1.1 (Core UX Quick-Fix Pass) — copy for the global Error
   // Boundary (app/error.tsx), the single catch point for uncontrolled
   // errors across the app.

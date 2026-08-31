@@ -1,4 +1,5 @@
 import { createServiceRoleClient } from "../supabase/service";
+import { sendPartnerApplicationReceivedEmail } from "../email/send-partner-emails";
 
 // UX-10 (Partners Visible + Discovery + Registration) — único punto de
 // escritura pública sobre `partners` en todo el proyecto. Sin GRANT
@@ -93,6 +94,20 @@ export async function requestPartnerRegistration(
       .single();
 
     if (!error && data) {
+      // Email V2 — best-effort, nunca convierte la solicitud ya creada en
+      // un fallo: sendEmail() (lib/email/send-email.ts) nunca lanza. Solo
+      // si el comercio dejó un email de contacto (campo opcional) — sin
+      // él, no hay ningún error que reportar, simplemente no hay a quién
+      // escribir. `await` deliberado (no fire-and-forget): en un entorno
+      // serverless, el proceso puede congelarse en cuanto esta función
+      // devuelve, así que un envío sin esperar no está garantizado.
+      const trimmedContactEmail = input.contactEmail?.trim();
+      if (trimmedContactEmail) {
+        await sendPartnerApplicationReceivedEmail({
+          to: trimmedContactEmail,
+          businessName: name,
+        });
+      }
       return { outcome: "submitted", partnerId: data.id as string };
     }
 

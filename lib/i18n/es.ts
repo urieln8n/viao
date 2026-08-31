@@ -629,6 +629,37 @@ export const es = {
   "partnerJoin.successMessage":
     "VIAO revisará tu negocio y te contactará para activar tu acceso de Partner.",
   "partnerJoin.backCta": "Volver a Partners",
+  // Email V2 — copy de los emails transaccionales de Partner (lib/email/)
+  // y de la pantalla /confirm que establece la sesión tras el enlace de
+  // confirmación de registro. Partner no tiene columna `locale`: estos
+  // emails se envían siempre en español (DEFAULT_LOCALE) — las claves EN
+  // existen solo por la paridad exigida por Dictionary, sin consumidor
+  // real todavía.
+  "email.partnerApplicationReceived.subject": "Hemos recibido tu solicitud para VIAO",
+  "email.partnerApplicationReceived.previewText": "VIAO revisará tu negocio y te contactará pronto.",
+  "email.partnerApplicationReceived.title": "Solicitud recibida",
+  "email.partnerApplicationReceived.greeting": "Hola,",
+  "email.partnerApplicationReceived.body1":
+    "Hemos recibido tu solicitud para unirte a VIAO como Partner.",
+  "email.partnerApplicationReceived.body2":
+    "Vamos a revisar tu negocio. Esto no implica una aprobación automática — te contactaremos con la decisión.",
+  "email.partnerApproved.subject": "Tu negocio ya es Partner de VIAO",
+  "email.partnerApproved.previewText": "Ya puedes acceder a tu panel de negocio en VIAO.",
+  "email.partnerApproved.title": "¡Bienvenido a VIAO!",
+  "email.partnerApproved.greeting": "Hola,",
+  "email.partnerApproved.body1": "Buenas noticias: tu negocio ya es Partner de VIAO.",
+  "email.partnerApproved.body2":
+    "Desde tu panel puedes ver tu actividad y gestionar la información de tu negocio.",
+  "email.partnerApproved.cta": "Ir a mi Dashboard",
+  "email.partnerRejected.subject": "Tu solicitud para VIAO",
+  "email.partnerRejected.previewText": "Novedades sobre tu solicitud a VIAO.",
+  "email.partnerRejected.title": "Gracias por tu interés en VIAO",
+  "email.partnerRejected.greeting": "Hola,",
+  "email.partnerRejected.body1": "Gracias por tu interés en unirte a VIAO como Partner.",
+  "email.partnerRejected.body2":
+    "Por ahora no vamos a continuar con tu solicitud. Puedes volver a escribirnos más adelante si tu situación cambia.",
+  "confirm.checking": "Confirmando tu cuenta…",
+  "confirm.invalidLink": "Este enlace no es válido o ha caducado.",
   // FASE UX-1.1 (Core UX Quick-Fix Pass) — copy del Error Boundary global
   // (app/error.tsx), único punto de captura de errores no controlados de
   // toda la app.
