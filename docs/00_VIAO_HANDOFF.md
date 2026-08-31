@@ -14,7 +14,7 @@ LAST REVIEWED: 2026-08-31
 >
 > **Cuando un negocio envía una solicitud para convertirse en Partner, ¿dónde llega la solicitud, quién la revisa, cómo se aprueba/rechaza y cómo se responde al negocio y se le entrega su acceso?**
 >
-> Respuesta actual (Beta, 2026-08-31, verificada contra código real — ver §7.1 y el Runbook Operativo en `VIAO_PARTNERS_CONTINUITY_MASTER.md` §17): **manual, 100%, vía Supabase Studio.** Sin panel interno, sin notificación automática, sin estado `rejected` en el schema, sin entrega automática de `access_token`. Es una decisión deliberada para el volumen actual (0-5 Partners), no un bug — pero cualquier bloque que toque Partners debe partir de este hecho, no asumir que existe una herramienta que no existe.
+> Respuesta actual (Beta, 2026-08-31, verificada contra código real — ver §7.1 y el Runbook Operativo en `VIAO_PARTNERS_CONTINUITY_MASTER.md` §17): la **revisión/aprobación en sí sigue siendo manual, 100%, vía Supabase Studio** — sin panel interno, sin estado `rejected` en el schema. **Actualizado (Email V2, §11.2)**: desde este bloque, el comercio SÍ recibe comunicación automática por email en 3 momentos (solicitud recibida, aprobado, rechazado vía `pending→inactive`) y el `access_token` SÍ se entrega automáticamente en el email de aprobación — pero solo entra en vigor de verdad cuando VIAO tenga un dominio propio verificado en Resend (sin él, Resend solo entrega a la dirección de la propia cuenta Resend, nunca a un `contact_email` real — ver §11.2). Sigue siendo una decisión deliberada para el volumen actual, no un bug.
 
 ---
 
@@ -206,6 +206,35 @@ Observación abierta:   Home en producción, visita anónima verificada (cookies
                        propia auditoría.
 ```
 
+**Actualización — esta observación se investigó y se cerró en el bloque siguiente (UX-14.2, ver §11.1.1): causa confirmada (GRANT de `anon` en producción, distinto de local), corregida con un `REVOKE` ejecutado directamente por el propietario en Supabase Studio (fuera del alcance de esta sesión, sin acceso privilegiado a producción), verificado empíricamente antes/después con la `anon key` pública real extraída del bundle de producción — 14/14 tablas pasaron de `200`/0 filas a `401`/`42501` tras el `REVOKE`, y Home anónimo en producción mostró `HomeLanding` correctamente en la reverificación.**
+
+---
+
+## 11.2 Email V2 — evidencia real (2026-08-31)
+
+```
+Commit:                5cb965f — "feat: add VIAO-branded transactional email via Resend"
+origin/main:            5cb965f (push d5139b0..5cb965f, verificado en este bloque)
+Vercel:                 dpl_5FsKj7wuZ2bRLi7aCGnTsdm8PPxr, ● Ready, https://viao.vercel.app
+Tests/tsc/lint/build:   PASS (860 tests / 856 pass / 0 fail / 4 skipped — 25 tests nuevos)
+```
+
+**Arquitectura**: `lib/email/` (cliente Resend perezoso, mismo patrón que `lib/openai/client.ts`; `sendEmail()` best-effort, nunca lanza — deliberadamente distinto de `getOpenAiClient()`, ver comentario en el propio archivo) + 3 plantillas Partner (solicitud recibida/aprobado/rechazado, HTML inline, identidad VIAO) + webhook (`app/api/webhooks/partner-status/route.ts`, Database Webhook de Supabase → distingue `pending→active`/`pending→inactive`/`active→inactive` vía `old_record`/`record`, sin panel admin, sin rol nuevo) + `/confirm` (mismo patrón que `recover/update/page.tsx`, preserva `intent=partner`+`accessToken`).
+
+**Hallazgo real durante la propia verificación** (mismo patrón que UX-14.2, no asumido): `additional_redirect_urls`/`site_url` de `supabase/config.toml` no coincidían con el origen real de desarrollo (`http://localhost:3000`) — cualquier `redirectTo`/`emailRedirectTo` perdía su ruta y caía al `site_url` plano. Corregido y **verificado con un email de recuperación real** (Mailpit): antes `redirect_to=http://127.0.0.1:3000` (sin ruta), después `redirect_to=http://localhost:3000/recover/update` (correcto) — seguido hasta `/recover/update` funcionando de punta a punta.
+
+**Sin dominio propio — limitación confirmada, no asumida**: sin dominio verificado en Resend, el remitente de prueba (`onboarding@resend.dev`) **solo entrega a la dirección con la que se creó la cuenta de Resend**, nunca a un `contact_email` real de un comercio — confirmado contra la documentación oficial de Resend. Los 3 emails de Partner y el webhook están completos y desplegados, pero no entregarán nada a comercios reales hasta que exista dominio propio. `RESEND_FROM_EMAIL` se deja deliberadamente sin configurar en Vercel para que el fallback de prueba se aplique — no se ha configurado Resend como SMTP de Auth en producción (haría que los emails de confirmación/recuperación dejaran de llegar a usuarios reales, sustituyendo un remitente que hoy sí funciona por uno que no).
+
+**Pendiente — MANUAL ACTION REQUIRED, no ejecutable desde esta sesión (sin acceso a Supabase/Resend/Vercel Dashboard de producción)**:
+1. Verificar dominio propio en Resend (DNS).
+2. Tras verificarlo: configurar `RESEND_FROM_EMAIL` real en Vercel, y solo entonces evaluar activar Resend como SMTP de Auth en producción.
+3. Supabase Dashboard producción → Auth → URL Configuration: Site URL `https://viao.vercel.app`, Redirect URLs con `/recover/update` y `/confirm`.
+4. Supabase Dashboard producción → Auth → Email Templates: pegar `supabase/templates/{confirmation,recovery}.html`.
+5. Supabase Dashboard producción → Database → Webhooks: crear el webhook sobre `partners` (`UPDATE`), header `x-viao-webhook-secret`.
+6. Vercel: añadir `PARTNER_STATUS_WEBHOOK_SECRET` y `SITE_URL` (Production).
+
+**Smoke test producción**: Home (anónimo, `HomeLanding` visible — ver §11.1.1), Register, Login, `/confirm` (estado "enlace inválido" correcto), `/partners`, webhook (`401` sin secreto) — 6/6, 0 errores de consola. Deliberadamente **no** se envió ninguna solicitud Partner real en producción en este bloque (evita ruido/emails de prueba reales dado que `RESEND_API_KEY` ya está configurada ahí) — cobertura completa del mismo flujo ya verificada en local con un email real.
+
 ---
 
 ## 12. FROZEN
@@ -227,9 +256,9 @@ Favoritos, notificaciones, promociones/multiplicadores, QR, campañas, CRM, mapa
 
 ## 14. Current work / Next logical vs. Authorized
 
-- **NEXT LOGICAL**: UX-13 — Self-Service C2 (imágenes/Storage) + campo "oferta" (texto libre). Requiere auditar primero si las políticas de Storage existentes (pensadas para `auth.uid()`) son reutilizables para `access_token` — no asumirlo. Alternativa igualmente lógica: investigar la observación abierta de Home en producción (§11.1).
-- **AUTHORIZED**: el V2 Release Checkpoint (§11.1) ya se ejecutó y cerró en este bloque — commit, push y deploy completados con autorización explícita. Nada más está autorizado a partir de aquí.
-- **NOT AUTHORIZED**: UX-13, UX-18, V3 (Partner Engagement, ver `VIAO_PARTNERS_CONTINUITY_MASTER.md` §18.5) y todo lo listado en §13.
+- **NEXT LOGICAL**: comprar/verificar el dominio propio de VIAO en Resend (desbloquea que los emails de Partner y, más adelante, de Auth, entreguen a destinatarios reales — ver §11.2). Alternativa: UX-13 — Self-Service C2.
+- **AUTHORIZED**: el V2 Release Checkpoint (§11.1), UX-14.2 (§11.1.1) y Email V2 (§11.2) ya se ejecutaron y cerraron. Nada más está autorizado a partir de aquí.
+- **NOT AUTHORIZED**: UX-13, UX-18, V3 (Partner Engagement, ver `VIAO_PARTNERS_CONTINUITY_MASTER.md` §18.5), activar Resend como SMTP de Auth en producción (bloqueado hasta dominio propio, ver §11.2), y todo lo listado en §13.
 
 Esto es una observación, no una autorización. Ningún bloque se ejecuta por estar identificado aquí como "siguiente lógico" — requiere instrucción explícita en su propio turno.
 
@@ -351,8 +380,10 @@ Ninguna contradicción se corrige automáticamente en ningún bloque, nunca.
 | 2026-08-31 | Partner Onboarding Operational Closure — Runbook Operativo Beta + este HANDOFF (este bloque) | Cerrado — puramente documental. Runbook creado en `VIAO_PARTNERS_CONTINUITY_MASTER.md` §17. NO se implementó Partner Ops, UX-13, estado `rejected`, regeneración de token, ni ningún cambio de schema/Decision Locks | Sin commitear (no autorizado en este bloque) | — | Ninguno autorizado |
 | 2026-08-31 | Commerce Identity (UX-16.3) — `owner_id`/`link_partner_owner()`, y Commerce Chrome (UX-16.5/16.6) — separación visual Usuario/Commerce | Cerrado, tests/build/E2E PASS en su momento | `9233fd7` (sin pushear hasta el V2 Release Checkpoint) | — | Partner Auth Entry |
 | 2026-08-31 | Partner Entry & Auth (UX-17): auditoría → Partner Auth Entry (UX-17.1) → Partner Discovery CTA (UX-17.2) | Cerrado — 7/7 y 10/10 E2E PASS respectivamente, `accessToken` verificado en URL únicamente, Commerce Identity/RLS/RPC sin tocar | Sin commitear hasta el V2 Release Checkpoint | — | V2 Release Checkpoint |
-| 2026-08-31 | **V2 Release Checkpoint** — auditoría de intake de solicitudes Partner (decisión explícita: sin panel admin nuevo), sincronización documental (`VIAO_PARTNERS_CONTINUITY_MASTER.md` §3/§16/§18, este HANDOFF §2/§6/§7/§11.1/§13/§14), tests/build en frío, E2E (Usuario 6/6, Partner Application 1/1 + resto no ejecutable por diseño), commit, push, deploy automático, smoke test de producción (8/8 rutas, 0 errores) | **Cerrado, PASS** — ver §11.1 para el detalle completo | `9233fd7` + `17d6986` | Vercel `dpl_5x6z3porRuYc6fgvGpy7PebrmPB1`, ● Ready, `https://viao.vercel.app` | Ninguno autorizado — no iniciar UX-18/V3 |
+| 2026-08-31 | **V2 Release Checkpoint** — auditoría de intake de solicitudes Partner (decisión explícita: sin panel admin nuevo), sincronización documental (`VIAO_PARTNERS_CONTINUITY_MASTER.md` §3/§16/§18, este HANDOFF §2/§6/§7/§11.1/§13/§14), tests/build en frío, E2E (Usuario 6/6, Partner Application 1/1 + resto no ejecutable por diseño), commit, push, deploy automático, smoke test de producción (8/8 rutas, 0 errores) | **Cerrado, PASS** — ver §11.1 para el detalle completo | `9233fd7` + `17d6986` | Vercel `dpl_5x6z3porRuYc6fgvGpy7PebrmPB1`, ● Ready, `https://viao.vercel.app` | UX-14.2 (Home anónimo en producción) |
+| 2026-08-31 | **UX-14.2** — diagnóstico y corrección del desajuste `anon` local vs. producción (Caso A confirmado con la `anon key` real de producción, 14/14 tablas), `REVOKE` ejecutado por el propietario en Supabase Studio (fuera de mi acceso), reverificado 14/14 y con Home anónimo real | **Cerrado, PASS** — ver §11.1.1 | Ninguno (solo Supabase, sin cambios de repositorio) | — (mismo deploy) | Email V2 |
+| 2026-08-31 | **Email V2** — Resend (`lib/email/`), 3 emails Partner + webhook de aprobación/rechazo (`app/api/webhooks/partner-status/`), plantillas Auth VIAO + corrección real de `site_url`/redirect allow-list (verificada con un email de recuperación real de punta a punta), `/confirm`. 860/856/0/4 tests, build/E2E/smoke test producción PASS. Sin dominio propio: emails de Partner no entregan a destinatarios reales todavía (limitación de Resend confirmada, no de VIAO) | **Cerrado, PASS** — ver §11.2 | `5cb965f` | Vercel `dpl_5FsKj7wuZ2bRLi7aCGnTsdm8PPxr`, ● Ready, `https://viao.vercel.app` | Dominio propio de VIAO en Resend (siguiente paso lógico, no autorizado) |
 
 ---
 
-**Fin del documento (revisión V2 Release Checkpoint, 2026-08-31). Este bloque auditó, implementó cuando correspondía, testeó, verificó E2E, sincronizó documentación, commiteó (`9233fd7`+`17d6986`), pusheó y desplegó a producción (`https://viao.vercel.app`, `dpl_5x6z3porRuYc6fgvGpy7PebrmPB1`) — ver §11.1 para el detalle completo. Decisión explícita registrada: no se construyó panel administrativo para solicitudes Partner en este release. No se inició UX-13, UX-18 ni V3.**
+**Fin del documento (revisión Email V2, 2026-08-31). Este bloque construyó el sistema de email propio de VIAO (Resend, sin dominio verificado todavía), corrigió un desajuste real de configuración de Auth encontrado durante su propia verificación, testeó, verificó E2E (incluido un email real de recuperación de punta a punta), sincronizó documentación, commiteó (`5cb965f`), pusheó y desplegó a producción (`https://viao.vercel.app`, `dpl_5FsKj7wuZ2bRLi7aCGnTsdm8PPxr`) — ver §11.2 para el detalle completo. Limitación explícita registrada: sin dominio propio verificado, los emails de Partner no llegan a destinatarios reales — código y arquitectura ya preparados, activación pendiente de esa única acción externa. No se inició UX-13, UX-18 ni V3.**
