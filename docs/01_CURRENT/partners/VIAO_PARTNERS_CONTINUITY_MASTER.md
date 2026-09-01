@@ -401,7 +401,9 @@ tsc/lint/build: PASS
 
 ## 17. Partner Onboarding Beta — Runbook Operativo
 
-Estado: proceso 100% manual, deliberado para el volumen actual (L3, "Onboarding manual/curado", `VIAO_PARTNERS_MASTER_V2.md` §21) — no un sustituto de un futuro Partner Ops con código, solo el procedimiento real hoy. Confirmado contra código real (`request-partner-registration.ts`, `resolve-partner-access.ts`, schema de `partners`) en la auditoría UX-12/F3.5/Partner Operational Flow (2026-08-31). Ejecutable en pocos minutos por cualquier persona autorizada de VIAO con acceso a Supabase Studio.
+Estado: proceso mayoritariamente manual, deliberado para el volumen actual (L3, "Onboarding manual/curado", `VIAO_PARTNERS_MASTER_V2.md` §21) — no un sustituto de un futuro Partner Ops con código, solo el procedimiento real hoy. Confirmado contra código real (`request-partner-registration.ts`, `resolve-partner-access.ts`, schema de `partners`) en la auditoría UX-12/F3.5/Partner Operational Flow (2026-08-31).
+
+**Actualizado (PARTNER APPROVAL V1)**: el paso 4 de este Runbook ("editar `status` directamente en Supabase Studio") **dejó de funcionar** en cuanto `protect_partners_immutable_fields()` empezó a proteger también `owner_id`/`access_token`/`is_test` (UX-16.3, 2026-08-31) — el trigger bloqueaba cualquier `UPDATE` de `status`, sin ninguna excepción, para cualquier rol, incluida la propia conexión de Studio. Confirmado empíricamente (no solo por lectura de código): un intento real de cambiar `status` desde Studio devolvió `ERROR: P0001: partners_immutable_field_change`. Corregido en este bloque con un RPC dedicado (`set_partner_status()`) — ver el paso 4 actualizado. **Localizar y revisar una solicitud (pasos 1-3) sigue haciéndose en Supabase Studio sin cambios** — solo el paso de aprobación en sí cambia de mecanismo.
 
 ### 1. Nueva solicitud
 
@@ -423,9 +425,15 @@ Checklist mínimo, basado únicamente en criterios ya existentes en la documenta
 - `contact_email`/`contact_phone`: al menos uno presente para poder responder — si ambos están vacíos, no hay forma de contactar al solicitante; tratar como incidencia, no rechazar automáticamente.
 - Coherencia general: ¿el conjunto de campos describe un negocio real y localizable? (mismo criterio ya usado, sin panel, para los primeros Partners piloto).
 
-### 4. Aprobar (`pending → active`)
+### 4. Aprobar/rechazar/reactivar/desactivar (`set_partner_status()`)
 
-En la fila localizada (paso 2), editar directamente el campo `status` a `active` desde Supabase Studio. No existe ninguna función de aplicación ni UI para esto — es una edición manual de la fila, con `service_role` implícito de Studio. No se toca ningún otro campo.
+**Ya NO se edita `status` directamente en Studio — ese camino está bloqueado a propósito por el trigger, para cualquier rol, y así debe seguir.** El único mecanismo real (PARTNER APPROVAL V1, `20260901100000_add_partner_status_approval.sql`) es el RPC `public.set_partner_status(p_partner_id uuid, p_new_status text)`, invocado con una sesión real de VIAO cuyo usuario tenga `auth.users.raw_app_meta_data->>'role' = 'partner_admin'`.
+
+Transiciones que acepta: `pending→active` (aprobación), `pending→inactive` (no aprobación — sigue sin existir el estado `rejected`, ver paso 9), `active→inactive` (baja), `inactive→active` (reactivación). Cualquier otra combinación, incluida cualquier vuelta a `pending`, es rechazada por el propio RPC.
+
+**Cómo invocarlo hoy**: no existe ningún panel ni botón en la aplicación (decisión explícita de este bloque — ver el informe de PARTNER APPROVAL V1 para el razonamiento). El backend (RPC + `lib/partners/set-partner-status.ts` + la Server Action `setPartnerStatusAction()` en `app/partners/admin-actions.ts`) está completo y probado, pero **su superficie de invocación real queda pendiente de una decisión de producto separada** — no se ha construido ninguna UI, ni siquiera mínima, para no crear algo que después haya que mantener sin haberlo decidido explícitamente. Hasta que exista esa decisión, esta es una operación interna sin procedimiento operativo definido para esta fase piloto.
+
+**Por qué no vale usar el SQL Editor de Supabase Studio como atajo**: el RPC resuelve `auth.uid()` internamente como única fuente de autorización — el SQL Editor de Studio se conecta directamente a Postgres, sin pasar por una sesión de Supabase Auth con JWT, así que `auth.uid()` siempre es `NULL` ahí y el RPC rechaza la llamada. No es un fallo — es la misma garantía de seguridad que impide que cualquier acceso directo a la base de datos se salte la comprobación de `partner_admin`.
 
 ### 5. Obtener acceso
 
@@ -461,7 +469,7 @@ Solución manual apropiada para Beta, sin columnas nuevas ni base de datos adici
 
 ### 9. Solicitudes no aprobadas
 
-El schema real de `partners` **no tiene** un estado `rejected` — el CHECK solo admite `pending`/`active`/`inactive`. **No se crea ese estado en este bloque.** Convención operativa temporal de Beta, no una decisión de producto: dejar la fila en `pending` sin tocar (si se prefiere no dejar rastro de la decisión) o pasarla a `inactive` con una nota en el registro operativo del paso 8 aclarando "solicitud no aprobada" (para distinguirla, solo en el registro externo, de un futuro caso real de "Partner activo dado de baja"). Esta convención se abandona en cuanto exista una decisión de producto formal sobre rechazo.
+El schema real de `partners` **no tiene** un estado `rejected` — el CHECK solo admite `pending`/`active`/`inactive`. **No se crea ese estado en este bloque (PARTNER APPROVAL V1 lo reafirma explícitamente).** Convención operativa: usar `set_partner_status(partnerId, 'inactive')` desde `pending` (transición permitida por el RPC) y anotarlo en el registro operativo del paso 8 como "solicitud no aprobada" (para distinguirla, solo en el registro externo, de un futuro caso real de "Partner activo dado de baja", que llega a `inactive` por el mismo camino técnico pero parte de `active`). Dejar la fila en `pending` sin tocar sigue siendo válido si se prefiere no dejar rastro de la decisión todavía. Esta convención se abandona en cuanto exista una decisión de producto formal sobre rechazo.
 
 ### 10. Token perdido o comprometido
 
