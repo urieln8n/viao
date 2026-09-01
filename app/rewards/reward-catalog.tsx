@@ -177,7 +177,13 @@ export function RewardCatalog({ catalog, walletBalance }: RewardCatalogProps) {
             const canAfford = walletBalance >= reward.pointsCost;
             return (
               <li key={reward.id} className="flex items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
-                <div className="flex flex-col gap-0.5">
+                {/* UX Pro Max V2 (P2.2) — mismo patrón defensivo ya usado en
+                    el resto de filas equivalentes de la app (transacciones
+                    de Wallet, teasers de Home/Missions/Partners): sin
+                    flex-1 min-w-0 aquí, un título+descripción+partner largos
+                    en un móvil estrecho podían comprimir o empujar el botón
+                    de canje. Era la única fila de este tipo que le faltaba. */}
+                <div className="flex flex-1 min-w-0 flex-col gap-0.5">
                   <span className="text-sm font-medium">{reward.title}</span>
                   {reward.description && (
                     <span className="text-xs text-muted-foreground">{reward.description}</span>
@@ -199,6 +205,7 @@ export function RewardCatalog({ catalog, walletBalance }: RewardCatalogProps) {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="shrink-0"
                   disabled={!canAfford}
                   onClick={() => setView({ step: "confirm", reward })}
                 >

@@ -301,7 +301,7 @@ export default function ProfilePage() {
           )}
 
           {sessionStatus === "signed-in" && profileStatus === "error" && (
-            <ErrorState message={t("profile.loadErrorMessage", activeLocale)} />
+            <ErrorState message={t("profile.loadErrorMessage", activeLocale)} locale={activeLocale} />
           )}
 
           {sessionStatus === "signed-in" && profileStatus === "ready" && (
@@ -549,7 +549,7 @@ export default function ProfilePage() {
             </p>
           )}
           {saveStatus === "error" && saveError && (
-            <ErrorState message={saveError} />
+            <ErrorState message={saveError} locale={activeLocale} />
           )}
         </CardContent>
       </Card>

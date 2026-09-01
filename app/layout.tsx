@@ -29,9 +29,20 @@ export const metadata: Metadata = {
 // base de layout deje constancia intencional del principio mobile-first
 // (VIAO_ARCHITECTURE.md secciones 1 y 4) en vez de depender de un valor
 // implícito del framework.
+// UX Pro Max V2 (P1.2) — `viewportFit: "cover"` es el requisito real para
+// que `env(safe-area-inset-*)` (usado en components/nav/main-nav.tsx y
+// components/layout/commerce-chrome.tsx) deje de resolver siempre a 0:
+// sin esta línea, WebKit nunca reserva el hueco del home indicator/notch
+// y el padding-bottom añadido ahí sería un no-op silencioso. Efecto
+// colateral esperado (no un bug): el fondo pasa a extenderse edge-to-edge
+// bajo el notch/status bar en iOS — es precisamente por eso que este
+// mismo bloque añade padding-top con el mismo mecanismo a CommerceChrome
+// (el único header sticky-top de la app), para que ningún contenido
+// quede oculto detrás del notch.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

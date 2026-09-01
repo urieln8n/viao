@@ -4,6 +4,10 @@ export const en = {
   "nav.search": "Search",
   "nav.rewards": "Wallet",
   "nav.profile": "Profile",
+  // UX Pro Max V2 (P2.1) — see es.ts for the rationale.
+  "states.emptyDefaultTitle": "Nothing to show here",
+  "states.errorDefaultTitle": "Something went wrong",
+  "states.loadingDefaultMessage": "Loading...",
   "i18nDemo.title": "Language test",
   "i18nDemo.description":
     "This sample text shows that the same components render different content depending on the selected language, without duplicating structure or layout.",

@@ -49,7 +49,15 @@ export function MainNav() {
   return (
     <nav
       aria-label="Navegación principal"
-      className="sticky bottom-0 z-50 flex w-full items-stretch border-t border-border bg-background lg:hidden"
+      // UX Pro Max V2 (P1.2) — pb-[env(safe-area-inset-bottom)] añade el
+      // hueco real que iOS reserva para el home indicator (iPhone X en
+      // adelante) SIN encoger los items (min-h-14 intacto): el padding se
+      // suma después de ellos, nunca a costa de su alto táctil. En
+      // cualquier dispositivo sin ese inset, env() resuelve a 0 — mismo
+      // comportamiento actual, sin cambio visible. Requiere
+      // viewport-fit=cover en app/layout.tsx (si no, env() siempre da 0);
+      // ver el comentario allí.
+      className="sticky bottom-0 z-50 flex w-full items-stretch border-t border-border bg-background pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const isActive = isNavItemActive(pathname, href);

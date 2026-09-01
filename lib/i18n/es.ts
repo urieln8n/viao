@@ -2,6 +2,13 @@ export const es = {
   "nav.search": "Buscar",
   "nav.rewards": "Wallet",
   "nav.profile": "Perfil",
+  // UX Pro Max V2 (P2.1) — defaults de components/state/*.tsx, antes
+  // literales en español fuera de este diccionario (invisibles para
+  // cualquier revisión de copy/traducción). Mismo texto exacto de
+  // siempre: solo cambia dónde vive, no el aspecto visual.
+  "states.emptyDefaultTitle": "No hay nada que mostrar",
+  "states.errorDefaultTitle": "Ha ocurrido un error",
+  "states.loadingDefaultMessage": "Cargando...",
   "i18nDemo.title": "Prueba de idioma",
   "i18nDemo.description":
     "Este texto de ejemplo demuestra que los mismos componentes muestran contenido distinto según el idioma seleccionado, sin duplicar estructura ni layout.",

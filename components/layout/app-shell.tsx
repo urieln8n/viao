@@ -44,10 +44,31 @@ function isCommerceRoute(pathname: string): boolean {
   );
 }
 
+// UX Pro Max V2 (P1.1) — mismo criterio exacto que isCommerceRoute() de
+// arriba: pantallas de una sola tarea (Auth, Onboarding, alta de Partner)
+// donde Sidebar/MainNav no aportan nada (sin sesión, la mitad de sus
+// items lleva a "inicia sesión") y, en mobile, la barra inferior competía
+// visualmente con el único CTA que importa en ese momento. Lista cerrada
+// y exacta (nunca startsWith genérico): son 7 rutas estáticas conocidas,
+// no un prefijo con hijos dinámicos como /partners/dashboard/[accessToken].
+const AUTH_ROUTES = new Set([
+  "/login",
+  "/register",
+  "/recover",
+  "/recover/update",
+  "/confirm",
+  "/onboarding",
+  "/partners/join",
+]);
+
+function isAuthRoute(pathname: string): boolean {
+  return AUTH_ROUTES.has(pathname);
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
-  if (isCommerceRoute(pathname)) {
+  if (isCommerceRoute(pathname) || isAuthRoute(pathname)) {
     return <div className="flex min-h-0 flex-1 flex-col">{children}</div>;
   }
 
