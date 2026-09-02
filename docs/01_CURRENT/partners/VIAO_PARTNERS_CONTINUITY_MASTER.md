@@ -5,7 +5,7 @@ DOMAIN: Partners
 AUTHORITY: Documento de continuidad operativa entre sesiones para el desarrollo de Partners como ecosistema de dos lados (Usuario + Comercio). NO es un Decision Lock — donde repite una decisión LOCKED, la fuente original (`docs/02_DECISION_LOCKS/partners/VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md`) sigue siendo la autoridad. NO tiene precedencia sobre código+migraciones+tests (`docs/00_GOVERNANCE.md`, principio 1).
 SUPERSEDES: — (no deroga formalmente ningún documento)
 SUPERSEDED BY: —
-LAST REVIEWED: 2026-09-01 (§19 nueva — PARTNER APPROVAL V1, producción; §2/§14/§15/§17/cierre actualizados puntualmente, resto sin cambios)
+LAST REVIEWED: 2026-09-02 (§20 nueva — RELEASE CLOSURE P10+P10.1+P13; §2/§5/§14/§15/§16/§19.4/cierre actualizados puntualmente, resto sin cambios)
 ---
 
 # VIAO — MASTER CONTEXT & PARTNERS ROADMAP
@@ -30,6 +30,8 @@ Ecosistema de **dos lados**: Usuario (descubre → interactúa → gana Points �
 ## 2. Estado actual
 
 **VIAO V1/Beta.** Core (Auth, Home, Goals, Missions, Wallet, Rewards, Profile) implementado y estable. Partners evolucionó de infraestructura invisible (pre-UX-9) a ecosistema de dos lados con Discovery, Profile público, Registration, Dashboard, y Self-Service — **completado hasta F3 inclusive** (ver §13). **Actualizado 2026-09-01 (ver §19)**: PARTNER APPROVAL V1 (P2 del `VIAO_PARTNERS_MASTER_ROADMAP.md`) y el bloque UX Pro Max V2 ya están commiteados, pusheados y desplegados; P2 está además activado y validado E2E en producción. Con esto, **1 Partner real ya está `active`** (`elkin`) — deja de ser exacto decir "0 Partners reales" sin matiz, aunque sigue sin haber comercios reales curados más allá de ese caso y el Partner de test dedicado al E2E. La fuente de verdad detallada fase-por-fase (P0-P15) es ahora `VIAO_PARTNERS_MASTER_ROADMAP.md`, no este párrafo.
+
+**Actualizado 2026-09-02 (ver §20)**: **P10 — Admin Partners V1** y **P10.1 — Partner Onboarding Hardening** ya están commiteados (`e1794e6`) y desplegados — `/admin/partners` existe y su guard está verificado en producción; `contact_email` es obligatorio en `/partners/join`. **P13 — Security Hardening** también está commiteado, desplegado y validado exhaustivamente **en local**, pero su aplicación al Postgres de **producción** sigue pendiente de una acción manual del propietario (no hay ningún mecanismo automático que aplique migraciones de Supabase al hacer deploy en este proyecto) — ver §20.3.
 
 ---
 
@@ -95,7 +97,7 @@ Permanece en VIAO
 | Pieza | Estado | Evidencia |
 |---|---|---|
 | Registro (solicitud pública) | ✅ Existe | `/partners/join`, `lib/partners/request-partner-registration.ts` — crea `status:'pending'` |
-| Aprobación | 🟡 Existe, 100% manual | Supabase Studio, sin UI de revisión (deliberado) |
+| Aprobación | ✅ Existe, con UI (2026-09-02) | `/admin/partners` (P10) ejecuta la transición; localizar/revisar el contenido de la solicitud sigue en Supabase Studio |
 | Discovery pública | ✅ Existe | `/partners`, solo `active`+`is_test=false` |
 | Profile público | ✅ Existe | `/partners/[slug]` |
 | Activity (QR/Reserva) | ✅ Existe | `/partners/ops/[accessToken]`, RPC probado bajo concurrencia |
@@ -322,14 +324,15 @@ Ver §10.1 para el detalle completo (problema, causa, solución, archivos, verif
 
 ```
 CURRENT PHASE:
-Ninguna en curso — PARTNER APPROVAL V1 (P2) cerrado y activado en producción (§19). Esperando
-autorización explícita para P10 — Admin Partners V1 (ya auditado, READY, ver el informe de esa
-auditoría técnica+UX dedicada).
+Ninguna en curso — RELEASE CLOSURE P10+P10.1+UX-AUTH-1+P13 cerrado y desplegado (§20). Esperando
+decisión explícita del propietario para el cierre formal de V2 y, después, autorización para
+P16.0 — Product + Architecture Audit.
 
 LAST COMPLETED:
-PARTNER APPROVAL V1 (P2) — commiteado (`56a414e`), desplegado, y activado/validado E2E en
-producción (§19). También commiteado y desplegado desde el mismo punto de partida: UX Pro Max V2
-/ Bloque B (`18867a2`, relevante para P9 — validación visual todavía pendiente).
+P10 — Admin Partners V1, P10.1 — Partner Onboarding Hardening y P13 — Security Hardening (código +
+local; producción de P13 pendiente de acción manual) — commit único `e1794e6`, pusheado y
+desplegado en producción (§20). UX-AUTH-1 (login/registro/onboarding de Usuario, fuera del dominio
+Partners) fue parte del mismo release — ver `docs/00_VIAO_HANDOFF.md`.
 ```
 
 ---
@@ -340,14 +343,18 @@ producción (§19). También commiteado y desplegado desde el mismo punto de par
 NEXT AUTHORIZED WORK:
 NINGUNO TODAVÍA
 
-NEXT RECOMMENDED (auditoría de continuidad post-P2, 2026-09-01 — ver VIAO_PARTNERS_MASTER_ROADMAP.md):
-P10 — Admin Partners V1: única fricción operativa real hoy (set_partner_status() solo invocable
-vía llamada REST manual autenticada, sin UI). Auditoría técnica + UX dedicada ya entregada
-(veredicto: READY), sin autorizar implementación todavía.
+PENDIENTE OPERATIVO (no requiere código, requiere acción manual del propietario):
+Aplicar la migración `20260902100000_p13_grant_security_hardening.sql` al Postgres de PRODUCCIÓN
+(Supabase Studio SQL Editor o `supabase db push`) — el hallazgo de P13 sigue vigente en producción
+hasta entonces, ver §20.3.
 
-Detrás, sin orden de prioridad implícito y sin relación de bloqueo con P10:
+NEXT RECOMMENDED (pendiente de decisión explícita del propietario):
+Cierre formal de V2, y después P16.0 — Product + Architecture Audit. Ningún bloque de producto
+nuevo se ha iniciado ni se ha auditado en este release — es una decisión del propietario, no una
+recomendación técnica de este documento.
+
+Detrás, sin orden de prioridad implícito:
 UX-13 — Self-Service C2 (imágenes/Storage) + campo "oferta" (texto libre)
-P13 — Security Hardening (GRANT audit), bloque independiente, ver §19.3
 V3 — Partner Engagement (tráfico → interacción → recurrencia → valor comercial), roadmap futuro, NO implementado (ver §18.4)
 ```
 
@@ -373,8 +380,9 @@ Roles sobre profiles
 Navegación principal para Partners (Sidebar/MainNav siguen sin ítem Partner — solo existe un CTA discreto en Login/Register/Profile, UX-17.2, sin nuevo umbral cumplido)
 Geolocalización
 Reviews
-Panel administrativo para revisar/aprobar/rechazar solicitudes Partner (decisión reafirmada explícitamente en el V2 Release Checkpoint, 2026-08-31 — ver §18: el ciclo completo ya funciona vía Supabase Studio, construir un panel exigiría además inventar un mecanismo de autenticación de administrador inexistente hoy)
 ```
+
+**Retirado de esta lista 2026-09-02**: "Panel administrativo para revisar/aprobar/rechazar solicitudes Partner" — construido como **P10 — Admin Partners V1** (`/admin/partners`, commit `e1794e6`), decisión que reabrió explícitamente la reafirmación anterior del V2 Release Checkpoint una vez que P2 quedó desplegado y validado en producción. Ver §20.1.
 
 ---
 
@@ -552,12 +560,58 @@ Adicionalmente, un segundo Partner — `elkin`, real (no `is_test`) — complet�
 
 **Nota diagnóstica, no un fallo**: la vista en vivo de Vercel Logs mostró inicialmente `Status: 0` para la petición automática del webhook, junto con `External APIs: Loading...` y `Response finished` en la misma entrada — investigado y descartado como fallo real: es un artefacto de esa vista (telemetría todavía poblándose), no del endpoint ni de `pg_net`. La fuente de verdad (`net._http_response`) confirmó `200` de forma independiente.
 
-### 19.4 Qué sigue abierto (no corregido ni ampliado en este bloque)
+### 19.4 Qué sigue abierto (actualizado 2026-09-02, ver §20 para el detalle)
 
-- **P10 — Admin Partners V1**: única fricción operativa real — sin UI, la aprobación exige una llamada REST manual. Auditoría técnica+UX dedicada ya entregada (READY), sin autorizar implementación.
+- ~~P10 — Admin Partners V1~~ — **Resuelto (2026-09-02)**: `/admin/partners` commiteado y desplegado, ver §20.1.
 - **P3 — Commerce Identity**: `link_partner_owner()` sigue sin ejecutarse con una cuenta real en producción, aunque ya existe un Partner `active` real (`elkin`) sobre el que podría probarse.
 - **P9 — UX Pro Max V2 / Bloque B**: commiteado y desplegado (`18867a2`), sin validación visual real confirmada en navegador tras el deploy.
 - **Email de reactivación** (`inactive→active`): sin rama en el webhook, documentado como pendiente desde el diseño original, no implementado a propósito.
-- **P13 — Security Hardening (GRANT audit)**: bloque completamente independiente, deliberadamente no tocado aquí ni en P2. Reconfirmado 2026-09-01 con la suite completa: 884 tests, 855 pass, 25 fail (mismo patrón exacto ya documentado), 4 skipped.
+- ~~P13 — Security Hardening (GRANT audit)~~ — **Resuelto en código/local (2026-09-02)**: 895 tests / 891 pass / 0 fail / 4 skipped, los 25 fallos que citaba esta sección están corregidos. **Sigue pendiente su aplicación al Postgres de producción** (acción manual del propietario, no automática) — ver §20.3.
 
-**Fin de §19. Ver `VIAO_PARTNERS_MASTER_ROADMAP.md` para el estado P0-P15 completo y la recomendación de siguiente bloque (P10).**
+**Fin de §19. Ver `VIAO_PARTNERS_MASTER_ROADMAP.md` para el estado P0-P15 completo, y §20 de este documento para el cierre de P10/P10.1/P13.**
+
+---
+
+## 20. RELEASE CLOSURE — P10 + P10.1 + UX-AUTH-1 + P13 (2026-09-02)
+
+Release conjunto de 4 bloques ya auditados/implementados en turnos anteriores de esta sesión, cerrado en un único commit de release (mismo patrón que el V2 Release Checkpoint, §18.4): tests/tsc/lint/build en frío antes del commit, commit único (separar en 4 commits habría exigido staging parcial de `lib/i18n/en.ts`/`es.ts`, compartidos entre P10.1 y UX-AUTH-1 — riesgo evitado explícitamente), push, deploy automático de Vercel, smoke test de producción.
+
+```
+Commit:                e1794e6 — "release: close P10, P10.1, UX-AUTH-1 and P13"
+origin/main:            0e138dc..e1794e6, push sin errores
+Working tree:           limpio tras el commit
+Vercel:                 dpl_GqVULGsD1anZWbTEEosM6Uia9kgJ, ● Ready, target production,
+                        alias https://viao.vercel.app (creado 34s después del commit —
+                        deploy automático disparado por el push; no se cruzó el SHA vía
+                        API de GitHub, `gh` no está disponible en este entorno — la
+                        correspondencia se apoya en timestamp + alias + contenido del
+                        build, no en un cruce criptográfico exacto)
+Tests/tsc/lint/build:   PASS (895 tests / 891 pass / 0 fail / 4 skipped), tsc/lint/build limpios —
+                        verificado en frío justo antes del commit
+```
+
+### 20.1 P10 — Admin Partners V1
+
+`/admin/partners` — Server Component con guard (`auth.getUser()` → `/login` sin sesión, `isPartnerAdmin(user)` → `notFound()` para cualquier otro rol) + Client Component de acciones (matriz de transiciones válidas mostrada por fila, solo informativa — la autoridad real sigue siendo el propio RPC; confirmación `Dialog` solo para `active→inactive`) + `lib/partners/get-partners-for-admin.ts` (lectura `service_role`, sin filtro de `status`). Consume `setPartnerStatusAction()`/`set_partner_status()` **sin modificarlos**. Cierra el hueco que §17 paso 4 y §19.1 documentaban ("sin ninguna UI que lo invoque, el único procedimiento real es una llamada REST manual"). Verificado en producción (este bloque): visitante sin sesión → `/admin/partners` redirige a `/login` (guard correcto). Sesión real de `partner_admin` ejerciendo el flujo completo en producción: no verificado en este bloque (fuera de alcance del smoke test — no se generó ninguna cuenta `partner_admin` de prueba).
+
+### 20.2 P10.1 — Partner Onboarding Hardening
+
+`contact_email` pasa a obligatorio en `/partners/join` (validación cliente + servidor, `EMAIL_FORMAT` básico). Cierra el riesgo de una solicitud aprobada sin ningún canal de entrega para el `access_token` ni clave de vinculación para Commerce Identity (`link_partner_owner()` exige que el email de sesión coincida con `contact_email` — sin él, la vinculación nunca podría completarse). Verificado en producción (este bloque): el campo tiene `required: true` (confirmado vía inspección de `forms`), y el envío sin rellenarlo no genera ninguna petición de red — bloqueado por validación nativa antes de tocar el servidor.
+
+### 20.3 P13 — Security Hardening (GRANT audit) — ⚠️ código/local cerrado, producción PENDIENTE
+
+Ver `VIAO_PARTNERS_MASTER_ROADMAP.md` (sección P13) para el detalle técnico completo (causa raíz, migración, resultado verificado, residual). Resumen aquí: `REVOKE ALL` + reconstrucción exacta de GRANT sobre las 14 tablas afectadas por el default ACL permisivo (incluida `partners` — `access_token`/`contact_email`/`owner_id` de vuelta fuera del allowlist de `authenticated`), `auto_expose_new_tables = false` explícito en `supabase/config.toml`. Los 25 tests que §19.4 citaba como el hallazgo de P13 están en verde.
+
+**Importante, no minimizar**: esta corrección está verificada contra el Postgres **local** de Docker (`supabase db reset`). No existe en este proyecto ningún mecanismo automático que aplique migraciones de Supabase a producción al hacer `git push`/deploy de Vercel (confirmado: sin `.github/workflows/`, el `build` de Vercel es solo `next build`) — igual que con `20260901100000` (§19.2), la aplicación a producción requiere una acción manual del propietario (Supabase Studio SQL Editor o `supabase db push` contra el proyecto vinculado). **Hasta que eso ocurra, el Postgres de producción de VIAO sigue con el GRANT permisivo que P13 documentó como hallazgo** — el riesgo real en producción no cambia por este commit, solo el código que lo corrige queda listo para aplicarse.
+
+Residual documentado, no corregido a propósito: privilegios TRUNCATE/REFERENCES/TRIGGER/MAINTAIN sobre tablas *futuras* (no las 14 ya corregidas) — clasificado 🟡 deuda técnica de bajo riesgo, no explotable vía la arquitectura real de acceso de VIAO (`anon`/`authenticated`/`service_role` solo llegan a Postgres vía PostgREST, que no expone esos verbos).
+
+### 20.4 UX-AUTH-1 (fuera del dominio Partners, referencia)
+
+Login/registro/onboarding de Usuario — redirect seguro tras login, guard de sesión en `/onboarding`, nuevo flujo Welcome→Goal, mostrar/ocultar contraseña, indicadores de campo obligatorio, foco visible. No específico de Partners — detalle completo en `docs/00_VIAO_HANDOFF.md`. Único punto de contacto con este dominio: el CTA "¿Tienes un negocio?" (UX-17.2, §18.3) no se tocó.
+
+### 20.5 Smoke test de producción (este bloque)
+
+PASS: `/login` (formulario, toggle contraseña, responsive desktop+mobile), `/register` (formulario, validación de dominio de email por Supabase Auth), `/recover` y guard de `/recover/update` sin token, `/partners/join` (`contact_email` obligatorio, bloqueo client-side confirmado), `/partners` (catálogo público, desktop+mobile), `/admin/partners` (guard → `/login`), `/rewards` sin sesión (CTA de login). **NO VERIFICADO**: circuito completo Register→Onboarding→Home y canje de Rewards con una sesión nueva — bloqueado por rate-limit (`429`) de Supabase Auth, agotado por los propios intentos de signup de este mismo smoke test (evidencia de que el rate limiting de producción funciona correctamente, no un defecto de código). Sin datos de prueba nuevos dejados en `partners` ni en ninguna tabla de negocio real.
+
+**Fin de §20. Ningún bloque de producto nuevo se ha iniciado. Pendiente real, no de código: aplicar `20260902100000_p13_grant_security_hardening.sql` al Postgres de producción. Pendiente de decisión del propietario: cierre formal de V2, y después P16.0 — Product + Architecture Audit.**

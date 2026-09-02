@@ -5,7 +5,7 @@ DOMAIN: Partners
 AUTHORITY: Contrato operativo para ejecutar Partners fase por fase. No sustituye al código — ante cualquier contradicción futura, gana el código real (ver `docs/00_GOVERNANCE.md`). Complementa, no sustituye, a `VIAO_PARTNERS_CONTINUITY_MASTER.md` (ese documento es el diario cronológico bloque-a-bloque; este es el mapa operativo por fases, reconstruido desde cero contra el código real en esta auditoría).
 SUPERSEDES: —
 SUPERSEDED BY: —
-LAST REVIEWED: 2026-09-01 (sincronización documental — ver nota de actualización tras la sección 0)
+LAST REVIEWED: 2026-09-02 (sincronización documental post-RELEASE CLOSURE P10+P10.1+UX-AUTH-1+P13 — ver nota de actualización tras la sección 0)
 ---
 
 # VIAO — PARTNERS MASTER ROADMAP
@@ -20,11 +20,13 @@ Documento operativo, no narrativo. Permite decir "Ejecuta P6" en un chat nuevo y
 
 **Nota de sincronización (2026-09-01, misma fecha, turno posterior)**: este documento se escribió con PARTNER APPROVAL V1 (P2) todavía sin commitear. Desde entonces: P2 (`56a414e`) y UX Pro Max V2/Bloque B (`18867a2`, relevante para P9) **ya están commiteados, pusheados y desplegados**, y P2 fue además activado y validado en producción con un E2E real automático (`pending→active` sobre un Partner de test, cadena completa `set_partner_status()`→trigger→Database Webhook→`pg_net`→`/api/webhooks/partner-status`→HTTP 200, confirmado independientemente en `net._http_response` de Supabase). Las secciones afectadas quedan corregidas puntualmente abajo, sin reescribir el documento — el resto de esta auditoría (P0/P1/P3-P8/P11-P15) sigue vigente sin cambios.
 
+**Nota de sincronización (2026-09-02, RELEASE CLOSURE)**: desde la nota anterior se cerraron y desplegaron **P10 — Admin Partners V1**, **P10.1 — Partner Onboarding Hardening** (`contact_email` obligatorio en `/partners/join`) y **P13 — Security Hardening (GRANT audit)**, junto con UX-AUTH-1 (fuera del dominio Partners — login/registro/onboarding general de Usuario, documentado en `docs/00_VIAO_HANDOFF.md`, no repetido aquí). Los tres, commit único `e1794e6` ("release: close P10, P10.1, UX-AUTH-1 and P13"), pusheado a `origin/main` y desplegado en producción (`https://viao.vercel.app`). P10 deja de ser "NEXT BLOCK": existe `/admin/partners` (guard `partner_admin`, reutiliza `set_partner_status()` sin modificarlo). P13 deja de ser "no corregido": las 14 entidades de `public` afectadas por el default ACL permisivo quedaron corregidas (migración `20260902100000_p13_grant_security_hardening.sql` + `auto_expose_new_tables = false`), los 25 tests que este documento citaba como "100% el hallazgo de P13" están en verde. Queda un residual 🟡 documentado (no bloqueante) sobre privilegios TRUNCATE/REFERENCES/TRIGGER/MAINTAIN en tablas *futuras* — ver P13 más abajo. Las secciones afectadas (1, 4, 11, 14, 15, P1, P10, P13, Master Checklist, Open Decisions, Known Risks, P15) quedan corregidas puntualmente abajo; el resto de esta auditoría sigue vigente sin cambios. Verificación de producción de este release: login/register/recover/partners/join/`/admin/partners` (guard) confirmados; el circuito completo Register→Onboarding→Home con sesión nueva quedó **NO VERIFICADO** en este bloque por rate-limit de Supabase Auth (agotado por los propios intentos de smoke test, no un defecto) — ver `docs/00_VIAO_HANDOFF.md` para el detalle.
+
 ---
 
 ## 1. Current State
 
-**Partners funciona de punta a punta en código, commiteado y desplegado, para el recorrido completo** Registration → Approval (P2, commiteado `56a414e`, activado y validado en producción) → Commerce Identity → Access → Dashboard → Profile edit → Discovery. No hay ningún hueco funcional que impida a un comercio real completar el ciclo hoy, con una única condición pendiente: que exista alguna forma de invocar `set_partner_status()` sin conocimiento técnico (ver P10 — hoy solo es invocable vía una llamada REST autenticada manual). Cero panel administrativo, por decisión explícita repetida en múltiples bloques. Un hallazgo de seguridad sistémico y **no relacionado con Partners específicamente** (GRANTs de `authenticated` más amplios de lo esperado en ~14 tablas, incluida `partners`) sigue sin corregir — ver P13, deliberadamente separado.
+**Partners funciona de punta a punta en código, commiteado y desplegado, para el recorrido completo** Registration → Approval (P2, commiteado `56a414e`, activado y validado en producción) → Commerce Identity → Access → Dashboard → Profile edit → Discovery. No hay ningún hueco funcional que impida a un comercio real completar el ciclo hoy. **(2026-09-02)** La condición pendiente que citaba esta sección — una forma de invocar `set_partner_status()` sin conocimiento técnico — quedó resuelta: **P10 — Admin Partners V1** está commiteado (`e1794e6`) y desplegado (`/admin/partners`, guard `partner_admin`, reutiliza el RPC sin modificarlo). El hallazgo de seguridad sistémico (GRANTs más amplios de lo esperado en ~14 tablas, incluida `partners`) también quedó corregido — ver **P13**, `🟢 COMPLETE`, mismo commit. Queda un residual 🟡 de bajo riesgo, no bloqueante, sobre tablas *futuras* (ver P13).
 
 ---
 
@@ -41,7 +43,7 @@ VIAO recibe notificación        → ✅ PARTNER_NOTIFICATION_EMAIL (Partner App
         ↓
 VIAO revisa solicitud           → ✅ Supabase Studio, tabla partners
         ↓
-Aprobación / rechazo            → ✅ set_partner_status() en producción, validado E2E — sin UI (P10)
+Aprobación / rechazo            → ✅ set_partner_status() en producción, validado E2E, con UI (P10, /admin/partners)
         ↓
 Partner pasa a active           → ✅ (una vez aprobado)
         ↓
@@ -73,7 +75,7 @@ VIAO obtiene valor              → 🔵 sin medir (P12)
 - **Server Actions finas**: nunca contienen lógica de autorización propia — solo resuelven el cliente de sesión correcto (nunca `service_role` cuando el RPC necesita `auth.uid()`) e invocan la función de dominio.
 - **Sin Storage propio**: `image_url` es texto libre, sin bucket ni upload.
 - **Tres mecanismos de identidad distintos y no confundibles**: `access_token` (acceso del propio Partner, sin Auth), `owner_id` (Commerce Identity, vincula un Partner a un Usuario Auth real), `raw_app_meta_data.role='partner_admin'` (autoridad de VIAO sobre `status`, nuevo en este bloque).
-- **Hallazgo abierto**: el GRANT de columna que debería limitar `authenticated` sobre `partners` está actualmente más amplio de lo que las migraciones declaran (ver P13) — la RLS y los triggers siguen siendo la barrera real hoy, no el GRANT.
+- **Hallazgo corregido (2026-09-02, P13)**: el GRANT de columna sobre `partners` volvió al allowlist exacto que las migraciones declaran (`access_token`/`contact_email`/`owner_id` fuera del alcance de `authenticated`) — la RLS y los triggers siguen siendo la barrera real, y ahora el GRANT también lo es, como estaba diseñado desde el principio.
 
 ---
 
@@ -86,7 +88,7 @@ VIAO obtiene valor              → 🔵 sin medir (P12)
 | 3 | Solicitud queda `pending` | ✅ | `requestPartnerRegistration()`, INSERT único, `status`/`is_test` hardcodeados |
 | 4 | VIAO recibe notificación | ✅ | `sendPartnerApplicationNotificationEmail()` → `PARTNER_NOTIFICATION_EMAIL` |
 | 5 | VIAO revisa solicitud | ✅ | Supabase Studio, tabla `partners`, filtro manual `status='pending'` |
-| 6 | Aprobación/rechazo | 🟢 | `set_partner_status()` — implementado, commiteado, desplegado, validado E2E en producción; sin UI/superficie de invocación real (P10) |
+| 6 | Aprobación/rechazo | ✅ | `set_partner_status()` — implementado, commiteado, desplegado, validado E2E en producción; con UI (`/admin/partners`, P10, commiteado `e1794e6`) |
 | 7 | Partner pasa a `active` | ✅ | Mismo RPC, transición `pending→active` |
 | 8 | Partner recibe acceso | 🟢 | Email de aprobación con `access_token` — Database Webhook de producción configurado y validado E2E (`net._http_response`: `status_code=200`) |
 | 9 | Partner entra al Dashboard | ✅ | `/partners/dashboard/[accessToken]`, `resolvePartnerAccess()` |
@@ -196,7 +198,7 @@ Verificado por código, no asumido — Partners aparece exactamente en:
 
 ## 11. Current Admin / Approval
 
-`set_partner_status()` (RPC) + `lib/partners/set-partner-status.ts` + `app/partners/admin-actions.ts` — completo, probado (17 tests), **commiteado (`56a414e`), desplegado y validado E2E en producción** (migración aplicada, `partner_admin` configurado, Database Webhook configurado, transición `pending→active` real confirmada de punta a punta). Cero UI — ver P10. El Runbook Operativo (`VIAO_PARTNERS_CONTINUITY_MASTER.md` §17) ya está actualizado para reflejar que Supabase Studio ya NO sirve para aprobar (verificado empíricamente: `auth.uid()` es `NULL` desde el SQL Editor de Studio).
+`set_partner_status()` (RPC) + `lib/partners/set-partner-status.ts` + `app/partners/admin-actions.ts` — completo, probado (17 tests), **commiteado (`56a414e`), desplegado y validado E2E en producción** (migración aplicada, `partner_admin` configurado, Database Webhook configurado, transición `pending→active` real confirmada de punta a punta). **UI desde 2026-09-02** (P10, commit `e1794e6`): `/admin/partners` (Server Component con guard `partner_admin` + `notFound()` para cualquier otro rol, Client Component con acciones por fila y confirmación para `active→inactive`), consume `setPartnerStatusAction()`/`set_partner_status()` sin modificarlos. El Runbook Operativo (`VIAO_PARTNERS_CONTINUITY_MASTER.md` §17) sigue vigente para LOCALIZAR/REVISAR solicitudes en Supabase Studio (Table Editor) — `/admin/partners` sustituye únicamente el paso de EJECUTAR la aprobación, no la revisión previa.
 
 ---
 
@@ -221,11 +223,11 @@ Verificado por código, no asumido — Partners aparece exactamente en:
 ## 14. Current Security
 
 - RLS: `partners_select_own`/`partners_update_own`, ambas `owner_id = auth.uid()`.
-- GRANT de columnas explícito (declarado en migración, **actualmente más amplio de lo declarado en la práctica** — ver P13, hallazgo separado).
+- GRANT de columnas explícito (declarado en migración, **corregido 2026-09-02** — ver P13).
 - Trigger `protect_partners_immutable_fields()`: protege `access_token`/`is_test`/`slug`/`id` (incondicional) y `owner_id`/`status` (con excepciones talladas y verificadas con tests).
 - 3 RPCs `SECURITY DEFINER` con `search_path=''`, autorización interna vía `auth.uid()`, respuesta anti-enumeración.
 - Webhook: secreto compartido validado antes de tocar el body.
-- **Hallazgo pendiente, no corregido en ningún bloque todavía**: `authenticated` tiene GRANTs de columna más amplios de lo que las migraciones declaran, sobre ~14 tablas incluida `partners` — confirmado con SQL directo, no causado por ningún cambio reciente de Partners. Ver P13.
+- **Hallazgo corregido (2026-09-02, P13, commit `e1794e6`)**: `authenticated` tenía GRANTs de columna más amplios de lo que las migraciones declaraban, sobre ~14 tablas incluida `partners` — confirmado con SQL directo, corregido con `REVOKE ALL` + reconstrucción exacta de cada GRANT declarado, y `auto_expose_new_tables = false` en `supabase/config.toml` para que no vuelva a ocurrir sobre tablas nuevas. Residual 🟡 no bloqueante documentado en P13 (privilegios administrativos TRUNCATE/REFERENCES/TRIGGER/MAINTAIN sobre tablas *futuras*, no explotable vía la arquitectura real de acceso — `anon`/`authenticated`/`service_role` solo llegan a Postgres vía PostgREST, que no expone esos verbos).
 
 ---
 
@@ -251,7 +253,7 @@ Verificado por código, no asumido — Partners aparece exactamente en:
 | `get-partner-for-editing.test.ts` | 5 | Precarga del formulario |
 | `actions.test.ts` (app/partners) | 2 | Server Actions de Ops |
 
-Más `send-partner-emails.test.ts`/`templates/partner-emails.test.ts` (`lib/email/`, no contados aquí, cubren las 4 plantillas de Partner). **Ningún test roto por código propio de Partners** — los 25 fallos activos hoy en la suite completa son 100% el hallazgo de P13, confirmado archivo por archivo en el bloque anterior.
+Más `send-partner-emails.test.ts`/`templates/partner-emails.test.ts` (`lib/email/`, no contados aquí, cubren las 4 plantillas de Partner), más `get-partners-for-admin.test.ts` (7, nuevo con P10, no contado en la tabla de arriba). **(2026-09-02)** Los 25 fallos que esta sección citaba como "100% el hallazgo de P13" están corregidos — suite completa 895 tests / 891 pass / 0 fail / 4 skipped, incluido `link-partner-owner.test.ts:182` (antes en rojo por el mismo hallazgo).
 
 ---
 
@@ -268,7 +270,7 @@ Más `send-partner-emails.test.ts`/`templates/partner-emails.test.ts` (`lib/emai
 **Objetivo**: que un comercio pueda solicitar convertirse en Partner.
 **Estado actual**: ✅ **Completo y funcionando en producción.**
 **Qué existe**: `/partners/join` → `PartnerJoinForm` → `submitPartnerRegistrationAction` → `requestPartnerRegistration()`. Validación mínima (nombre no vacío, categoría dentro del CHECK real). Sin protección anti-spam/abuso (sin rate limiting, sin captcha, sin deduplicación — confirmado, no hay ningún mecanismo).
-**Qué falta**: nada bloqueante. Deduplicación de solicitudes repetidas queda como mejora opcional, no bloqueante al volumen actual (ya evaluado y descartado explícitamente en un bloque anterior).
+**Qué falta**: nada bloqueante. Deduplicación de solicitudes repetidas queda como mejora opcional, no bloqueante al volumen actual (ya evaluado y descartado explícitamente en un bloque anterior). **P10.1 — Partner Onboarding Hardening (2026-09-02, commit `e1794e6`)**: `contact_email` pasó a ser obligatorio (validación cliente + servidor, formato `EMAIL_FORMAT` básico), cerrando el riesgo de que una solicitud aprobada quedase sin ningún canal de entrega para el `access_token` ni clave de vinculación para Commerce Identity.
 **Dependencias**: ninguna.
 **Riesgos**: bajo — sin protección anti-spam, un volumen alto de solicitudes falsas sería visible manualmente en Studio, no automatizado.
 **Archivos**: `app/partners/join/*`, `app/partners/join-actions.ts`, `lib/partners/request-partner-registration.ts`.
@@ -285,7 +287,7 @@ Más `send-partner-emails.test.ts`/`templates/partner-emails.test.ts` (`lib/emai
 | `category` | ✅ | ✅ | ✅ | Filtro/badge en Discovery |
 | `description` | ✅ | ❌ | ✅ | Texto en Discovery/Perfil |
 | `address` | ✅ | ❌ | ✅ | Texto en Perfil |
-| `contact_email` | ✅ | ❌ | ❌ (excluido del Self-Service, es la clave de vinculación de Commerce Identity) | Emails + `link_partner_owner()` |
+| `contact_email` | ✅ | ✅ (desde P10.1, 2026-09-02 — antes opcional) | ❌ (excluido del Self-Service, es la clave de vinculación de Commerce Identity) | Emails + `link_partner_owner()` |
 | `contact_phone` | ✅ | ❌ | ✅ | Texto en Perfil |
 | `image_url` | ✅ | ❌ | ✅ | Imagen en Discovery/Perfil |
 | `status`/`access_token`/`is_test`/`slug`/`id` | ✅ | — | ❌ nunca | Internos |
@@ -414,11 +416,15 @@ Más `send-partner-emails.test.ts`/`templates/partner-emails.test.ts` (`lib/emai
 
 ## P10 — Admin Panel
 **Objetivo**: decidir si y cuándo construir una superficie de administración.
-**Ver sección 22/Recomendación al final del documento para el análisis completo.**
-**Estado actual**: 🔴 **NEXT BLOCK.** No existe nada, ni siquiera mínimo. Confirmado como siguiente bloque recomendado en la auditoría de continuidad post-P2 (2026-09-01) y en su propia auditoría técnica + UX dedicada (READY, ver esa auditoría para el detalle de scope/seguridad/UX/tests/archivos propuestos) — no autorizada su implementación todavía.
-**Recomendación**: **Admin Partners V1 (Opción B)** — dependencia técnica ya resuelta (P2 cerrado y validado en producción), es ahora la única fricción operativa real pendiente en todo el dominio Partners.
-**Dependencias**: P2 (✅ ya cerrado — el RPC que necesita consumir ya está en producción y validado).
-**Checklist**: [ ] Decisión explícita del propietario, [ ] Diseño de `/admin/partners` mínimo, [ ] Autenticación/autorización (reutilizar `partner_admin`, nunca ocultar botones como única barrera), [ ] Implementación, [ ] Tests.
+**Estado actual**: 🟢 **COMPLETE.** Implementado como **Admin Partners V1 (Opción B)**, la opción recomendada por este mismo documento. Commiteado y desplegado en producción, `e1794e6`, 2026-09-02.
+**Qué existe**: `/admin/partners` — `app/admin/partners/page.tsx` (Server Component: `createSessionClient().auth.getUser()` → `redirect("/login")` sin sesión → `isPartnerAdmin(user)` → `notFound()` para cualquier otro rol) + `app/admin/partners/admin-partners-view.tsx` (Client Component: tabla con las acciones válidas por fila según la misma matriz de transiciones del RPC, mostrada solo a título informativo — nunca la reimplementa; `Dialog` de confirmación solo para `active→inactive`; llama a `setPartnerStatusAction()` sin modificarlo; `router.refresh()` tras cada acción, sin estado optimista) + `lib/partners/get-partners-for-admin.ts` (lectura vía `service_role`, allowlist de columnas, sin filtro de `status`, orden por `created_at desc`).
+**Seguridad**: la autorización real sigue siendo el propio RPC (`auth.uid()` + `raw_app_meta_data.role='partner_admin'`, sin cambios) — el guard de la página es una segunda capa de UX, nunca la barrera, exactamente como preveía la recomendación original de este documento.
+**Qué falta**: nada bloqueante. Localizar/revisar el contenido de una solicitud (nombre, categoría, descripción, etc. más allá del estado) sigue dependiendo de Supabase Studio — `/admin/partners` solo sustituye el paso de EJECUTAR la transición, no toda la revisión.
+**Dependencias**: P2 (✅ ya cerrado).
+**Archivos**: `app/admin/partners/page.tsx`, `app/admin/partners/admin-partners-view.tsx`, `lib/partners/get-partners-for-admin.ts`.
+**Tests**: `get-partners-for-admin.test.ts` (7).
+**Criterio DONE**: ✅ cumplido — commiteado, desplegado, guard verificado en producción (visitante sin sesión → `/login`).
+**Checklist**: [x] Decisión explícita del propietario, [x] Diseño de `/admin/partners` mínimo, [x] Autenticación/autorización (reutiliza `partner_admin`, guard de página nunca la única barrera), [x] Implementación, [x] Tests.
 
 ---
 
@@ -443,15 +449,17 @@ Partner → Visibilidad (Discovery) → Clientes (Actividad registrada) → [Rew
 
 ## P13 — Security Hardening (SYSTEMIC GRANT AUDIT)
 **Objetivo**: corregir el hallazgo de GRANTs amplios — **deliberadamente separado de Partner Approval y de P10, nunca mezclado.**
-**Estado actual**: 🔴 Documentado, no corregido. `authenticated` tiene GRANTs de columna más amplios de lo declarado en migraciones sobre: `bookings`, `booking_intents`, `analytics_events`, `ai_rate_limit_events`, `referrals`, `rewards_transactions`, `rewards_catalog`, `rewards_wallets`, `searches`, `trips`, `vision_consents`, `vision_scans`, `properties`, `partners`. Confirmado con SQL directo (`information_schema.role_column_grants`) en el bloque anterior — no es una suposición.
-**Re-confirmado (2026-09-01, suite completa ejecutada de nuevo contra local)**: 884 tests, 855 pass, **25 fail**, 4 skipped — el conteo y el patrón exacto de fallos son idénticos a los documentados aquí, ningún fallo nuevo, ninguno corregido. **Precisión nueva**: uno de los 25 vive dentro de un archivo de test de Partners (`link-partner-owner.test.ts:182`, "RLS: access_token/contact_email/owner_id nunca son seleccionables desde un cliente, ni siquiera en la propia fila") — no es causado por código de Partners, pero conviene que quien abra ese archivo sepa por qué está en rojo antes de intentar "arreglarlo" localmente sin contexto.
-**Qué falta**: (1) determinar la causa raíz exacta (¿drift del stack local tras el reset de Docker, o algo más profundo que también podría afectar a producción — sin confirmar todavía en producción?); (2) migración de corrección; (3) revalidar los 25 tests actualmente afectados.
-**Dependencias**: ninguna de Partners específicamente — bloque independiente. No depende de P10 ni P10 depende de él.
-**Riesgos**: si el mismo patrón existe en producción (NO confirmado, solo local verificado), sería una exposición real de datos — prioridad alta para su propio bloque, aunque fuera de alcance aquí.
-**Archivos/migraciones implicados**: por determinar en su propia auditoría.
-**Tests**: los 25 ya identificados, más los que la propia investigación descubra.
-**Criterio DONE**: 0 fallos relacionados con GRANT en la suite completa, y confirmación explícita del estado real en producción.
-**Checklist**: [ ] Auditoría de causa raíz, [ ] Confirmar si afecta a producción, [ ] Migración de corrección, [ ] Revalidación completa de tests.
+**Estado actual**: 🟢 **COMPLETE.** Commiteado y desplegado, `e1794e6`, 2026-09-02.
+**Causa raíz confirmada** (no solo el síntoma): `pg_default_acl` del schema `public` (grantor `postgres`), comportamiento legacy de la CLI de Supabase asociado a `auto_expose_new_tables` — concedía el set completo de privilegios de tabla a `anon`/`authenticated`/`service_role` en el momento de `CREATE TABLE`, antes de que el GRANT explícito de cada migración se ejecutara. Como los privilegios de Postgres son aditivos, ningún GRANT restrictivo posterior podía "restar" lo ya concedido.
+**Corrección**: migración `supabase/migrations/20260902100000_p13_grant_security_hardening.sql` — `REVOKE ALL` + reconstrucción exacta (leída de cada migración de origen, no inventada) del GRANT declarado, sobre las 14 tablas afectadas: `bookings`, `booking_intents`, `analytics_events`, `ai_rate_limit_events`, `referrals`, `rewards_transactions`, `rewards_catalog`, `rewards_wallets` (vista), `searches`, `trips`, `vision_consents`, `vision_scans`, `properties`, `partners`. Más `auto_expose_new_tables = false` explícito (no dejado comentado/ausente) en `supabase/config.toml`, para que el mecanismo no vuelva a exponer tablas *futuras*. Cero cambios de RLS, RPC o `SECURITY DEFINER`.
+**Resultado verificado** (verbo por verbo, incluidos TRUNCATE/REFERENCES/TRIGGER/MAINTAIN vía `pg_class.relacl` crudo, no solo los 4 privilegios de datos): `anon` → 0 privilegios en las 14 tablas; `authenticated`/`service_role` → exactamente lo que cada migración de origen declaraba, ni más ni menos; `partners.access_token`/`contact_email`/`owner_id` → fuera del allowlist de columnas de `authenticated`, confirmado. RLS y los 5 RPCs `SECURITY DEFINER` (incluidos `link_partner_owner`/`set_partner_status`) sin cambios. Los 25 tests que este documento citaba como "100% el hallazgo de P13" están en verde: suite completa 895 tests / 891 pass / 0 fail / 4 skipped.
+**Residual documentado, no corregido a propósito**: `auto_expose_new_tables = false` bloquea SELECT/INSERT/UPDATE/DELETE en tablas nuevas, pero no TRUNCATE/REFERENCES/TRIGGER/MAINTAIN (confirmado con una tabla de prueba creada y eliminada en el propio bloque de implementación). Clasificado 🟡 deuda técnica de bajo riesgo, no bloqueante: `anon`/`authenticated`/`service_role` en VIAO solo llegan a Postgres vía PostgREST (Data API), que no expone ningún verbo REST para TRUNCATE/añadir una FK/crear un TRIGGER — son operaciones DDL inalcanzables desde la superficie real de la aplicación. **No se ha intentado corregir este residual** — fuera de alcance deliberado de este bloque.
+**Dependencias**: ninguna de Partners específicamente — bloque independiente, no depende de P10 ni P10 depende de él.
+**Archivos/migraciones**: `supabase/migrations/20260902100000_p13_grant_security_hardening.sql`, `supabase/config.toml`.
+**Tests**: los 25 antes afectados, todos en verde (contra el Postgres **local**, tras `supabase db reset`); 0 regresiones sobre el resto de la suite.
+**⚠️ PENDIENTE REAL, no confundir con "cerrado"**: esta corrección está verificada exhaustivamente contra el Postgres **local** de Docker. Igual que toda migración anterior de este proyecto (`20260901100000` incluida), **no existe ningún mecanismo automático que aplique migraciones de Supabase a producción al hacer `git push`/deploy de Vercel** — no hay GitHub Action ni build step que ejecute `supabase db push` (confirmado: no existe `.github/workflows/`, `package.json`'s `build` es solo `next build`). Yo nunca he tenido credenciales privilegiadas de producción en ningún bloque de esta sesión. Por tanto: **el estado real de los GRANTs en el Postgres de producción de VIAO sigue siendo el permisivo (pre-P13) hasta que el propietario aplique esta migración manualmente** (Supabase Studio SQL Editor o `supabase db push` contra el proyecto vinculado), del mismo modo que hizo con `20260901100000`. El commit/push/deploy de este bloque publica el *código* (migración + config), no ejecuta la migración en producción.
+**Criterio DONE**: ✅ cumplido para las 14 entidades existentes **en local**. El residual sobre tablas futuras queda fuera de este criterio por diseño (documentado, no bloqueante). La aplicación a producción sigue pendiente — ver arriba.
+**Checklist**: [x] Auditoría de causa raíz, [x] Migración de corrección (código), [x] Revalidación completa de tests (local), [ ] **Migración aplicada a Supabase de producción (acción manual del propietario, no ejecutada en este bloque)**, [ ] Residual TRUNCATE/REFERENCES/TRIGGER/MAINTAIN en tablas futuras (🟡 deuda técnica, no bloqueante, sin fecha).
 
 ---
 
@@ -468,23 +476,23 @@ Partner → Visibilidad (Discovery) → Clientes (Actividad registrada) → [Rew
 **Objetivo**: checklist final antes de considerar Partners "en producción real" con Partners activos de verdad.
 **Estado actual**: 🟡 Mayoría ✅, con condicionantes claros.
 
-- [x] DB migrations — todas aplicadas y probadas, incluida en producción (`20260901100000` confirmada)
-- [🟡] RLS — funcional, sujeta al hallazgo de P13
-- [🔴] Grants — hallazgo abierto (P13), reconfirmado 2026-09-01 (884 tests, 855 pass, 25 fail, mismo patrón)
+- [🟡] DB migrations — todas aplicadas y probadas en local; en producción, todas confirmadas **excepto `20260902100000` (P13), pendiente de aplicación manual** — ver P13
+- [x] RLS — funcional, sin cambios por P13, verificado sin regresiones
+- [🟡] Grants — corregidos en código/local (P13, `e1794e6`); **pendiente de aplicar a producción** (acción manual del propietario); residual 🟡 documentado no bloqueante sobre tablas futuras
 - [x] Auth — Commerce Identity + `partner_admin` **configurado en el usuario real de producción**
 - [🟡] Emails — funcionan, webhook validado E2E en producción; entrega real sigue sin dominio propio verificado en Resend (limitación externa, no de código)
 - [x] Storage — no aplica (P7 no implementado, decisión, no bug)
 - [x] Errors/Loading — estados cubiertos en todas las pantallas auditadas
-- [🟡] Mobile/Desktop — Bloque B (P9) commiteado y desplegado, validación visual real pendiente
+- [🟡] Mobile/Desktop — Bloque B (P9) commiteado y desplegado, validación visual real pendiente; smoke test de este release (2026-09-02) confirmó `/login`/`/partners` responsive en producción, no el recorrido P9 completo
 - [ ] Accessibility — no auditado específicamente en este documento
 - [x] i18n — claves ES/EN paritarias (TypeScript lo garantiza; re-verificado 2026-09-01 sin discrepancias en claves de Partners)
 - [ ] SEO — no auditado
 - [🔴] Analytics — parcial (P12)
-- [🔴] Security — P13 pendiente
-- [x] Tests — 147 propios, 0 rotos por código propio de Partners (1 de los 25 fallos de P13 vive en un archivo de test de Partners, causa raíz ajena — ver P13)
-- [x] Build — limpio, verificado repetidamente
-- [x] Deploy — P2 y Bloque B (P9) desplegados en producción
-- [x] Production smoke test — P2 validado con E2E real automático (`net._http_response` confirmando `200`)
+- [🟡] Security — corregido en código/local (P13); **pendiente de aplicar a producción**, ver arriba
+- [x] Tests — 147+ propios (incluye `get-partners-for-admin.test.ts`, nuevo con P10), 0 rotos; suite completa 895/891/0/4, los 25 fallos de P13 ya en verde
+- [x] Build — limpio, verificado repetidamente, última vez en este release (2026-09-02)
+- [x] Deploy — P2, Bloque B (P9), P10, P10.1, UX-AUTH-1 y P13 (código) desplegados en producción
+- [🟡] Production smoke test — P2 validado con E2E real automático; release 2026-09-02 (P10/P10.1/UX-AUTH-1/P13) verificado parcialmente — login/register/recover/partners/join/`/admin/partners` (guard) PASS, circuito Onboarding con sesión nueva NO VERIFICADO (rate-limit de Supabase Auth, ver Known Risks #5)
 
 ---
 
@@ -509,7 +517,7 @@ Verificado contra código real, no la lista original del prompt sin revisar — 
 15. Los tests críticos pasan. ✅ (147/147 propios de Partners; suite completa 855/884, los 25 fallos son 100% P13, ajeno a Partners)
 16. Producción funciona end-to-end. ✅ — los 3 pendientes que fijaba esta línea (desplegar P2, configurar `partner_admin` real, confirmar el webhook de producción) están resueltos y validados con un E2E real (2026-09-01).
 
-**PARTNERS V1 = DONE en su definición original.** El único punto de esta lista sin cumplir es el #10 (gestión de imágenes), ya retirado explícitamente del alcance de V1 en la propia línea 10. Lo que queda abierto en todo el dominio (P10 Admin, P13 Security, validación visual de P9, verificación real de P3) son bloques propios posteriores a V1, no requisitos de esta Definition of Done.
+**PARTNERS V1 = DONE en su definición original.** El único punto de esta lista sin cumplir es el #10 (gestión de imágenes), ya retirado explícitamente del alcance de V1 en la propia línea 10. **(2026-09-02)** P10 (Admin) y P13 (Security, en código/local) ya no están abiertos — quedan como bloques posteriores a V1 sin cerrar del todo: validación visual de P9, verificación real de P3, y la aplicación manual de la migración de P13 a producción.
 
 ---
 
@@ -528,12 +536,12 @@ PARTNERS V1
 [ ] P7  Media                    — FUERA de alcance V1, no bloqueante
 [x] P8  Discovery                — completo
 [ ] P9  User Experience          — commiteado y desplegado, validación visual real pendiente
-[ ] P10 Admin                    — NEXT BLOCK, auditoría técnica+UX propia ya entregada (READY), sin autorizar todavía
+[x] P10 Admin                    — COMPLETE, commiteado y desplegado (`e1794e6`, 2026-09-02), guard verificado en producción
 [ ] P11 Partner Value            — FUERA de alcance V1
 [ ] P12 Analytics                — FUERA de alcance V1
-[ ] P13 Security (GRANT audit)   — bloque separado, prioridad alta, independiente, reconfirmado 2026-09-01
+[x] P13 Security (GRANT audit)   — COMPLETE en código y en local (`e1794e6`, 2026-09-02); ⚠️ aplicación a Supabase de PRODUCCIÓN sigue pendiente (acción manual del propietario, no ejecutada); residual 🟡 no bloqueante sobre tablas futuras
 [ ] P14 QA E2E completo          — P2 ya tiene E2E propio; falta el recorrido completo Registration→Approval→Identity→Dashboard y la validación visual de P9
-[ ] P15 Production Readiness     — pendiente únicamente de P13; los pendientes de P2 ya están resueltos
+[ ] P15 Production Readiness     — pendiente de aplicar P13 a producción y de P9; los pendientes de P2 ya están resueltos
 ```
 
 ---
@@ -543,11 +551,11 @@ PARTNERS V1
 | # | Decisión | Opciones | Mi recomendación |
 |---|---|---|---|
 | 1 | Commitear/desplegar PARTNER APPROVAL V1 | Sí ahora / esperar | ✅ **Resuelta** (2026-09-01) — commiteado (`56a414e`), desplegado y validado E2E en producción |
-| 2 | Superficie de invocación de `set_partner_status()` | Script puntual / Admin Partners V1 | Admin Partners V1 (ver P10) |
+| 2 | Superficie de invocación de `set_partner_status()` | Script puntual / Admin Partners V1 | ✅ **Resuelta** (2026-09-02) — Admin Partners V1 implementado y desplegado (`/admin/partners`, ver P10) |
 | 3 | Self-Service C2 (horarios/web/redes/servicios) | Ahora / futuro | Futuro — sin evidencia de necesidad al volumen actual |
 | 4 | Partner Media (P7) | Ahora / futuro | Futuro — depende de que C2 se decida primero |
 | 5 | Email de reactivación | Implementar / dejar sin email | Baja prioridad, implementación trivial cuando se decida |
-| 6 | Causa raíz del hallazgo de GRANTs (P13) | Investigar ahora / después | Investigar pronto — riesgo de que afecte también a producción, sin confirmar todavía |
+| 6 | Causa raíz del hallazgo de GRANTs (P13) | Investigar ahora / después | ✅ **Resuelta** (2026-09-02) — causa raíz confirmada (`pg_default_acl`/`auto_expose_new_tables`), migración de corrección commiteada y validada en local; ⚠️ aplicación a producción sigue pendiente, ver P13 |
 
 ## LOCKED (no reabrir sin decisión explícita)
 
@@ -560,10 +568,11 @@ PARTNERS V1
 
 ## Known Risks
 
-1. **P13 podría afectar a producción** — no confirmado, solo verificado en local (reconfirmado 2026-09-01, mismo patrón exacto de 25 fallos). Si se confirma en producción, es una exposición de datos real, prioridad máxima.
-2. **`set_partner_status()` sin superficie de invocación sin fricción técnica** — código completo, ya validado en producción, pero solo invocable hoy vía una llamada REST manual autenticada; sin forma práctica de usarse por alguien no técnico hasta que P10 se implemente.
+1. **P13 corregido en código/local, PENDIENTE de aplicar a producción** (actualizado 2026-09-02) — la migración `20260902100000` está commiteada y desplegada como código, pero ninguna migración de este proyecto se aplica automáticamente a la base de datos de producción al hacer push/deploy (confirmado: sin GitHub Actions, `build` de Vercel es solo `next build`). **El Postgres de producción de VIAO sigue con el GRANT permisivo hasta que el propietario ejecute esta migración manualmente** (mismo procedimiento ya usado para `20260901100000`). Mientras tanto, el riesgo real que este hallazgo describía en producción sigue exactamente igual que antes de este bloque.
+2. ~~`set_partner_status()` sin superficie de invocación sin fricción técnica~~ — **Resuelto (2026-09-02)**: `/admin/partners` (P10) implementado y desplegado.
 3. ~~Webhook de aprobación en producción sin confirmar configurado~~ — **Resuelto (2026-09-01)**: configurado y validado con un E2E automático real (`net._http_response: status_code=200`).
 4. **Commerce Identity (P3) sigue sin ejercitarse con datos reales** — `link_partner_owner()` nunca se ha ejecutado con una cuenta real en producción, aunque ya existe al menos un Partner `active` real (`elkin`) sobre el que podría probarse. Todo lo demás auditado como "✅ completo" en Dashboard/Discovery tampoco se ha ejercitado más allá de ese único Partner de prueba y `elkin`.
+5. **(Nuevo, 2026-09-02) Onboarding de Usuario (UX-AUTH-1) sin verificación end-to-end en producción con sesión nueva** — bloqueado por rate-limit de Supabase Auth agotado por los propios intentos de smoke test de este release; no es específico de Partners, ver `docs/00_VIAO_HANDOFF.md` para el detalle. Las piezas verificables por separado (formularios, validaciones, guards) sí pasaron en producción.
 
 ---
 
@@ -574,6 +583,8 @@ Self-Service C2, Partner Media (P7), buscador/filtros de Discovery, Partner Valu
 ---
 
 ## Recomendación — Admin Panel (sección 22 del encargo)
+
+**✅ Implementado (2026-09-02, `e1794e6`) — se mantiene la rationale original como registro histórico de la decisión, ver P10 arriba para el estado real.**
 
 **¿Debe VIAO tener Admin Panel? Respuesta concreta: DESPUÉS, no AHORA, no NUNCA — específicamente, "Admin Partners V1" (Opción B) en cuanto P2 esté desplegado.**
 
