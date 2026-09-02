@@ -18,9 +18,14 @@ export const en = {
   "i18nDemo.fallbackSectionTitle": "Fallback test (unsupported locale)",
   "i18nDemo.fallbackDescription":
     'When resolving an unsupported locale (e.g. "de"), Spanish is used as a safe fallback without throwing errors.',
-  "register.title": "Create account",
-  // UX-14.1 (P2, §13) — see es.ts for the rationale.
-  "register.continuitySubtitle": "Your activity starts counting the moment you create your account.",
+  // UX-AUTH-1 — namespace compartido entre los 3 formularios que piden
+  // password (register/login/recoverUpdate) — see es.ts for the rationale.
+  "auth.showPassword": "Show password",
+  "auth.hidePassword": "Hide password",
+  // UX-AUTH-1 — see es.ts for the rationale.
+  "register.title": "Join VIAO",
+  "register.continuitySubtitle":
+    "Discover local businesses, earn Points, and get real Rewards — all in one place.",
   "register.emailLabel": "Email",
   "register.passwordLabel": "Password",
   "register.submitButton": "Create account",
@@ -40,6 +45,8 @@ export const en = {
   "register.referralCodeLabel": "Referral code (optional)",
   "register.loginPromptText": "Already have an account?",
   "register.loginPromptLink": "Sign in",
+  // UX-AUTH-1 — see es.ts for the rationale.
+  "login.redirecting": "Redirecting…",
   "login.title": "Sign in",
   "login.emailLabel": "Email",
   "login.passwordLabel": "Password",
@@ -275,6 +282,15 @@ export const en = {
   "onboarding.continue": "Create my goal",
   "onboarding.skip": "Not now",
   "onboarding.dateOptional": "Target date (optional)",
+  // UX-AUTH-1 — see es.ts for the rationale.
+  "onboarding.welcomeHeadline": "Welcome to VIAO",
+  "onboarding.welcomeSubtitle": "Here's how you'll earn real things for what you already do",
+  "onboarding.welcomeConcept1": "Discover businesses near you",
+  "onboarding.welcomeConcept2": "Earn Points by visiting them or completing challenges",
+  "onboarding.welcomeConcept3": "Trade your Points for real Rewards",
+  "onboarding.welcomeContinueCta": "Get started",
+  "onboarding.welcomeSkipCta": "Skip to my account",
+  "onboarding.goalContext": "A goal helps you track your progress.",
   // Micro-bloque 2 (Home Beta) — same data/same 4 Missions, only the
   // section title changes: less "gamification", more direct connection
   // to the Goal above ("this is how you move toward it").
@@ -537,6 +553,27 @@ export const en = {
   "partners.category.gym": "Gym",
   "partners.category.shop": "Shop",
   "partners.category.service": "Service",
+  "adminPartners.pageTitle": "Partner Administration",
+  "adminPartners.pageDescription": "Approve, reject, deactivate, or reactivate Partners.",
+  "adminPartners.statusPending": "Pending",
+  "adminPartners.statusActive": "Active",
+  "adminPartners.statusInactive": "Inactive",
+  "adminPartners.activateCta": "Activate",
+  "adminPartners.rejectCta": "Reject",
+  "adminPartners.deactivateCta": "Deactivate",
+  "adminPartners.activating": "Activating…",
+  "adminPartners.rejecting": "Rejecting…",
+  "adminPartners.deactivating": "Deactivating…",
+  "adminPartners.contactUnavailable": "Not available",
+  "adminPartners.emptyTitle": "No Partners registered yet",
+  "adminPartners.errorGeneric": "Couldn't update the status. Please try again.",
+  "adminPartners.successMessage": "Updated successfully.",
+  "adminPartners.deactivateDialogTitle": "Deactivate Partner",
+  "adminPartners.deactivateDialogDescription":
+    "The Partner will no longer be visible in VIAO. You can reactivate it later.",
+  "adminPartners.cancelCta": "Cancel",
+  "adminPartners.confirmDeactivateCta": "Deactivate",
+  "adminPartners.createdAtLabel": "Requested on",
   "partnerProfile.notFoundTitle": "Partner not found",
   "partnerProfile.notFoundMessage": "This Partner doesn't exist or is no longer available.",
   "partnerProfile.backToDiscoveryCta": "View all Partners",
@@ -551,15 +588,19 @@ export const en = {
   "partnerJoin.categoryPlaceholder": "Select a category",
   "partnerJoin.descriptionLabel": "Description (optional)",
   "partnerJoin.addressLabel": "Address (optional)",
-  "partnerJoin.emailLabel": "Contact email (optional)",
+  "partnerJoin.emailLabel": "Contact email",
+  "partnerJoin.emailHelperText":
+    "We'll use this to update you on your request and, if we approve your business, to send you the link to access your dashboard.",
   "partnerJoin.phoneLabel": "Contact phone (optional)",
   "partnerJoin.imageUrlLabel": "Image link (optional)",
   "partnerJoin.submitCta": "Send request",
   "partnerJoin.submitting": "Sending…",
   "partnerJoin.validationError": "Fill in the name and select a category.",
+  "partnerJoin.emailValidationError": "Enter a valid contact email — we need it to update you on your request.",
   "partnerJoin.errorGeneric": "Could not send the request. Please try again.",
   "partnerJoin.successTitle": "Request received",
-  "partnerJoin.successMessage": "VIAO will review your business and contact you to activate your Partner access.",
+  "partnerJoin.successMessage":
+    "VIAO will review your business and email you with the outcome. If approved, that same email will include the link to access your dashboard.",
   "partnerJoin.backCta": "Back to Partners",
   // Email V2 — see es.ts: Partner has no `locale` column, these emails
   // are always sent in Spanish (DEFAULT_LOCALE). EN keys exist only for

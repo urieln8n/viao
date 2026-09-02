@@ -5,7 +5,7 @@ DOMAIN: Partners
 AUTHORITY: Contrato operativo para ejecutar Partners fase por fase. No sustituye al código — ante cualquier contradicción futura, gana el código real (ver `docs/00_GOVERNANCE.md`). Complementa, no sustituye, a `VIAO_PARTNERS_CONTINUITY_MASTER.md` (ese documento es el diario cronológico bloque-a-bloque; este es el mapa operativo por fases, reconstruido desde cero contra el código real en esta auditoría).
 SUPERSEDES: —
 SUPERSEDED BY: —
-LAST REVIEWED: 2026-09-01
+LAST REVIEWED: 2026-09-01 (sincronización documental — ver nota de actualización tras la sección 0)
 ---
 
 # VIAO — PARTNERS MASTER ROADMAP
@@ -18,11 +18,13 @@ Auditoría de nivel senior contra código real, migraciones reales y tests reale
 
 Documento operativo, no narrativo. Permite decir "Ejecuta P6" en un chat nuevo y empezar a implementar esa fase concreta sin re-auditar todo Partners. Cada fase (P0-P15) es autocontenida: objetivo, estado real, archivos, migraciones, tests, criterio de DONE, checklist.
 
+**Nota de sincronización (2026-09-01, misma fecha, turno posterior)**: este documento se escribió con PARTNER APPROVAL V1 (P2) todavía sin commitear. Desde entonces: P2 (`56a414e`) y UX Pro Max V2/Bloque B (`18867a2`, relevante para P9) **ya están commiteados, pusheados y desplegados**, y P2 fue además activado y validado en producción con un E2E real automático (`pending→active` sobre un Partner de test, cadena completa `set_partner_status()`→trigger→Database Webhook→`pg_net`→`/api/webhooks/partner-status`→HTTP 200, confirmado independientemente en `net._http_response` de Supabase). Las secciones afectadas quedan corregidas puntualmente abajo, sin reescribir el documento — el resto de esta auditoría (P0/P1/P3-P8/P11-P15) sigue vigente sin cambios.
+
 ---
 
 ## 1. Current State
 
-**Partners funciona de punta a punta en código para el recorrido completo** Registration → Approval (recién cerrado, sin commitear) → Commerce Identity → Access → Dashboard → Profile edit → Discovery. No hay ningún hueco funcional que impida a un comercio real completar el ciclo hoy, con dos condiciones: (1) que el commit de PARTNER APPROVAL V1 se apruebe y despliegue, y (2) que exista alguna forma de invocar `set_partner_status()` en la práctica (ver P10 — hoy no existe ninguna). Cero panel administrativo, por decisión explícita repetida en múltiples bloques. Un hallazgo de seguridad sistémico y **no relacionado con Partners específicamente** (GRANTs de `authenticated` más amplios de lo esperado en ~14 tablas, incluida `partners`) sigue sin corregir — ver P13, deliberadamente separado.
+**Partners funciona de punta a punta en código, commiteado y desplegado, para el recorrido completo** Registration → Approval (P2, commiteado `56a414e`, activado y validado en producción) → Commerce Identity → Access → Dashboard → Profile edit → Discovery. No hay ningún hueco funcional que impida a un comercio real completar el ciclo hoy, con una única condición pendiente: que exista alguna forma de invocar `set_partner_status()` sin conocimiento técnico (ver P10 — hoy solo es invocable vía una llamada REST autenticada manual). Cero panel administrativo, por decisión explícita repetida en múltiples bloques. Un hallazgo de seguridad sistémico y **no relacionado con Partners específicamente** (GRANTs de `authenticated` más amplios de lo esperado en ~14 tablas, incluida `partners`) sigue sin corregir — ver P13, deliberadamente separado.
 
 ---
 
@@ -39,7 +41,7 @@ VIAO recibe notificación        → ✅ PARTNER_NOTIFICATION_EMAIL (Partner App
         ↓
 VIAO revisa solicitud           → ✅ Supabase Studio, tabla partners
         ↓
-Aprobación / rechazo            → 🟡 set_partner_status() existe, SIN COMMITEAR, sin superficie de invocación
+Aprobación / rechazo            → ✅ set_partner_status() en producción, validado E2E — sin UI (P10)
         ↓
 Partner pasa a active           → ✅ (una vez aprobado)
         ↓
@@ -84,9 +86,9 @@ VIAO obtiene valor              → 🔵 sin medir (P12)
 | 3 | Solicitud queda `pending` | ✅ | `requestPartnerRegistration()`, INSERT único, `status`/`is_test` hardcodeados |
 | 4 | VIAO recibe notificación | ✅ | `sendPartnerApplicationNotificationEmail()` → `PARTNER_NOTIFICATION_EMAIL` |
 | 5 | VIAO revisa solicitud | ✅ | Supabase Studio, tabla `partners`, filtro manual `status='pending'` |
-| 6 | Aprobación/rechazo | 🟡 | `set_partner_status()` — implementado, **sin commitear**, sin UI/superficie de invocación real |
+| 6 | Aprobación/rechazo | 🟢 | `set_partner_status()` — implementado, commiteado, desplegado, validado E2E en producción; sin UI/superficie de invocación real (P10) |
 | 7 | Partner pasa a `active` | ✅ | Mismo RPC, transición `pending→active` |
-| 8 | Partner recibe acceso | 🟡 | Email de aprobación con `access_token` — solo si el Database Webhook de producción está configurado (MANUAL ACTION REQUIRED, sin confirmar) |
+| 8 | Partner recibe acceso | 🟢 | Email de aprobación con `access_token` — Database Webhook de producción configurado y validado E2E (`net._http_response`: `status_code=200`) |
 | 9 | Partner entra al Dashboard | ✅ | `/partners/dashboard/[accessToken]`, `resolvePartnerAccess()` |
 | 10 | Completa/modifica ficha | 🟡 | `MyBusinessForm` — funciona, campos limitados (ver P6) |
 | 11 | Ficha aparece en VIAO | ✅ | `/partners` (Discovery), `/partners/[slug]` |
@@ -194,7 +196,7 @@ Verificado por código, no asumido — Partners aparece exactamente en:
 
 ## 11. Current Admin / Approval
 
-`set_partner_status()` (RPC) + `lib/partners/set-partner-status.ts` + `app/partners/admin-actions.ts` — completo, probado (17 tests), **sin commitear** (pendiente de tu aprobación del bloque PARTNER APPROVAL V1). Cero UI. El Runbook Operativo (`VIAO_PARTNERS_CONTINUITY_MASTER.md` §17) ya está actualizado para reflejar que Supabase Studio ya NO sirve para aprobar (verificado empíricamente: `auth.uid()` es `NULL` desde el SQL Editor de Studio).
+`set_partner_status()` (RPC) + `lib/partners/set-partner-status.ts` + `app/partners/admin-actions.ts` — completo, probado (17 tests), **commiteado (`56a414e`), desplegado y validado E2E en producción** (migración aplicada, `partner_admin` configurado, Database Webhook configurado, transición `pending→active` real confirmada de punta a punta). Cero UI — ver P10. El Runbook Operativo (`VIAO_PARTNERS_CONTINUITY_MASTER.md` §17) ya está actualizado para reflejar que Supabase Studio ya NO sirve para aprobar (verificado empíricamente: `auth.uid()` es `NULL` desde el SQL Editor de Studio).
 
 ---
 
@@ -204,8 +206,8 @@ Verificado por código, no asumido — Partners aparece exactamente en:
 |---|---|---|---|---|---|---|
 | Solicitud recibida | ✅ | INSERT exitoso en `requestPartnerRegistration()` | Comercio (`contact_email`, opcional) | `renderPartnerApplicationReceivedEmail` | ✅ | 🟡 sin dominio propio, no entrega a destinatarios reales |
 | Notificación interna | ✅ | Mismo punto, incondicional | `PARTNER_NOTIFICATION_EMAIL` | `renderPartnerApplicationNotificationEmail` | ✅ | 🟡 depende de que la dirección coincida con la cuenta Resend autorizada |
-| Aprobación | ✅ | Webhook, `pending→active` | Comercio | `renderPartnerApprovedEmail` (con enlace al Dashboard) | ✅ | 🟡 requiere Database Webhook configurado en producción (no confirmado) + mismo límite de Resend |
-| No aprobación | ✅ | Webhook, `pending→inactive` | Comercio | `renderPartnerRejectedEmail` | ✅ | 🟡 igual que arriba |
+| Aprobación | ✅ | Webhook, `pending→active` | Comercio | `renderPartnerApprovedEmail` (con enlace al Dashboard) | ✅ | 🟢 Database Webhook configurado y validado E2E en producción; entrega real a `contact_email` sigue sujeta al límite de Resend sin dominio propio |
+| No aprobación | ✅ | Webhook, `pending→inactive` | Comercio | `renderPartnerRejectedEmail` | ✅ | 🟢 mismo webhook ya validado; misma limitación de Resend |
 | Reactivación | 🔵 | `inactive→active` — sin rama en el webhook hoy | — | — | — | No implementado, documentado como pendiente (P2/P11) |
 
 ---
@@ -292,18 +294,19 @@ Más `send-partner-emails.test.ts`/`templates/partner-emails.test.ts` (`lib/emai
 
 ## P2 — Partner Approval
 **Objetivo**: que VIAO pueda aprobar/rechazar/desactivar/reactivar Partners de forma segura.
-**Estado actual**: 🟡 **Implementado y probado, sin commitear.** Bloqueado únicamente por tu aprobación del bloque anterior.
+**Estado actual**: 🟢 **COMPLETE / PASS.** Commiteado, desplegado y validado end-to-end en producción con datos reales.
 **Qué existe**: `set_partner_status(p_partner_id, p_new_status)` (RPC), `lib/partners/set-partner-status.ts`, `app/partners/admin-actions.ts`, trigger actualizado con carve-out por señal transaccional + matriz de transiciones, `raw_app_meta_data.role='partner_admin'`.
 **Transiciones auditadas**:
 - Permitidas: `pending→active`, `pending→inactive`, `active→inactive`, `inactive→active`.
 - Rechazadas explícitamente: `pending→pending`, `active→active`, `inactive→inactive` (no-ops), `active→pending`, `inactive→pending` (ninguna vuelta a `pending`), cualquier valor fuera de `active`/`inactive` (incluido `'approved'`, `'rejected'` — probado literalmente).
-**Qué falta**: (1) commitear/pushear/desplegar; (2) fijar `partner_admin` en tu usuario real de producción (manual, tú); (3) alguna superficie de invocación — ver P10; (4) email de reactivación (`inactive→active`) — documentado como pendiente, no implementado a propósito.
-**Dependencias**: P0 (auditoría ya hecha). Bloquea P4/P5 en producción real (sin aprobación, ningún Partner llega nunca a `active`).
-**Riesgos**: sin superficie de invocación (P10), el mecanismo queda sin usar en la práctica hasta que se decida cómo se invoca.
+**Evidencia de producción (2026-09-01)**: migración `20260901100000` aplicada; `partner_admin` configurado en `raw_app_meta_data.role` del usuario administrador real; Database Webhook (`public.partners`, `UPDATE`, `x-viao-webhook-secret` sincronizado entre Supabase y Vercel) configurado; endpoint `/api/webhooks/partner-status` verificado (`401` sin secreto/con secreto incorrecto, `200` con secreto correcto); **E2E automático real ejecutado** sobre un Partner de test dedicado (`is_test=true`, `contact_email=null`, sin tocar ningún Partner de negocio real): `pending→active` vía `set_partner_status()` → trigger → Database Webhook → `pg_net` → `/api/webhooks/partner-status` → `HTTP 200` → `{"handled":"approved"}`, confirmado independientemente en `net._http_response` de Supabase (`status_code=200, timed_out=false, error_msg=null`) — descartando que el `Status: 0` visto inicialmente en la vista en vivo de Vercel Logs fuera un fallo real (artefacto de esa vista, no del endpoint). Una primera configuración del secreto del webhook devolvió `401` antes de corregirse; quedó resuelta antes del E2E final. Un segundo Partner real (`elkin`) también completó `pending→active` por el mismo mecanismo. Ningún email real se envió en ninguna de estas pruebas (`contact_email` vacío en el Partner de test).
+**Qué falta**: (1) alguna superficie de invocación sin conocimiento técnico — ver P10, es el único pendiente real; (2) email de reactivación (`inactive→active`) — documentado como pendiente, no implementado a propósito.
+**Dependencias**: P0 (auditoría ya hecha). Ya no bloquea P4/P5 en producción real — el propio `elkin` es un Partner `active` real hoy.
+**Riesgos**: sin superficie de invocación (P10), el mecanismo sigue exigiendo una llamada REST manual autenticada con el JWT de sesión del `partner_admin` — funcional, pero no operable por alguien sin conocimiento técnico.
 **Archivos**: `supabase/migrations/20260901100000_add_partner_status_approval.sql`, `lib/partners/set-partner-status.ts`, `app/partners/admin-actions.ts`.
 **Tests**: `set-partner-status.test.ts` (17) — completo.
-**Criterio DONE**: commiteado + desplegado + `partner_admin` configurado + al menos una aprobación real ejecutada en producción.
-**Checklist**: [x] RPC, [x] Trigger seguro (auditado dos veces), [x] Server Action, [x] Tests, [ ] Commit/push/deploy, [ ] `partner_admin` real configurado, [ ] Superficie de invocación decidida (P10).
+**Criterio DONE**: ✅ cumplido — commiteado + desplegado + `partner_admin` configurado + al menos una aprobación real ejecutada en producción (dos, de hecho: Partner de test y `elkin`).
+**Checklist**: [x] RPC, [x] Trigger seguro (auditado dos veces), [x] Server Action, [x] Tests, [x] Commit/push/deploy, [x] `partner_admin` real configurado, [x] Webhook configurado y validado E2E, [ ] Superficie de invocación sin fricción técnica (P10).
 
 ---
 
@@ -311,13 +314,13 @@ Más `send-partner-emails.test.ts`/`templates/partner-emails.test.ts` (`lib/emai
 **Objetivo**: conectar Partner ↔ cuenta Auth de forma segura.
 **Estado actual**: ✅ **Cerrado.** `owner_id`, `link_partner_owner()` (RPC, anti-enumeración, atómico, idempotente), RLS `partners_select_own`/`partners_update_own`, trigger con excepción tallada solo para `NULL→valor`.
 **Qué falta**: nada bloqueante. Un Usuario puede poseer varios Commerce (sin `UNIQUE`, decisión explícita).
-**Dependencias**: requiere `status='active'` (P2) para poder vincularse — hoy sin ningún Partner real aprobado, nunca se ha ejercitado en producción con datos reales.
+**Dependencias**: requiere `status='active'` (P2) para poder vincularse — **ya cumplido** (P2 cerrado, `elkin` es un Partner `active` real hoy), pero `link_partner_owner()` en sí **todavía no se ha ejecutado ni una vez con una cuenta real en producción** — sigue siendo la única verificación pendiente de esta fase, sin relación ya con la disponibilidad de un Partner `active` (eso dejó de ser el bloqueo).
 **Riesgos**: ninguno nuevo identificado.
 **Archivos**: `lib/partners/link-partner-owner.ts`, `app/partners/dashboard/[accessToken]/link-account-widget.tsx`.
 **Migraciones**: `20260831140000`.
-**Tests**: `link-partner-owner.test.ts` (18) — exhaustivo.
-**Criterio DONE**: ✅ ya cumplido en código; verificación real en producción pendiente de que exista un Partner `active` real (depende de P2).
-**Checklist**: [x] `owner_id`, [x] RPC, [x] RLS, [x] Trigger, [ ] Verificado con un Partner real en producción.
+**Tests**: `link-partner-owner.test.ts` (18) — exhaustivo. **Nota (P13)**: uno de estos 18 tests (`RLS: access_token/contact_email/owner_id nunca son seleccionables...`) está actualmente en rojo en la suite local — causa raíz es el hallazgo sistémico de GRANT de P13, no código de Commerce Identity, ver P13.
+**Criterio DONE**: ✅ ya cumplido en código; 🟡 verificación real en producción pendiente — requiere ejecutar `link_partner_owner()` con una cuenta real, no autorizado todavía en ningún bloque.
+**Checklist**: [x] `owner_id`, [x] RPC, [x] RLS, [x] Trigger, [ ] Verificado con un Partner real en producción (P2 ya no es el bloqueo).
 
 ---
 
@@ -401,20 +404,20 @@ Más `send-partner-emails.test.ts`/`templates/partner-emails.test.ts` (`lib/emai
 
 ## P9 — User → Partner Experience
 **Objetivo**: experiencia completa del usuario (Discover → View → Understand → Interact).
-**Estado actual**: 🟡 **Ya auditado en el bloque UX Pro Max V2 anterior** (Bloque B, sin commitear) — P1/P2 de esa auditoría (chrome de Auth, safe-area) no son específicos de Partners; el resto de hallazgos de UX de Partners de ese bloque siguen aplicando aquí sin repetirlos.
-**Qué falta**: implementar el Bloque B pendiente (fuera del alcance de este documento — es su propio bloque, ya con HARD STOP propio).
+**Estado actual**: 🟡 **Bloque B (UX Pro Max V2) commiteado y desplegado (`18867a2`)** — ya no está pendiente de implementación. Lo único que falta es una validación visual real en navegador tras el deploy (no ejecutada todavía en ninguna sesión confirmada). P1/P2 de esa auditoría (chrome de Auth, safe-area) no son específicos de Partners; el resto de hallazgos de UX de Partners de ese bloque siguen aplicando aquí sin repetirlos.
+**Qué falta**: Browser QA / validación visual post-deploy — confirmar en un navegador real que el chrome de Auth, el safe-area, los estados localizados y el catálogo de Rewards responsive se ven correctamente en producción. No ejecutada en este bloque de sincronización documental (fuera de su alcance).
 **Dependencias**: ninguna nueva.
-**Criterio DONE**: commit/push/deploy del Bloque B ya auditado.
-**Checklist**: ver el informe de UX Pro Max V2 ya entregado — no se repite aquí.
+**Criterio DONE**: 🟡 código cumplido; validación visual pendiente.
+**Checklist**: [x] Commit/push/deploy, [ ] Validación visual real en producción — ver el informe de UX Pro Max V2 ya entregado para el detalle de los hallazgos, no se repite aquí.
 
 ---
 
 ## P10 — Admin Panel
 **Objetivo**: decidir si y cuándo construir una superficie de administración.
 **Ver sección 22/Recomendación al final del documento para el análisis completo.**
-**Estado actual**: 🔴 No existe nada, ni siquiera mínimo.
-**Recomendación**: **Admin Partners V1 (Opción B), pronto pero no en este bloque** — ver recomendación detallada abajo.
-**Dependencias**: P2 (el RPC que necesitaría consumir ya existe).
+**Estado actual**: 🔴 **NEXT BLOCK.** No existe nada, ni siquiera mínimo. Confirmado como siguiente bloque recomendado en la auditoría de continuidad post-P2 (2026-09-01) y en su propia auditoría técnica + UX dedicada (READY, ver esa auditoría para el detalle de scope/seguridad/UX/tests/archivos propuestos) — no autorizada su implementación todavía.
+**Recomendación**: **Admin Partners V1 (Opción B)** — dependencia técnica ya resuelta (P2 cerrado y validado en producción), es ahora la única fricción operativa real pendiente en todo el dominio Partners.
+**Dependencias**: P2 (✅ ya cerrado — el RPC que necesita consumir ya está en producción y validado).
 **Checklist**: [ ] Decisión explícita del propietario, [ ] Diseño de `/admin/partners` mínimo, [ ] Autenticación/autorización (reutilizar `partner_admin`, nunca ocultar botones como única barrera), [ ] Implementación, [ ] Tests.
 
 ---
@@ -439,10 +442,11 @@ Partner → Visibilidad (Discovery) → Clientes (Actividad registrada) → [Rew
 ---
 
 ## P13 — Security Hardening (SYSTEMIC GRANT AUDIT)
-**Objetivo**: corregir el hallazgo de GRANTs amplios — **deliberadamente separado de Partner Approval, nunca mezclado.**
+**Objetivo**: corregir el hallazgo de GRANTs amplios — **deliberadamente separado de Partner Approval y de P10, nunca mezclado.**
 **Estado actual**: 🔴 Documentado, no corregido. `authenticated` tiene GRANTs de columna más amplios de lo declarado en migraciones sobre: `bookings`, `booking_intents`, `analytics_events`, `ai_rate_limit_events`, `referrals`, `rewards_transactions`, `rewards_catalog`, `rewards_wallets`, `searches`, `trips`, `vision_consents`, `vision_scans`, `properties`, `partners`. Confirmado con SQL directo (`information_schema.role_column_grants`) en el bloque anterior — no es una suposición.
+**Re-confirmado (2026-09-01, suite completa ejecutada de nuevo contra local)**: 884 tests, 855 pass, **25 fail**, 4 skipped — el conteo y el patrón exacto de fallos son idénticos a los documentados aquí, ningún fallo nuevo, ninguno corregido. **Precisión nueva**: uno de los 25 vive dentro de un archivo de test de Partners (`link-partner-owner.test.ts:182`, "RLS: access_token/contact_email/owner_id nunca son seleccionables desde un cliente, ni siquiera en la propia fila") — no es causado por código de Partners, pero conviene que quien abra ese archivo sepa por qué está en rojo antes de intentar "arreglarlo" localmente sin contexto.
 **Qué falta**: (1) determinar la causa raíz exacta (¿drift del stack local tras el reset de Docker, o algo más profundo que también podría afectar a producción — sin confirmar todavía en producción?); (2) migración de corrección; (3) revalidar los 25 tests actualmente afectados.
-**Dependencias**: ninguna de Partners específicamente — bloque independiente.
+**Dependencias**: ninguna de Partners específicamente — bloque independiente. No depende de P10 ni P10 depende de él.
 **Riesgos**: si el mismo patrón existe en producción (NO confirmado, solo local verificado), sería una exposición real de datos — prioridad alta para su propio bloque, aunque fuera de alcance aquí.
 **Archivos/migraciones implicados**: por determinar en su propia auditoría.
 **Tests**: los 25 ya identificados, más los que la propia investigación descubra.
@@ -453,10 +457,10 @@ Partner → Visibilidad (Discovery) → Clientes (Actividad registrada) → [Rew
 
 ## P14 — QA / E2E
 **Objetivo**: validar el recorrido completo real.
-**Estado actual**: 🟡 Cada tramo probado por separado (147 tests) + `e2e-integration.test.ts` conecta PB2/PB4/PB6. **Ningún test conecta Registration→Approval→Identity→Dashboard como un único flujo real** (el propio Approval es demasiado nuevo, sin commitear).
-**Qué falta**: un test/checklist E2E manual (navegador real) que recorra los 15 pasos completos, una vez P2 esté desplegado.
-**Dependencias**: P2 desplegado.
-**Checklist**: [ ] E2E manual completo tras desplegar P2, [ ] Documentar evidencia (como ya se ha hecho en bloques anteriores).
+**Estado actual**: 🟡 Cada tramo probado por separado (147 tests) + `e2e-integration.test.ts` conecta PB2/PB4/PB6. **P2 ya tiene su propio E2E real confirmado en producción** (ver evidencia en la sección P2 de este documento) — pero **ningún test conecta Registration→Approval→Identity→Dashboard como un único flujo real de principio a fin**, y P9 (Bloque B) tampoco tiene su validación visual E2E confirmada todavía (ver P9).
+**Qué falta**: un test/checklist E2E manual (navegador real) que recorra los 15 pasos completos del ciclo de vida (sección 4 de este documento) como un único recorrido, y la validación visual pendiente de P9.
+**Dependencias**: P2 desplegado — ✅ cumplido.
+**Checklist**: [x] E2E real de P2 (Approval) confirmado en producción, [ ] E2E manual del ciclo completo Registration→Approval→Identity→Dashboard, [ ] Validación visual de P9, [ ] Documentar evidencia (como ya se ha hecho en bloques anteriores).
 
 ---
 
@@ -464,23 +468,23 @@ Partner → Visibilidad (Discovery) → Clientes (Actividad registrada) → [Rew
 **Objetivo**: checklist final antes de considerar Partners "en producción real" con Partners activos de verdad.
 **Estado actual**: 🟡 Mayoría ✅, con condicionantes claros.
 
-- [x] DB migrations — todas aplicadas y probadas en local
+- [x] DB migrations — todas aplicadas y probadas, incluida en producción (`20260901100000` confirmada)
 - [🟡] RLS — funcional, sujeta al hallazgo de P13
-- [🔴] Grants — hallazgo abierto (P13)
-- [x] Auth — Commerce Identity + `partner_admin` (código listo, admin real sin configurar todavía)
-- [🟡] Emails — funcionan, sin dominio propio verificado en Resend (limitación externa, no de código)
+- [🔴] Grants — hallazgo abierto (P13), reconfirmado 2026-09-01 (884 tests, 855 pass, 25 fail, mismo patrón)
+- [x] Auth — Commerce Identity + `partner_admin` **configurado en el usuario real de producción**
+- [🟡] Emails — funcionan, webhook validado E2E en producción; entrega real sigue sin dominio propio verificado en Resend (limitación externa, no de código)
 - [x] Storage — no aplica (P7 no implementado, decisión, no bug)
 - [x] Errors/Loading — estados cubiertos en todas las pantallas auditadas
-- [🟡] Mobile/Desktop — cubierto en su mayoría, pulido pendiente en Bloque B (P9)
+- [🟡] Mobile/Desktop — Bloque B (P9) commiteado y desplegado, validación visual real pendiente
 - [ ] Accessibility — no auditado específicamente en este documento
-- [x] i18n — claves ES/EN paritarias (TypeScript lo garantiza)
+- [x] i18n — claves ES/EN paritarias (TypeScript lo garantiza; re-verificado 2026-09-01 sin discrepancias en claves de Partners)
 - [ ] SEO — no auditado
 - [🔴] Analytics — parcial (P12)
 - [🔴] Security — P13 pendiente
-- [x] Tests — 147 propios, 0 rotos por código de Partners
+- [x] Tests — 147 propios, 0 rotos por código propio de Partners (1 de los 25 fallos de P13 vive en un archivo de test de Partners, causa raíz ajena — ver P13)
 - [x] Build — limpio, verificado repetidamente
-- [ ] Deploy — P2 sin desplegar todavía
-- [ ] Production smoke test — pendiente de P2 desplegado
+- [x] Deploy — P2 y Bloque B (P9) desplegados en producción
+- [x] Production smoke test — P2 validado con E2E real automático (`net._http_response` confirmando `200`)
 
 ---
 
@@ -491,8 +495,8 @@ Verificado contra código real, no la lista original del prompt sin revisar — 
 1. Un comercio puede solicitar ser Partner. ✅
 2. Recibe confirmación. ✅
 3. VIAO recibe la solicitud (notificación). ✅
-4. VIAO puede aprobarlo. 🟡 (código listo, sin desplegar)
-5. El Partner recibe acceso. 🟡 (depende de que el webhook de producción esté configurado — no confirmado)
+4. VIAO puede aprobarlo. ✅ (desplegado, validado E2E en producción)
+5. El Partner recibe acceso. ✅ (webhook de producción configurado y validado E2E; entrega real de email sigue sujeta al límite de Resend sin dominio propio, no bloqueante para el mecanismo en sí)
 6. Puede autenticarse (vincular su cuenta). ✅
 7. Puede entrar a su Dashboard. ✅
 8. Puede completar su ficha. ✅ (alcance C1)
@@ -502,10 +506,10 @@ Verificado contra código real, no la lista original del prompt sin revisar — 
 12. Los usuarios pueden descubrirla. ✅
 13. Los usuarios pueden abrirla. ✅
 14. Las operaciones están protegidas. ✅ (auditado dos veces explícitamente)
-15. Los tests críticos pasan. ✅ (147/147 propios de Partners)
-16. Producción funciona end-to-end. 🟡 — pendiente únicamente de: desplegar P2, configurar `partner_admin` real, confirmar el webhook de producción.
+15. Los tests críticos pasan. ✅ (147/147 propios de Partners; suite completa 855/884, los 25 fallos son 100% P13, ajeno a Partners)
+16. Producción funciona end-to-end. ✅ — los 3 pendientes que fijaba esta línea (desplegar P2, configurar `partner_admin` real, confirmar el webhook de producción) están resueltos y validados con un E2E real (2026-09-01).
 
-**PARTNERS V1 = DONE cuando los 3 pendientes de la línea 16 estén resueltos.** No antes.
+**PARTNERS V1 = DONE en su definición original.** El único punto de esta lista sin cumplir es el #10 (gestión de imágenes), ya retirado explícitamente del alcance de V1 en la propia línea 10. Lo que queda abierto en todo el dominio (P10 Admin, P13 Security, validación visual de P9, verificación real de P3) son bloques propios posteriores a V1, no requisitos de esta Definition of Done.
 
 ---
 
@@ -516,20 +520,20 @@ PARTNERS V1
 
 [x] P0  Audit                    — este documento
 [x] P1  Registration             — completo
-[ ] P2  Approval                 — código listo, falta commit/push/deploy + partner_admin real
-[x] P3  Commerce Identity        — completo en código, sin verificar con Partner real en producción
+[x] P2  Approval                 — commiteado, desplegado, validado E2E en producción
+[x] P3  Commerce Identity        — completo en código, sin verificar con Partner real en producción (P2 ya no es el bloqueo)
 [x] P4  Access                   — completo
 [x] P5  Dashboard                — funcional
 [x] P6  Profile (C1)             — completo para el alcance V1
 [ ] P7  Media                    — FUERA de alcance V1, no bloqueante
 [x] P8  Discovery                — completo
-[ ] P9  User Experience          — bloque separado ya auditado (UX Pro Max V2), pendiente de desplegar
-[ ] P10 Admin                    — decisión pendiente, ver recomendación
+[ ] P9  User Experience          — commiteado y desplegado, validación visual real pendiente
+[ ] P10 Admin                    — NEXT BLOCK, auditoría técnica+UX propia ya entregada (READY), sin autorizar todavía
 [ ] P11 Partner Value            — FUERA de alcance V1
 [ ] P12 Analytics                — FUERA de alcance V1
-[ ] P13 Security (GRANT audit)   — bloque separado, prioridad alta, independiente
-[ ] P14 QA E2E completo          — pendiente de P2 desplegado
-[ ] P15 Production Readiness     — pendiente de P2, P13
+[ ] P13 Security (GRANT audit)   — bloque separado, prioridad alta, independiente, reconfirmado 2026-09-01
+[ ] P14 QA E2E completo          — P2 ya tiene E2E propio; falta el recorrido completo Registration→Approval→Identity→Dashboard y la validación visual de P9
+[ ] P15 Production Readiness     — pendiente únicamente de P13; los pendientes de P2 ya están resueltos
 ```
 
 ---
@@ -538,7 +542,7 @@ PARTNERS V1
 
 | # | Decisión | Opciones | Mi recomendación |
 |---|---|---|---|
-| 1 | Commitear/desplegar PARTNER APPROVAL V1 | Sí ahora / esperar | Ya audita do dos veces, tests limpios — listo cuando tú decidas |
+| 1 | Commitear/desplegar PARTNER APPROVAL V1 | Sí ahora / esperar | ✅ **Resuelta** (2026-09-01) — commiteado (`56a414e`), desplegado y validado E2E en producción |
 | 2 | Superficie de invocación de `set_partner_status()` | Script puntual / Admin Partners V1 | Admin Partners V1 (ver P10) |
 | 3 | Self-Service C2 (horarios/web/redes/servicios) | Ahora / futuro | Futuro — sin evidencia de necesidad al volumen actual |
 | 4 | Partner Media (P7) | Ahora / futuro | Futuro — depende de que C2 se decida primero |
@@ -556,10 +560,10 @@ PARTNERS V1
 
 ## Known Risks
 
-1. **P13 podría afectar a producción** — no confirmado, solo verificado en local. Si se confirma en producción, es una exposición de datos real, prioridad máxima.
-2. **`set_partner_status()` sin superficie de invocación** — código completo sin forma práctica de usarse hasta que P10 se decida.
-3. **Webhook de aprobación en producción sin confirmar configurado** — sin él, el email de aprobación (con `access_token`) nunca llega al Partner real, aunque `set_partner_status()` funcione perfectamente.
-4. **Cero Partners reales activos hoy** — todo lo auditado como "✅ completo" en Commerce Identity/Dashboard/Discovery nunca se ha ejercitado con datos de producción reales, solo con fixtures de test y verificación local.
+1. **P13 podría afectar a producción** — no confirmado, solo verificado en local (reconfirmado 2026-09-01, mismo patrón exacto de 25 fallos). Si se confirma en producción, es una exposición de datos real, prioridad máxima.
+2. **`set_partner_status()` sin superficie de invocación sin fricción técnica** — código completo, ya validado en producción, pero solo invocable hoy vía una llamada REST manual autenticada; sin forma práctica de usarse por alguien no técnico hasta que P10 se implemente.
+3. ~~Webhook de aprobación en producción sin confirmar configurado~~ — **Resuelto (2026-09-01)**: configurado y validado con un E2E automático real (`net._http_response: status_code=200`).
+4. **Commerce Identity (P3) sigue sin ejercitarse con datos reales** — `link_partner_owner()` nunca se ha ejecutado con una cuenta real en producción, aunque ya existe al menos un Partner `active` real (`elkin`) sobre el que podría probarse. Todo lo demás auditado como "✅ completo" en Dashboard/Discovery tampoco se ha ejercitado más allá de ese único Partner de prueba y `elkin`.
 
 ---
 

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState } from "@/components/state/error-state";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { LoadingState } from "@/components/state/loading-state";
 import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
@@ -15,6 +16,20 @@ import { recordReturnVisitAction } from "./actions";
 
 type SubmitStatus = "idle" | "loading";
 type SessionStatus = "checking" | "signed-out" | "signed-in";
+
+// UX-AUTH-1 (Decision Lock, §3) — returnTo únicamente como ruta interna
+// segura, nunca como mecanismo de open redirect. Exige un único "/" inicial
+// (rechaza "//evil.com", protocol-relative), rechaza cualquier "://"
+// embebido (bloquea "https://evil.com" y variantes) y cualquier backslash
+// (algunos navegadores normalizan "/\evil.com" como protocol-relative).
+// Sin política más compleja de navegación — cualquier valor que no pase
+// esta comprobación cae al fallback "/", nunca se usa parcialmente.
+function sanitizeReturnTo(value: string | null): string | null {
+  if (!value) return null;
+  if (!value.startsWith("/") || value.startsWith("//")) return null;
+  if (value.includes("://") || value.includes("\\")) return null;
+  return value;
+}
 
 // Mapeo basado en `error.code` (mismo patrón que F3-01), verificado
 // empíricamente contra Supabase Auth: "invalid_credentials" es el código real
@@ -40,12 +55,15 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const partnerAccessToken =
     searchParams.get("intent") === "partner" ? searchParams.get("accessToken") : null;
+  // UX-AUTH-1 (Decision Lock, §2/§3) — mismo criterio de origen que
+  // partnerAccessToken (leído directamente de la URL, nunca guardado en
+  // estado/localStorage/cookies). Sanitizado antes de cualquier uso.
+  const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
 
   const emailId = useId();
   const passwordId = useId();
 
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("checking");
-  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -53,37 +71,34 @@ function LoginPageContent() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [logoutLoading, setLogoutLoading] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
 
     supabase.auth.getUser().then(({ data }) => {
-      setUserEmail(data.user?.email ?? null);
       setSessionStatus(data.user ? "signed-in" : "signed-out");
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserEmail(session?.user?.email ?? null);
       setSessionStatus(session?.user ? "signed-in" : "signed-out");
     });
 
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // UX-17.1 — Casos 5 y 6 del plan: un único mecanismo cubre tanto "login
-  // recién completado con intención Partner" (signInWithPassword resuelve,
-  // el listener de arriba pasa sessionStatus a "signed-in", este efecto
-  // dispara) como "sesión ya iniciada al abrir /login?intent=partner&..."
-  // (sessionStatus ya es "signed-in" desde el primer getUser()) — ambos son
-  // el mismo estado observable, no dos rutas de código separadas. Sin
-  // partnerAccessToken, este efecto nunca se dispara: el Usuario normal
-  // sigue viendo la pantalla estática "sesión iniciada como X" de siempre.
+  // UX-AUTH-1 (Decision Lock, §2/§3/§F) — un único mecanismo, ahora
+  // incondicional (antes solo cubría el caso Partner), resuelve el
+  // destino con la prioridad ya fijada: intent=partner > returnTo válido
+  // > "/". Cubre tanto "login recién completado" (signInWithPassword
+  // resuelve, el listener de arriba pasa sessionStatus a "signed-in",
+  // este efecto dispara) como "sesión ya existente al abrir /login"
+  // (sessionStatus ya es "signed-in" desde el primer getUser()) — mismo
+  // estado observable, no dos rutas de código separadas. El usuario
+  // nunca debe quedarse viendo /login como estado normal.
   useEffect(() => {
-    if (sessionStatus === "signed-in" && partnerAccessToken) {
-      router.push(`/partners/dashboard/${partnerAccessToken}`);
-    }
-  }, [sessionStatus, partnerAccessToken, router]);
+    if (sessionStatus !== "signed-in") return;
+    router.push(partnerAccessToken ? `/partners/dashboard/${partnerAccessToken}` : (returnTo ?? "/"));
+  }, [sessionStatus, partnerAccessToken, returnTo, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -121,7 +136,8 @@ function LoginPageContent() {
 
       setPassword("");
       setStatus("idle");
-      // onAuthStateChange actualiza sessionStatus/userEmail.
+      // onAuthStateChange actualiza sessionStatus, lo que dispara el
+      // useEffect de arriba y redirige al destino resuelto.
 
       // F12-05 (VIAO_ROADMAP.md) — solo aquí, tras un signInWithPassword()
       // real y exitoso (nunca en el useEffect de montaje) — best-effort,
@@ -131,14 +147,6 @@ function LoginPageContent() {
       setSubmitError(t("login.errorUnexpected"));
       setStatus("idle");
     }
-  }
-
-  async function handleLogout() {
-    setLogoutLoading(true);
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    setLogoutLoading(false);
-    // onAuthStateChange actualiza sessionStatus/userEmail.
   }
 
   const isLoading = status === "loading";
@@ -154,33 +162,28 @@ function LoginPageContent() {
             <LoadingState message={t("login.checkingSession")} />
           )}
 
+          {/* UX-AUTH-1 (Decision Lock, §F) — ya no se muestra "Sesión
+              iniciada como X" con logout: el useEffect de arriba ya
+              redirige en cuanto sessionStatus pasa a "signed-in". Este
+              LoadingState solo cubre el instante breve antes de que el
+              redirect del cliente surta efecto. */}
           {sessionStatus === "signed-in" && (
-            <div className="flex flex-col gap-4">
-              <p role="status" className="text-sm">
-                {t("login.signedInAs")} {userEmail}
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleLogout}
-                disabled={logoutLoading}
-              >
-                {logoutLoading ? t("login.loggingOut") : t("login.logoutButton")}
-              </Button>
-            </div>
+            <LoadingState message={t("login.redirecting")} />
           )}
 
           {sessionStatus === "signed-out" && (
             <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor={emailId} className="text-sm font-medium">
-                  {t("login.emailLabel")}
+                  {t("login.emailLabel")} <span aria-hidden="true">*</span>
                 </label>
                 <Input
                   id={emailId}
                   name="email"
                   type="email"
                   autoComplete="email"
+                  required
+                  aria-required="true"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   disabled={isLoading}
@@ -196,13 +199,14 @@ function LoginPageContent() {
 
               <div className="flex flex-col gap-1.5">
                 <label htmlFor={passwordId} className="text-sm font-medium">
-                  {t("login.passwordLabel")}
+                  {t("login.passwordLabel")} <span aria-hidden="true">*</span>
                 </label>
-                <Input
+                <PasswordInput
                   id={passwordId}
                   name="password"
-                  type="password"
                   autoComplete="current-password"
+                  required
+                  aria-required="true"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   disabled={isLoading}

@@ -5,7 +5,7 @@ DOMAIN: Partners
 AUTHORITY: Documento de continuidad operativa entre sesiones para el desarrollo de Partners como ecosistema de dos lados (Usuario + Comercio). NO es un Decision Lock — donde repite una decisión LOCKED, la fuente original (`docs/02_DECISION_LOCKS/partners/VIAO_PARTNERS_ECONOMIC_DECISION_LOCK.md`) sigue siendo la autoridad. NO tiene precedencia sobre código+migraciones+tests (`docs/00_GOVERNANCE.md`, principio 1).
 SUPERSEDES: — (no deroga formalmente ningún documento)
 SUPERSEDED BY: —
-LAST REVIEWED: 2026-08-31
+LAST REVIEWED: 2026-09-01 (§19 nueva — PARTNER APPROVAL V1, producción; §2/§14/§15/§17/cierre actualizados puntualmente, resto sin cambios)
 ---
 
 # VIAO — MASTER CONTEXT & PARTNERS ROADMAP
@@ -29,7 +29,7 @@ Ecosistema de **dos lados**: Usuario (descubre → interactúa → gana Points �
 
 ## 2. Estado actual
 
-**VIAO V1/Beta.** Core (Auth, Home, Goals, Missions, Wallet, Rewards, Profile) implementado y estable. Partners evolucionó de infraestructura invisible (pre-UX-9) a ecosistema de dos lados con Discovery, Profile público, Registration, Dashboard, y Self-Service — **completado hasta F3 inclusive** (ver §13). **0 Partners reales curados** — sigue siendo un problema de adquisición/negocio, no de código. Nada de esta sesión está commiteado todavía (working tree).
+**VIAO V1/Beta.** Core (Auth, Home, Goals, Missions, Wallet, Rewards, Profile) implementado y estable. Partners evolucionó de infraestructura invisible (pre-UX-9) a ecosistema de dos lados con Discovery, Profile público, Registration, Dashboard, y Self-Service — **completado hasta F3 inclusive** (ver §13). **Actualizado 2026-09-01 (ver §19)**: PARTNER APPROVAL V1 (P2 del `VIAO_PARTNERS_MASTER_ROADMAP.md`) y el bloque UX Pro Max V2 ya están commiteados, pusheados y desplegados; P2 está además activado y validado E2E en producción. Con esto, **1 Partner real ya está `active`** (`elkin`) — deja de ser exacto decir "0 Partners reales" sin matiz, aunque sigue sin haber comercios reales curados más allá de ese caso y el Partner de test dedicado al E2E. La fuente de verdad detallada fase-por-fase (P0-P15) es ahora `VIAO_PARTNERS_MASTER_ROADMAP.md`, no este párrafo.
 
 ---
 
@@ -322,11 +322,14 @@ Ver §10.1 para el detalle completo (problema, causa, solución, archivos, verif
 
 ```
 CURRENT PHASE:
-Ninguna en curso — V2 Release Checkpoint cerrado (§18). Esperando autorización para F4/UX-13/UX-18.
+Ninguna en curso — PARTNER APPROVAL V1 (P2) cerrado y activado en producción (§19). Esperando
+autorización explícita para P10 — Admin Partners V1 (ya auditado, READY, ver el informe de esa
+auditoría técnica+UX dedicada).
 
 LAST COMPLETED:
-V2 Release Checkpoint — Commerce Identity (UX-16.x) + Partner Auth Entry (UX-17.1)
-+ Partner Discovery CTA (UX-17.2), commiteado, pusheado y desplegado (ver §18).
+PARTNER APPROVAL V1 (P2) — commiteado (`56a414e`), desplegado, y activado/validado E2E en
+producción (§19). También commiteado y desplegado desde el mismo punto de partida: UX Pro Max V2
+/ Bloque B (`18867a2`, relevante para P9 — validación visual todavía pendiente).
 ```
 
 ---
@@ -337,8 +340,14 @@ V2 Release Checkpoint — Commerce Identity (UX-16.x) + Partner Auth Entry (UX-1
 NEXT AUTHORIZED WORK:
 NINGUNO TODAVÍA
 
-NEXT RECOMMENDED IMPLEMENTATION (sin orden de prioridad implícito):
+NEXT RECOMMENDED (auditoría de continuidad post-P2, 2026-09-01 — ver VIAO_PARTNERS_MASTER_ROADMAP.md):
+P10 — Admin Partners V1: única fricción operativa real hoy (set_partner_status() solo invocable
+vía llamada REST manual autenticada, sin UI). Auditoría técnica + UX dedicada ya entregada
+(veredicto: READY), sin autorizar implementación todavía.
+
+Detrás, sin orden de prioridad implícito y sin relación de bloqueo con P10:
 UX-13 — Self-Service C2 (imágenes/Storage) + campo "oferta" (texto libre)
+P13 — Security Hardening (GRANT audit), bloque independiente, ver §19.3
 V3 — Partner Engagement (tráfico → interacción → recurrencia → valor comercial), roadmap futuro, NO implementado (ver §18.4)
 ```
 
@@ -431,7 +440,7 @@ Checklist mínimo, basado únicamente en criterios ya existentes en la documenta
 
 Transiciones que acepta: `pending→active` (aprobación), `pending→inactive` (no aprobación — sigue sin existir el estado `rejected`, ver paso 9), `active→inactive` (baja), `inactive→active` (reactivación). Cualquier otra combinación, incluida cualquier vuelta a `pending`, es rechazada por el propio RPC.
 
-**Cómo invocarlo hoy**: no existe ningún panel ni botón en la aplicación (decisión explícita de este bloque — ver el informe de PARTNER APPROVAL V1 para el razonamiento). El backend (RPC + `lib/partners/set-partner-status.ts` + la Server Action `setPartnerStatusAction()` en `app/partners/admin-actions.ts`) está completo y probado, pero **su superficie de invocación real queda pendiente de una decisión de producto separada** — no se ha construido ninguna UI, ni siquiera mínima, para no crear algo que después haya que mantener sin haberlo decidido explícitamente. Hasta que exista esa decisión, esta es una operación interna sin procedimiento operativo definido para esta fase piloto.
+**Cómo invocarlo hoy**: no existe ningún panel ni botón en la aplicación (decisión explícita de este bloque — ver el informe de PARTNER APPROVAL V1 para el razonamiento). El backend (RPC + `lib/partners/set-partner-status.ts` + la Server Action `setPartnerStatusAction()` en `app/partners/admin-actions.ts`) está completo, probado, **desplegado y validado E2E en producción (§19)** — funciona de verdad, no solo en teoría. Lo único que falta es una superficie de invocación sin fricción técnica: hoy el único procedimiento real es una llamada REST manual autenticada con el JWT de la sesión del `partner_admin` (ver §19.1 para el mecanismo exacto usado en la validación). Esa superficie es exactamente el alcance de **P10 — Admin Partners V1** (ver `VIAO_PARTNERS_MASTER_ROADMAP.md`), ya auditado (READY) y pendiente de autorización de implementación.
 
 **Por qué no vale usar el SQL Editor de Supabase Studio como atajo**: el RPC resuelve `auth.uid()` internamente como única fuente de autorización — el SQL Editor de Studio se conecta directamente a Postgres, sin pasar por una sesión de Supabase Auth con JWT, así que `auth.uid()` siempre es `NULL` ahí y el RPC rechaza la llamada. No es un fallo — es la misma garantía de seguridad que impide que cualquier acceso directo a la base de datos se salte la comprobación de `partner_admin`.
 
@@ -441,7 +450,7 @@ En la misma fila, copiar el valor de `access_token`. **Verificar dos veces que e
 
 ### 6. Comunicar al Partner
 
-**Actualizado (Email V2 + Partner Application Notification V1) — la frase original de este paso ("no existe ningún sistema de email/notificación") ya no es exacta.** Si el Database Webhook de producción está configurado (`app/api/webhooks/partner-status/route.ts`, MANUAL ACTION REQUIRED, ver `docs/00_VIAO_HANDOFF.md` §11.2), el paso 4 (cambiar `status` a `active`) ya dispara automáticamente un email de aprobación al comercio con su `access_token`/enlace al Dashboard — la plantilla manual de abajo pasa a ser el **plan de respaldo** (webhook no configurado, o email de aprobación no entregado por la limitación de Resend sin dominio propio), no el único camino:
+**Actualizado (Email V2 + Partner Application Notification V1 + PARTNER APPROVAL V1, §19)** — el Database Webhook de producción (`app/api/webhooks/partner-status/route.ts`) **ya está configurado y validado con un E2E real** (§19.1): el paso 4 (cambiar `status` a `active`) dispara automáticamente un email de aprobación al comercio con su `access_token`/enlace al Dashboard. La plantilla manual de abajo pasa a ser el **plan de respaldo** (solo si el email de aprobación no llega, por la limitación de Resend sin dominio propio — ver §11.2 de `docs/00_VIAO_HANDOFF.md`), no el único camino:
 
 > Hola [nombre del negocio],
 >
@@ -508,6 +517,47 @@ Partner:  Discovery → Application → Approval (manual, Supabase Studio) → D
 
 ---
 
-**Fin del documento. Esta revisión registra el RELEASE BASELINE (commit `c809584`, push, deployment Vercel, esquema de producción verificado), la implementación real de F3.5, el Runbook Operativo de Partner Onboarding Beta (§17), Commerce Identity + UX-17.1 + UX-17.2 + el V2 Release Checkpoint (§18), incluida la decisión explícita de no construir panel administrativo en este release — y, en esta actualización, **Partner Application Notification V1** (§17.1/§17.6 corregidos: Andrés ya recibe aviso de cada solicitud nueva vía `PARTNER_NOTIFICATION_EMAIL`; el webhook de aprobación de Email V2 ya notifica al comercio automáticamente cuando está configurado en producción) — ver `docs/00_VIAO_HANDOFF.md` §11.3 para la evidencia completa. Cambios de este bloque todavía sin commitear, pendientes de aprobación explícita.**
+**Fin del documento (hasta §18). Esta revisión registró el RELEASE BASELINE (commit `c809584`, push, deployment Vercel, esquema de producción verificado), la implementación real de F3.5, el Runbook Operativo de Partner Onboarding Beta (§17), Commerce Identity + UX-17.1 + UX-17.2 + el V2 Release Checkpoint (§18), incluida la decisión explícita de no construir panel administrativo en ese release — y **Partner Application Notification V1** (§17.1/§17.6: Andrés recibe aviso de cada solicitud nueva vía `PARTNER_NOTIFICATION_EMAIL`; el webhook de aprobación de Email V2 notifica al comercio automáticamente cuando está configurado en producción) — ver `docs/00_VIAO_HANDOFF.md` §11.3 para la evidencia completa. **Actualizado 2026-09-01**: Partner Application Notification V1 ya está commiteado (`14365ae`) — la frase "todavía sin commitear" de esta línea quedó obsoleta y se corrige aquí; ver §19 para el bloque cerrado inmediatamente después (PARTNER APPROVAL V1).**
 
 **HARD STOP — V2 RELEASE CHECKPOINT — VER `docs/00_VIAO_HANDOFF.md` §21 PARA EL COMMIT/PUSH/DEPLOY EXACTOS DE ESTE BLOQUE.**
+
+---
+
+## 19. PARTNER APPROVAL V1 — Producción Activada (2026-09-01)
+
+Cierra el gap que §17 paso 4 documentaba como bloqueado (`protect_partners_immutable_fields()` rechazaba cualquier `UPDATE` de `status`, para cualquier rol, incluida Supabase Studio). Auditado en diseño, implementado, testeado (17 tests, `set-partner-status.test.ts`), commiteado (`56a414e`), y en esta actualización: **activado y validado con datos reales en producción**, no solo en código.
+
+### 19.1 Mecanismo (sin cambios respecto al diseño original)
+
+RPC `public.set_partner_status(p_partner_id uuid, p_new_status text)` — `SECURITY DEFINER`, `search_path=''`, resuelve `auth.uid()` internamente, exige `auth.users.raw_app_meta_data->>'role' = 'partner_admin'`, valida la matriz de 4 transiciones (`pending→active`, `pending→inactive`, `active→inactive`, `inactive→active`), respuesta anti-enumeración uniforme `{"updated": boolean}`. Trigger con carve-out de doble factor (señal transaccional `set_config` + transición válida). **Sin ninguna UI que lo invoque** — el único procedimiento real hoy es una llamada REST directa y autenticada (`POST .../rest/v1/rpc/set_partner_status` con el `access_token` de sesión del `partner_admin` como `Authorization: Bearer`), documentada como el estado actual, no como receta a repetir sin criterio — ver P10.
+
+### 19.2 Configuración de producción (verificada, no solo declarada)
+
+| Ítem | Estado |
+|---|---|
+| Migración `20260901100000_add_partner_status_approval.sql` | ✅ Aplicada en producción |
+| `partner_admin` (`raw_app_meta_data.role`) | ✅ Configurado en el usuario administrador real |
+| `SITE_URL` (Vercel, Production) | ✅ Configurado (`https://viao.vercel.app`) |
+| `PARTNER_STATUS_WEBHOOK_SECRET` (Vercel, Production) | ✅ Configurado, sincronizado con el header del Database Webhook |
+| Database Webhook (`public.partners`, `UPDATE`, header `x-viao-webhook-secret`) | ✅ Configurado en Supabase |
+| Endpoint `/api/webhooks/partner-status` | ✅ Verificado: `401` sin secreto, `401` con secreto incorrecto, `200` con secreto correcto |
+
+### 19.3 Evidencia E2E real (no solo pruebas manuales del endpoint)
+
+Sobre un Partner de test dedicado (`VIAO TEST — Webhook E2E`, `is_test=true`, `contact_email=null` — nunca sobre un Partner de negocio real): `set_partner_status(id, 'active')` desde `pending` → trigger autorizado por la señal transaccional → `UPDATE` real en `public.partners` → Database Webhook de Supabase disparado automáticamente → `pg_net` → `POST /api/webhooks/partner-status` → `HTTP 200` → `{"handled":"approved"}`. Confirmado de forma independiente en `net._http_response` de Supabase: `status_code=200, timed_out=false, error_msg=null`. Como `contact_email` era `null`, no se envió ningún email real — confirma también que esa rama condicional del webhook se comporta como el código indica.
+
+Una primera configuración del secreto del webhook devolvió `401` (`{"error":"unauthorized"}`) antes de corregirse — quedó resuelta y re-verificada antes del E2E anterior; no se documenta el valor del secreto en ningún sitio.
+
+Adicionalmente, un segundo Partner — `elkin`, real (no `is_test`) — completó `pending→active` por el mismo mecanismo, siendo hoy el primer Partner `active` genuino del proyecto.
+
+**Nota diagnóstica, no un fallo**: la vista en vivo de Vercel Logs mostró inicialmente `Status: 0` para la petición automática del webhook, junto con `External APIs: Loading...` y `Response finished` en la misma entrada — investigado y descartado como fallo real: es un artefacto de esa vista (telemetría todavía poblándose), no del endpoint ni de `pg_net`. La fuente de verdad (`net._http_response`) confirmó `200` de forma independiente.
+
+### 19.4 Qué sigue abierto (no corregido ni ampliado en este bloque)
+
+- **P10 — Admin Partners V1**: única fricción operativa real — sin UI, la aprobación exige una llamada REST manual. Auditoría técnica+UX dedicada ya entregada (READY), sin autorizar implementación.
+- **P3 — Commerce Identity**: `link_partner_owner()` sigue sin ejecutarse con una cuenta real en producción, aunque ya existe un Partner `active` real (`elkin`) sobre el que podría probarse.
+- **P9 — UX Pro Max V2 / Bloque B**: commiteado y desplegado (`18867a2`), sin validación visual real confirmada en navegador tras el deploy.
+- **Email de reactivación** (`inactive→active`): sin rama en el webhook, documentado como pendiente desde el diseño original, no implementado a propósito.
+- **P13 — Security Hardening (GRANT audit)**: bloque completamente independiente, deliberadamente no tocado aquí ni en P2. Reconfirmado 2026-09-01 con la suite completa: 884 tests, 855 pass, 25 fail (mismo patrón exacto ya documentado), 4 skipped.
+
+**Fin de §19. Ver `VIAO_PARTNERS_MASTER_ROADMAP.md` para el estado P0-P15 completo y la recomendación de siguiente bloque (P10).**

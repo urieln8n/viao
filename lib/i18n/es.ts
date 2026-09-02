@@ -19,12 +19,18 @@ export const es = {
   "i18nDemo.fallbackSectionTitle": "Prueba de fallback (locale no soportado)",
   "i18nDemo.fallbackDescription":
     'Al resolver un locale no soportado (por ejemplo, "de"), se usa español como idioma de respaldo sin lanzar errores.',
-  "register.title": "Crear cuenta",
-  // UX-14.1 (P2, §13) — mejora mínima de continuidad narrativa desde la
-  // landing: una sola línea, genérica a propósito (no presupone que el
-  // usuario vio la First Experience, ya que /register también se llega
-  // desde /login). Ningún cambio de lógica del formulario.
-  "register.continuitySubtitle": "Tu actividad empieza a contar en cuanto creas tu cuenta.",
+  // UX-AUTH-1 — namespace compartido entre los 3 formularios que piden
+  // password (register/login/recoverUpdate), usado por el único
+  // componente nuevo de este bloque (components/ui/password-input.tsx).
+  "auth.showPassword": "Mostrar contraseña",
+  "auth.hidePassword": "Ocultar contraseña",
+  // UX-AUTH-1 — título/subtítulo reescritos para comunicar una propuesta
+  // de valor real (qué es VIAO / qué gana el usuario) en vez de un
+  // "Crear cuenta" plano — hallazgo P2 de la auditoría UX-AUTH. Sin
+  // cambio de lógica del formulario ni de campos.
+  "register.title": "Únete a VIAO",
+  "register.continuitySubtitle":
+    "Descubre negocios, gana Points y consigue Rewards reales — todo en un mismo sitio.",
   "register.emailLabel": "Email",
   "register.passwordLabel": "Contraseña",
   "register.submitButton": "Crear cuenta",
@@ -46,6 +52,10 @@ export const es = {
   "register.referralCodeLabel": "Código de referido (opcional)",
   "register.loginPromptText": "¿Ya tienes cuenta?",
   "register.loginPromptLink": "Inicia sesión",
+  // UX-AUTH-1 — reemplaza la card estática "Sesión iniciada como X" (sin
+  // ningún destino) por un mensaje breve mientras se resuelve el
+  // redirect real (intent=partner > returnTo > "/").
+  "login.redirecting": "Redirigiendo…",
   "login.title": "Iniciar sesión",
   "login.emailLabel": "Email",
   "login.passwordLabel": "Contraseña",
@@ -300,6 +310,19 @@ export const es = {
   "onboarding.continue": "Crear mi objetivo",
   "onboarding.skip": "Ahora no",
   "onboarding.dateOptional": "Fecha objetivo (opcional)",
+  // UX-AUTH-1 (Decision Lock) — Paso 1 de /onboarding, nuevo: explica
+  // VIAO en <10s antes de pedir cualquier compromiso (Goal). Paso 2
+  // sigue siendo el Goal ya existente (goalQuestion/continue/skip/
+  // dateOptional, sin cambios), con una única línea de contexto nueva
+  // (goalContext) delante del formulario.
+  "onboarding.welcomeHeadline": "Bienvenido a VIAO",
+  "onboarding.welcomeSubtitle": "Así es como vas a ganar cosas reales por lo que ya haces",
+  "onboarding.welcomeConcept1": "Descubre negocios cerca de ti",
+  "onboarding.welcomeConcept2": "Gana Points al visitarlos o completar retos",
+  "onboarding.welcomeConcept3": "Cambia tus Points por Rewards reales",
+  "onboarding.welcomeContinueCta": "Empezar",
+  "onboarding.welcomeSkipCta": "Ir directo a mi cuenta",
+  "onboarding.goalContext": "Un objetivo te ayuda a ver tu progreso.",
   // Micro-bloque 2 (Home Beta) — mismo dato/mismas 4 Missions, solo cambia
   // el título de la sección: menos "gamificación", más conexión directa
   // con el Goal de arriba ("así avanzas hacia tu objetivo").
@@ -605,6 +628,32 @@ export const es = {
   "partners.category.gym": "Gimnasio",
   "partners.category.shop": "Tienda",
   "partners.category.service": "Servicio",
+  // P10 (Admin Partners V1) — única superficie de invocación de
+  // set_partner_status() con conocimiento no técnico. Reutiliza
+  // "Activar" tanto para pending→active (aprobación) como para
+  // inactive→active (reactivación) — misma acción conceptual desde la
+  // perspectiva del admin, sin duplicar copy.
+  "adminPartners.pageTitle": "Administración de Partners",
+  "adminPartners.pageDescription": "Aprueba, rechaza, desactiva o reactiva Partners.",
+  "adminPartners.statusPending": "Pendiente",
+  "adminPartners.statusActive": "Activo",
+  "adminPartners.statusInactive": "Inactivo",
+  "adminPartners.activateCta": "Activar",
+  "adminPartners.rejectCta": "Rechazar",
+  "adminPartners.deactivateCta": "Desactivar",
+  "adminPartners.activating": "Activando…",
+  "adminPartners.rejecting": "Rechazando…",
+  "adminPartners.deactivating": "Desactivando…",
+  "adminPartners.contactUnavailable": "No disponible",
+  "adminPartners.emptyTitle": "No hay Partners registrados",
+  "adminPartners.errorGeneric": "No se pudo actualizar el estado. Inténtalo de nuevo.",
+  "adminPartners.successMessage": "Actualizado correctamente.",
+  "adminPartners.deactivateDialogTitle": "Desactivar Partner",
+  "adminPartners.deactivateDialogDescription":
+    "El Partner dejará de estar visible en VIAO. Podrás reactivarlo más adelante.",
+  "adminPartners.cancelCta": "Cancelar",
+  "adminPartners.confirmDeactivateCta": "Desactivar",
+  "adminPartners.createdAtLabel": "Solicitado el",
   // UX-10 — Partner Profile pública `/partners/[slug]` (§8). Nunca
   // reutiliza `/partners/ops/[accessToken]` (superficie operativa, no de
   // Discovery) — usa el `slug` ya existente en el schema desde PB1.
@@ -625,16 +674,27 @@ export const es = {
   "partnerJoin.categoryPlaceholder": "Selecciona una categoría",
   "partnerJoin.descriptionLabel": "Descripción (opcional)",
   "partnerJoin.addressLabel": "Dirección (opcional)",
-  "partnerJoin.emailLabel": "Email de contacto (opcional)",
+  // P10.1 (Partner Onboarding Hardening) — email de contacto pasa a
+  // obligatorio en este formulario: es el único canal por el que VIAO
+  // avisa del resultado de la solicitud y entrega el enlace de acceso si
+  // se aprueba. `emailHelperText` explica el motivo sin lenguaje técnico
+  // (nunca "access_token"/"Auth"/etc. — el comercio no necesita conocer
+  // la arquitectura). `emailValidationError` es un mensaje específico,
+  // distinto del genérico de nombre/categoría, para que quede claro qué
+  // falta exactamente.
+  "partnerJoin.emailLabel": "Email de contacto",
+  "partnerJoin.emailHelperText":
+    "Te avisaremos por aquí sobre tu solicitud y, si aprobamos tu negocio, te enviaremos el enlace para acceder a tu panel.",
   "partnerJoin.phoneLabel": "Teléfono de contacto (opcional)",
   "partnerJoin.imageUrlLabel": "Enlace a una imagen (opcional)",
   "partnerJoin.submitCta": "Enviar solicitud",
   "partnerJoin.submitting": "Enviando…",
   "partnerJoin.validationError": "Completa el nombre y selecciona una categoría.",
+  "partnerJoin.emailValidationError": "Introduce un email de contacto válido — lo necesitamos para avisarte sobre tu solicitud.",
   "partnerJoin.errorGeneric": "No se pudo enviar la solicitud. Inténtalo de nuevo.",
   "partnerJoin.successTitle": "Solicitud recibida",
   "partnerJoin.successMessage":
-    "VIAO revisará tu negocio y te contactará para activar tu acceso de Partner.",
+    "VIAO revisará tu negocio y te avisará por email. Si aprobamos tu solicitud, ese mismo correo incluirá el enlace para acceder a tu panel.",
   "partnerJoin.backCta": "Volver a Partners",
   // Email V2 — copy de los emails transaccionales de Partner (lib/email/)
   // y de la pantalla /confirm que establece la sesión tras el enlace de

@@ -28,6 +28,14 @@ export interface PartnerRegistrationInput {
   category: string;
   description?: string;
   address?: string;
+  // P10.1 (Partner Onboarding Hardening) — el tipo se mantiene opcional
+  // a propósito (compatibilidad de firma, sin romper otros llamantes
+  // hipotéticos), pero requestPartnerRegistration() ahora lo exige en
+  // tiempo de ejecución: sin él, o con un formato inválido, devuelve
+  // `invalid_input` — es el único canal de entrega del email de
+  // aprobación/`access_token` y de Commerce Identity, ya no tiene
+  // sentido aceptar una solicitud nueva sin él (ver auditoría "P10.1 —
+  // Partner Access & Onboarding Audit").
   contactEmail?: string;
   contactPhone?: string;
   imageUrl?: string;
@@ -53,6 +61,26 @@ function isValidCategory(value: string): value is PartnerCategory {
   return (PARTNER_CATEGORIES as readonly string[]).includes(value);
 }
 
+// P10.1 (Partner Onboarding Hardening) — el sistema entero, construido
+// en bloques anteriores, ya asumía implícitamente que `contact_email`
+// existía (email de solicitud recibida, email de aprobación con
+// `access_token`, `link_partner_owner()`), pero el formulario público lo
+// dejaba opcional — la única pieza que no seguía esa asunción (auditoría
+// P10.1, "Partner Access & Onboarding Audit"). Este bloque cierra ese
+// gap exclusivamente en el flujo NUEVO: `contact_email` pasa a ser
+// obligatorio y validado aquí, en el único punto de escritura pública
+// real. Deliberadamente NO cambia el schema (`partners.contact_email`
+// sigue siendo `nullable`): Partners históricos con el campo vacío deben
+// seguir existiendo y funcionando exactamente igual (Camino A por
+// `access_token` nunca dependió de este campo) — esta validación es de
+// aplicación, no de base de datos, y solo se aplica al escribir una
+// solicitud nueva.
+const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isValidEmail(value: string): boolean {
+  return EMAIL_FORMAT.test(value);
+}
+
 const MAX_ATTEMPTS = 5;
 
 export async function requestPartnerRegistration(
@@ -60,8 +88,9 @@ export async function requestPartnerRegistration(
 ): Promise<PartnerRegistrationOutcome> {
   const name = input.name.trim();
   const category = input.category.trim();
+  const contactEmail = input.contactEmail?.trim().slice(0, 200);
 
-  if (!name || name.length > 200 || !isValidCategory(category)) {
+  if (!name || name.length > 200 || !isValidCategory(category) || !contactEmail || !isValidEmail(contactEmail)) {
     return { outcome: "invalid_input" };
   }
 
@@ -72,7 +101,6 @@ export async function requestPartnerRegistration(
   // de trim/slice en dos sitios. Cero cambio de comportamiento del insert.
   const description = input.description?.trim().slice(0, 1000) || undefined;
   const address = input.address?.trim().slice(0, 300) || undefined;
-  const contactEmail = input.contactEmail?.trim().slice(0, 200) || undefined;
   const contactPhone = input.contactPhone?.trim().slice(0, 50) || undefined;
   const imageUrl = input.imageUrl?.trim().slice(0, 2000) || undefined;
 
@@ -109,10 +137,14 @@ export async function requestPartnerRegistration(
 
     if (!error && data) {
       // Email V2 — best-effort, nunca convierte la solicitud ya creada en
-      // un fallo: sendEmail() (lib/email/send-email.ts) nunca lanza. Solo
-      // si el comercio dejó un email de contacto (campo opcional) — sin
-      // él, no hay ningún error que reportar, simplemente no hay a quién
-      // escribir. `await` deliberado (no fire-and-forget): en un entorno
+      // un fallo: sendEmail() (lib/email/send-email.ts) nunca lanza.
+      // `contactEmail` es obligatorio desde P10.1 (validado arriba), así
+      // que este `if` es hoy siempre verdadero para cualquier solicitud
+      // nueva — se mantiene como guarda explícita, sin asumir en este
+      // punto concreto que la validación de arriba nunca cambiará, y
+      // porque Partners históricos (anteriores a P10.1, sin este campo)
+      // pueden seguir pasando por otras vías de este mismo módulo en el
+      // futuro. `await` deliberado (no fire-and-forget): en un entorno
       // serverless, el proceso puede congelarse en cuanto esta función
       // devuelve, así que un envío sin esperar no está garantizado.
       if (contactEmail) {

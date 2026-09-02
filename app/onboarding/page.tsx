@@ -1,45 +1,26 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { createClient as createSessionClient } from "../../lib/supabase/server";
+import { OnboardingView } from "./onboarding-view";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { buttonVariants } from "@/components/ui/button";
-import { t } from "@/lib/i18n";
+// UX-AUTH-1 (Decision Lock, §G) — guard de sesión, mismo patrón exacto
+// que app/partners/dashboard/page.tsx (Camino B): Server Component que
+// resuelve `auth.getUser()` y redirige a /login si no hay sesión.
+// /onboarding solo tiene sentido con una sesión real (el Paso 2 crea un
+// Goal ligado a auth.uid()) — antes de este bloque, un usuario sin
+// sesión veía el mismo formulario, que fallaría silenciosamente al no
+// tener auth.uid() (hallazgo P2 de la auditoría UX-AUTH). No se toca
+// Supabase Auth ni el middleware global — el guard vive aquí, igual que
+// en el resto de Partners.
+export default async function OnboardingPage() {
+  const sessionClient = await createSessionClient();
+  const {
+    data: { user },
+  } = await sessionClient.auth.getUser();
 
-import { GoalForm } from "../goal-card";
+  if (!user) {
+    redirect("/login");
+  }
 
-// Fase 1 (Prompt Maestro 24/08/2026) — primera pantalla tras el
-// registro: "¿Para qué quieres usar VIAO?". Reutiliza `GoalForm`
-// (extraído de `app/goal-card.tsx`) — misma validación, misma
-// `createGoalAction`, sin una segunda implementación de creación de
-// Goal. "Ahora no" lleva a Home sin crear nada — no bloquea al usuario.
-export default function OnboardingPage() {
-  const router = useRouter();
-
-  return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-8 p-6">
-      <div className="flex max-w-md flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-semibold">{t("onboarding.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("onboarding.subtitle")}</p>
-        <p className="text-sm font-medium">{t("onboarding.concept")}</p>
-      </div>
-
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>{t("onboarding.goalQuestion")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <GoalForm onCreated={() => router.push("/")} submitLabel={t("onboarding.continue")} />
-        </CardContent>
-      </Card>
-
-      <Link
-        href="/"
-        className={buttonVariants({ variant: "ghost", size: "sm", className: "text-muted-foreground" })}
-      >
-        {t("onboarding.skip")}
-      </Link>
-    </main>
-  );
+  return <OnboardingView />;
 }

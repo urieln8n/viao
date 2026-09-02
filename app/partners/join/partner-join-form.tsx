@@ -27,6 +27,16 @@ import { CATEGORY_LABEL_KEY } from "../category-label";
 const FIELD_CLASSNAME =
   "w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30";
 
+// P10.1 (Partner Onboarding Hardening) — mismo patrón de validación de
+// formato que lib/partners/request-partner-registration.ts (server-side,
+// autoritativo). Duplicado a propósito, no compartido en un módulo
+// nuevo: es una única línea, y este componente no debe importar nada de
+// `lib/partners/` más allá de lo que ya usaba (evita acoplar el Client
+// Component a lógica de servidor). La validación real e inevitable sigue
+// viviendo en el servidor — esta es solo feedback inmediato en el
+// navegador, nunca la barrera real.
+const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 type ViewState = { step: "form" } | { step: "success" } | { step: "error"; message: string };
 
 export function PartnerJoinForm() {
@@ -47,6 +57,14 @@ export function PartnerJoinForm() {
 
     if (!name.trim() || !category) {
       setValidationError(t("partnerJoin.validationError"));
+      return;
+    }
+
+    // P10.1 — contactEmail obligatorio: es el único canal por el que el
+    // comercio sabrá el resultado de su solicitud y, si se aprueba,
+    // recibirá el enlace de acceso a su panel.
+    if (!contactEmail.trim() || !EMAIL_FORMAT.test(contactEmail.trim())) {
+      setValidationError(t("partnerJoin.emailValidationError"));
       return;
     }
 
@@ -150,10 +168,13 @@ export function PartnerJoinForm() {
         {t("partnerJoin.emailLabel")}
         <Input
           type="email"
+          required
+          aria-required="true"
           value={contactEmail}
           onChange={(e) => setContactEmail(e.target.value)}
           disabled={isSubmitting}
         />
+        <span className="text-xs font-normal text-muted-foreground">{t("partnerJoin.emailHelperText")}</span>
       </label>
 
       <label className="flex flex-col gap-1 text-sm font-medium">

@@ -21,7 +21,13 @@ max_rows = 1000
 # without explicit GRANTs. When unset, new entities are NOT auto-exposed, matching the new cloud
 # default. Set to `true` to keep the legacy behaviour of auto-exposing new entities; this is
 # deprecated and the field is removed on 2026-10-30 once the always-revoked behaviour is permanent.
-# auto_expose_new_tables = true
+# P13.2 (Config Mechanism Validation, VIAO) — fijado explícitamente en `false`, no dejado
+# comentado/ausente: la evidencia recogida en P13.2 (discusión oficial de mantenedores del
+# CLI) indica que el paso de REVOKE restrictivo durante `supabase start`/`db reset` se
+# dispara por la presencia literal de esta clave, no solo por el valor por defecto al que
+# "debería" resolver cuando está ausente — que es exactamente la causa raíz que P13
+# encontró: aun estando comentada, el entorno local seguía exponiendo tablas nuevas.
+auto_expose_new_tables = false
 
 [api.tls]
 # Enable HTTPS endpoints locally using a self-signed certificate.

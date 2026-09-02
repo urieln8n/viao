@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState } from "@/components/state/error-state";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { LoadingState } from "@/components/state/loading-state";
 import { t } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
@@ -183,13 +184,15 @@ function RegisterPageContent() {
             <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor={emailId} className="text-sm font-medium">
-                  {t("register.emailLabel")}
+                  {t("register.emailLabel")} <span aria-hidden="true">*</span>
                 </label>
                 <Input
                   id={emailId}
                   name="email"
                   type="email"
                   autoComplete="email"
+                  required
+                  aria-required="true"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   disabled={isLoading}
@@ -205,13 +208,14 @@ function RegisterPageContent() {
 
               <div className="flex flex-col gap-1.5">
                 <label htmlFor={passwordId} className="text-sm font-medium">
-                  {t("register.passwordLabel")}
+                  {t("register.passwordLabel")} <span aria-hidden="true">*</span>
                 </label>
-                <Input
+                <PasswordInput
                   id={passwordId}
                   name="password"
-                  type="password"
                   autoComplete="new-password"
+                  required
+                  aria-required="true"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   disabled={isLoading}

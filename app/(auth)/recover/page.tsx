@@ -91,13 +91,15 @@ export default function RecoverPage() {
               <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor={emailId} className="text-sm font-medium">
-                    {t("recover.emailLabel")}
+                    {t("recover.emailLabel")} <span aria-hidden="true">*</span>
                   </label>
                   <Input
                     id={emailId}
                     name="email"
                     type="email"
                     autoComplete="email"
+                    required
+                    aria-required="true"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     disabled={isLoading}
