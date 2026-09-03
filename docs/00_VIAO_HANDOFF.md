@@ -243,8 +243,10 @@ Tests/tsc/lint/build:   PASS (860 tests / 856 pass / 0 fail / 4 skipped — 25 t
 2. Tras verificarlo: configurar `RESEND_FROM_EMAIL` real en Vercel, y solo entonces evaluar activar Resend como SMTP de Auth en producción.
 3. Supabase Dashboard producción → Auth → URL Configuration: Site URL `https://viao.vercel.app`, Redirect URLs con `/recover/update` y `/confirm`.
 4. Supabase Dashboard producción → Auth → Email Templates: pegar `supabase/templates/{confirmation,recovery}.html`.
-5. Supabase Dashboard producción → Database → Webhooks: crear el webhook sobre `partners` (`UPDATE`), header `x-viao-webhook-secret`.
-6. Vercel: añadir `PARTNER_STATUS_WEBHOOK_SECRET` y `SITE_URL` (Production).
+5. ~~Supabase Dashboard producción → Database → Webhooks: crear el webhook sobre `partners` (`UPDATE`), header `x-viao-webhook-secret`.~~ **Hecho** — ver `VIAO_PARTNERS_CONTINUITY_MASTER.md` §19.2 (checklist ✅) y §19.3 (E2E real con un segundo Partner no-test, `elkin`, `pending→active`→email de aprobación confirmado). Esta lista no se había sincronizado tras completarse — corregido en P14.1.1, sin volver a verificar el Dashboard de Supabase directamente en ese bloque (ver P14.1.1 §11, "Production Verification").
+6. ~~Vercel: añadir `PARTNER_STATUS_WEBHOOK_SECRET` y `SITE_URL` (Production).~~ **Hecho**, mismo motivo que el punto 5.
+
+**P14.1.1 (Partner Onboarding + Access Recovery)**: añadido "Reenviar acceso" en `/admin/partners` (fallback manual al webhook, mismo email/template `sendPartnerApprovedEmail()`, nunca expone `access_token`) y corregido el copy de `/partners/dashboard` (el enlace se envía al aprobarse, no al darse de alta — antes decía lo contrario). Puntos 1-4 de la lista de arriba (dominio Resend, `RESEND_FROM_EMAIL`, Auth URL Configuration, Auth Email Templates) siguen sin verificar directamente — no tocados por P14.1.1.
 
 **Smoke test producción**: Home (anónimo, `HomeLanding` visible — ver §11.1.1), Register, Login, `/confirm` (estado "enlace inválido" correcto), `/partners`, webhook (`401` sin secreto) — 6/6, 0 errores de consola. Deliberadamente **no** se envió ninguna solicitud Partner real en producción en este bloque (evita ruido/emails de prueba reales dado que `RESEND_API_KEY` ya está configurada ahí) — cobertura completa del mismo flujo ya verificada en local con un email real.
 

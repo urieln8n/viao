@@ -59,6 +59,10 @@ const AUTH_ROUTES = new Set([
   "/confirm",
   "/onboarding",
   "/partners/join",
+  // P14 (Partner Login) — mismo criterio exacto: sin sesión, Sidebar/MainNav
+  // no aportan nada aquí, y en mobile competirían con el propio
+  // CommerceChrome que esta página ya renderiza.
+  "/partner/login",
 ]);
 
 function isAuthRoute(pathname: string): boolean {

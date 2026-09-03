@@ -75,6 +75,12 @@ export const es = {
   "login.registerPromptText": "¿No tienes cuenta?",
   "login.registerPromptLink": "Regístrate",
   "login.forgotPasswordLink": "¿Olvidaste tu contraseña?",
+  // P14 (Partner Login) — únicas 2 claves nuevas de este bloque: el resto
+  // del formulario (email/contraseña/botones/errores/recuperación) se
+  // reutiliza tal cual desde "login.*" — misma cuenta, mismo Auth, solo
+  // cambia el encabezado.
+  "partnerLogin.title": "Acceso para Partners",
+  "partnerLogin.subtitle": "El espacio profesional de VIAO.",
   "recover.title": "Recuperar acceso",
   "recover.description":
     "Introduce tu email y te enviaremos un enlace para restablecer tu contraseña.",
@@ -601,8 +607,15 @@ export const es = {
   // /partners/dashboard sin token (Camino B) — entrada para un Commerce
   // ya vinculado, resuelto por sesión.
   "partnerDashboard.noOwnedPartnersTitle": "Todavía no tienes ningún negocio vinculado",
+  // P14.1.1 (Partner Onboarding + Access Recovery) — corrige una
+  // imprecisión real confirmada en P14.1: el enlace nunca se envía "al
+  // dar de alta" (ese email solo confirma la recepción de la solicitud,
+  // sin token — ver renderPartnerApplicationReceivedEmail()) sino al
+  // aprobarse (sendPartnerApprovedEmail(), disparado por el Database
+  // Webhook de partners UPDATE). No se afirma que el email ya fue
+  // enviado — solo se describe cuándo se envía.
   "partnerDashboard.noOwnedPartnersMessage":
-    "Si ya tienes un negocio en VIAO, entra desde el enlace que recibiste al darlo de alta y vincula tu cuenta desde allí.",
+    "Tu solicitud debe ser aprobada antes de tener acceso. Cuando se apruebe, recibirás un email con el enlace para entrar a tu panel y vincular tu cuenta.",
   "partnerDashboard.chooseCommerceTitle": "Elige un negocio",
   // UX-16.6 (Commerce UX Pro Max) — CommerceChrome (components/layout/
   // commerce-chrome.tsx). `fallbackTitle` se usa solo cuando no hay
@@ -654,6 +667,16 @@ export const es = {
   "adminPartners.cancelCta": "Cancelar",
   "adminPartners.confirmDeactivateCta": "Desactivar",
   "adminPartners.createdAtLabel": "Solicitado el",
+  // P14.1.1 (Partner Onboarding + Access Recovery) — "Reenviar acceso":
+  // fallback manual al email automático de aprobación (Email V2). Nunca
+  // revela el motivo exacto de un fallo (mismo criterio anti-enumeración
+  // que el resto de Partners) — el único estado explicado es el que la
+  // propia Card ya puede ver sin llamar a nada (sin contact_email).
+  "adminPartners.resendAccessCta": "Reenviar acceso",
+  "adminPartners.resendAccessLoading": "Enviando…",
+  "adminPartners.resendAccessSuccess": "Acceso reenviado.",
+  "adminPartners.resendAccessError": "No se pudo reenviar. Inténtalo de nuevo.",
+  "adminPartners.resendAccessUnavailable": "Sin email de contacto — no se puede reenviar el acceso.",
   // UX-10 — Partner Profile pública `/partners/[slug]` (§8). Nunca
   // reutiliza `/partners/ops/[accessToken]` (superficie operativa, no de
   // Discovery) — usa el `slug` ya existente en el schema desde PB1.

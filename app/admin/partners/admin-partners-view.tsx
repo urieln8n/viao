@@ -17,7 +17,7 @@ import {
 import { EmptyState } from "@/components/state/empty-state";
 import { t } from "@/lib/i18n";
 
-import { setPartnerStatusAction } from "../../partners/admin-actions";
+import { setPartnerStatusAction, resendPartnerAccessAction } from "../../partners/admin-actions";
 import { CATEGORY_LABEL_KEY } from "../../partners/category-label";
 import type { PartnerCategory } from "../../../lib/partners/request-partner-registration";
 import type { PartnerStatus } from "../../../lib/partners/set-partner-status";
@@ -89,6 +89,12 @@ function formatCreatedAt(iso: string): string {
 
 type RowState = { phase: "idle" } | { phase: "loading"; kind: ActionKind } | { phase: "error"; kind: ActionKind };
 
+// P14.1.1 (Partner Onboarding + Access Recovery) — estado independiente
+// del de arriba (aprobar/rechazar/desactivar): "Reenviar acceso" no
+// cambia `status`, así que nunca debe compartir rowStates ni disparar
+// router.refresh() (nada que releer del servidor tras un envío de email).
+type ResendState = { phase: "idle" } | { phase: "loading" } | { phase: "success" } | { phase: "error" };
+
 interface AdminPartnersViewProps {
   partners: AdminPartnerSummary[];
 }
@@ -96,6 +102,7 @@ interface AdminPartnersViewProps {
 export function AdminPartnersView({ partners }: AdminPartnersViewProps) {
   const router = useRouter();
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
+  const [resendStates, setResendStates] = useState<Record<string, ResendState>>({});
   const [confirming, setConfirming] = useState<{ partnerId: string; partnerName: string; action: PartnerAction } | null>(null);
 
   async function runAction(partnerId: string, action: PartnerAction) {
@@ -110,6 +117,21 @@ export function AdminPartnersView({ partners }: AdminPartnersViewProps) {
     }
 
     setRowStates((prev) => ({ ...prev, [partnerId]: { phase: "error", kind: action.kind } }));
+  }
+
+  // P14.1.1 — sin router.refresh(): reenviar el email no cambia ningún
+  // dato que getPartnersForAdmin() vuelva a leer, así que no hay nada
+  // que releer del servidor. El resultado real (sent/not_sent) nunca
+  // llega a la UI más allá de éxito/error genérico — ver
+  // resendPartnerAccess() para el porqué (anti-enumeración, mismo
+  // criterio que el resto del dominio Partners).
+  async function runResend(partnerId: string) {
+    setResendStates((prev) => ({ ...prev, [partnerId]: { phase: "loading" } }));
+    const result = await resendPartnerAccessAction(partnerId);
+    setResendStates((prev) => ({
+      ...prev,
+      [partnerId]: { phase: result.outcome === "sent" ? "success" : "error" },
+    }));
   }
 
   function handleActionClick(partner: AdminPartnerSummary, action: PartnerAction) {
@@ -179,6 +201,39 @@ export function AdminPartnersView({ partners }: AdminPartnersViewProps) {
                   </Button>
                 ))}
               </div>
+
+              {/* P14.1.1 (Partner Onboarding + Access Recovery) — fallback
+                  manual al webhook de aprobación (Email V2). Solo tiene
+                  sentido para un Partner `active`: uno `pending`/`inactive`
+                  produciría un enlace que hoy resuelve en notFound(), el
+                  propio resendPartnerAccess() ya lo rechaza server-side,
+                  esto solo evita ofrecer una acción que sabemos que
+                  fallará. El access_token NUNCA llega aquí — ni como prop,
+                  ni en ninguna respuesta: la Card solo conoce partner.id. */}
+              {partner.status === "active" &&
+                (partner.contactEmail ? (
+                  <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={resendStates[partner.id]?.phase === "loading"}
+                      onClick={() => void runResend(partner.id)}
+                    >
+                      {resendStates[partner.id]?.phase === "loading"
+                        ? t("adminPartners.resendAccessLoading")
+                        : t("adminPartners.resendAccessCta")}
+                    </Button>
+                    {resendStates[partner.id]?.phase === "success" && (
+                      <span className="text-sm text-muted-foreground">{t("adminPartners.resendAccessSuccess")}</span>
+                    )}
+                    {resendStates[partner.id]?.phase === "error" && (
+                      <span className="text-sm text-destructive">{t("adminPartners.resendAccessError")}</span>
+                    )}
+                  </div>
+                ) : (
+                  <p className="border-t pt-3 text-sm text-muted-foreground">{t("adminPartners.resendAccessUnavailable")}</p>
+                ))}
             </CardContent>
           </Card>
         );

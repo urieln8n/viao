@@ -22,8 +22,14 @@ export default async function PartnerDashboardEntryPage() {
     data: { user },
   } = await sessionClient.auth.getUser();
 
+  // P14 (Partner Login) — antes redirigía a /login (genérico). Ahora que
+  // existe una puerta de entrada propia del Partner Portal, alguien que
+  // llega aquí sin sesión (enlace guardado, "Gestionar mi negocio" desde
+  // /profile) vuelve a un contexto coherente en vez del login genérico.
+  // Sin ningún cambio de autorización: sigue siendo exactamente el mismo
+  // getUser() + resolveOwnedPartners() de siempre.
   if (!user) {
-    redirect("/login");
+    redirect("/partner/login");
   }
 
   const ownedPartners = await resolveOwnedPartners(user.id);

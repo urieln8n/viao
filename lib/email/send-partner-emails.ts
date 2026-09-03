@@ -53,16 +53,28 @@ export async function sendPartnerApplicationNotificationEmail(
   return sendEmail({ to: notificationEmail, subject, html }, client);
 }
 
-export async function sendPartnerApprovedEmail(params: {
-  to: string;
-  businessName: string;
-  dashboardUrl: string;
-}): Promise<SendEmailResult> {
+// P14.1.1 (Partner Onboarding + Access Recovery) — `client` opcional
+// añadido aquí con el mismo motivo exacto que ya justifica su presencia en
+// sendPartnerApplicationNotificationEmail(): a partir de este bloque,
+// resendPartnerAccess() (lib/partners/resend-partner-access.ts) también
+// necesita poder verificar, con un doble de prueba, que el "Reenviar
+// acceso" de Admin realmente intenta el envío — sin esto no habría forma
+// de probar el camino de éxito sin una llamada real a Resend. Ningún
+// llamante existente (el webhook de aprobación) pasa este parámetro,
+// así que su comportamiento no cambia.
+export async function sendPartnerApprovedEmail(
+  params: {
+    to: string;
+    businessName: string;
+    dashboardUrl: string;
+  },
+  client?: ResendLikeClient,
+): Promise<SendEmailResult> {
   const { subject, html } = renderPartnerApprovedEmail({
     businessName: params.businessName,
     dashboardUrl: params.dashboardUrl,
   });
-  return sendEmail({ to: params.to, subject, html });
+  return sendEmail({ to: params.to, subject, html }, client);
 }
 
 export async function sendPartnerRejectedEmail(params: {

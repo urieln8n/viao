@@ -64,6 +64,9 @@ export const en = {
   "login.registerPromptText": "Don't have an account?",
   "login.registerPromptLink": "Sign up",
   "login.forgotPasswordLink": "Forgot your password?",
+  // P14 (Partner Login) — see es.ts for rationale (only 2 new keys, rest reused from "login.*").
+  "partnerLogin.title": "Partner access",
+  "partnerLogin.subtitle": "VIAO's professional space.",
   "recover.title": "Recover access",
   "recover.description":
     "Enter your email and we'll send you a link to reset your password.",
@@ -534,8 +537,9 @@ export const en = {
   "partnerDashboard.linkAccountCreateCta": "Create account",
   "partnerDashboard.accountLinkedLabel": "VIAO account linked",
   "partnerDashboard.noOwnedPartnersTitle": "You don't have a linked business yet",
+  // P14.1.1 — see es.ts for rationale.
   "partnerDashboard.noOwnedPartnersMessage":
-    "If you already have a business on VIAO, enter from the link you received when it was set up and link your account from there.",
+    "Your application needs to be approved before you get access. Once it's approved, you'll receive an email with the link to enter your dashboard and link your account.",
   "partnerDashboard.chooseCommerceTitle": "Choose a business",
   "commerceChrome.fallbackTitle": "Business panel",
   "commerceChrome.exitCta": "Exit to VIAO",
@@ -574,6 +578,12 @@ export const en = {
   "adminPartners.cancelCta": "Cancel",
   "adminPartners.confirmDeactivateCta": "Deactivate",
   "adminPartners.createdAtLabel": "Requested on",
+  // P14.1.1 (Partner Onboarding + Access Recovery) — see es.ts for rationale.
+  "adminPartners.resendAccessCta": "Resend access",
+  "adminPartners.resendAccessLoading": "Sending…",
+  "adminPartners.resendAccessSuccess": "Access resent.",
+  "adminPartners.resendAccessError": "Couldn't resend. Try again.",
+  "adminPartners.resendAccessUnavailable": "No contact email — access can't be resent.",
   "partnerProfile.notFoundTitle": "Partner not found",
   "partnerProfile.notFoundMessage": "This Partner doesn't exist or is no longer available.",
   "partnerProfile.backToDiscoveryCta": "View all Partners",
