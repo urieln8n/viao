@@ -272,20 +272,35 @@ function LoginFormContent({ defaultRedirect, title, subtitle, showJoinTeaser }: 
               para quien YA es Partner y solo quiere iniciar sesión. Ahora
               son 2 botones secundarios (outline, mismo patrón que
               LinkAccountWidget) bajo un único encabezado compartido,
-              diferenciando explícitamente las 2 situaciones posibles. */}
+              diferenciando explícitamente las 2 situaciones posibles.
+
+              P9.2 — hallazgo de la validación post-deploy: la tarjeta que
+              envuelve todo el formulario tiene `max-w-sm` (24rem/384px)
+              FIJO, independiente del viewport — nunca crece en desktop. La
+              variante `sm:flex-row` de abajo reaccionaba al ancho del
+              VIEWPORT (breakpoint de Tailwind), no al ancho real,
+              siempre-limitado, de la propia tarjeta: en cuanto el viewport
+              alcanzaba el breakpoint `sm` (640px), los 2 botones pasaban a
+              fila dentro de un contenedor que seguía midiendo como mucho
+              ~336px de contenido real (384px - padding de CardContent),
+              desbordando visiblemente sus textos por los dos lados. Nunca
+              hay más ancho real disponible en desktop que en mobile — la
+              tarjeta no crece — así que la solución correcta es la misma
+              disposición en columna que ya funcionaba en mobile, sin
+              variante `sm:`, en vez de intentar ajustar anchos. */}
           {showJoinTeaser && !partnerAccessToken && (
             <div className="flex flex-col items-center gap-2 border-t pt-4 text-center">
               <p className="text-sm text-muted-foreground">{t("partners.joinTeaser")}</p>
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex w-full flex-col gap-2">
                 <Link
                   href="/partner/login"
-                  className={buttonVariants({ variant: "outline", className: "w-full sm:w-fit" })}
+                  className={buttonVariants({ variant: "outline", className: "w-full" })}
                 >
                   {t("partners.existingPartnerLoginCta")}
                 </Link>
                 <Link
                   href="/partners/join"
-                  className={buttonVariants({ variant: "outline", className: "w-full sm:w-fit" })}
+                  className={buttonVariants({ variant: "outline", className: "w-full" })}
                 >
                   {t("partners.joinTeaserCta")}
                 </Link>
