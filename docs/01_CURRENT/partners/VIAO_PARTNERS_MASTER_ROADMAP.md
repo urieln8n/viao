@@ -5,7 +5,7 @@ DOMAIN: Partners
 AUTHORITY: Contrato operativo para ejecutar Partners fase por fase. No sustituye al código — ante cualquier contradicción futura, gana el código real (ver `docs/00_GOVERNANCE.md`). Complementa, no sustituye, a `VIAO_PARTNERS_CONTINUITY_MASTER.md` (ese documento es el diario cronológico bloque-a-bloque; este es el mapa operativo por fases, reconstruido desde cero contra el código real en esta auditoría).
 SUPERSEDES: —
 SUPERSEDED BY: —
-LAST REVIEWED: 2026-09-02 (sincronización documental post-RELEASE CLOSURE P10+P10.1+UX-AUTH-1+P13 — ver nota de actualización tras la sección 0)
+LAST REVIEWED: 2026-09-04 (sincronización documental post-P10.2/P14.2 — nueva sección P10.2, P11/P12 corregidos, nueva sección P11.1, nota de numeración en P14 — ver notas de actualización tras la sección 0)
 ---
 
 # VIAO — PARTNERS MASTER ROADMAP
@@ -21,6 +21,8 @@ Documento operativo, no narrativo. Permite decir "Ejecuta P6" en un chat nuevo y
 **Nota de sincronización (2026-09-01, misma fecha, turno posterior)**: este documento se escribió con PARTNER APPROVAL V1 (P2) todavía sin commitear. Desde entonces: P2 (`56a414e`) y UX Pro Max V2/Bloque B (`18867a2`, relevante para P9) **ya están commiteados, pusheados y desplegados**, y P2 fue además activado y validado en producción con un E2E real automático (`pending→active` sobre un Partner de test, cadena completa `set_partner_status()`→trigger→Database Webhook→`pg_net`→`/api/webhooks/partner-status`→HTTP 200, confirmado independientemente en `net._http_response` de Supabase). Las secciones afectadas quedan corregidas puntualmente abajo, sin reescribir el documento — el resto de esta auditoría (P0/P1/P3-P8/P11-P15) sigue vigente sin cambios.
 
 **Nota de sincronización (2026-09-02, RELEASE CLOSURE)**: desde la nota anterior se cerraron y desplegaron **P10 — Admin Partners V1**, **P10.1 — Partner Onboarding Hardening** (`contact_email` obligatorio en `/partners/join`) y **P13 — Security Hardening (GRANT audit)**, junto con UX-AUTH-1 (fuera del dominio Partners — login/registro/onboarding general de Usuario, documentado en `docs/00_VIAO_HANDOFF.md`, no repetido aquí). Los tres, commit único `e1794e6` ("release: close P10, P10.1, UX-AUTH-1 and P13"), pusheado a `origin/main` y desplegado en producción (`https://viao.vercel.app`). P10 deja de ser "NEXT BLOCK": existe `/admin/partners` (guard `partner_admin`, reutiliza `set_partner_status()` sin modificarlo). P13 deja de ser "no corregido": las 14 entidades de `public` afectadas por el default ACL permisivo quedaron corregidas (migración `20260902100000_p13_grant_security_hardening.sql` + `auto_expose_new_tables = false`), los 25 tests que este documento citaba como "100% el hallazgo de P13" están en verde. Queda un residual 🟡 documentado (no bloqueante) sobre privilegios TRUNCATE/REFERENCES/TRIGGER/MAINTAIN en tablas *futuras* — ver P13 más abajo. Las secciones afectadas (1, 4, 11, 14, 15, P1, P10, P13, Master Checklist, Open Decisions, Known Risks, P15) quedan corregidas puntualmente abajo; el resto de esta auditoría sigue vigente sin cambios. Verificación de producción de este release: login/register/recover/partners/join/`/admin/partners` (guard) confirmados; el circuito completo Register→Onboarding→Home con sesión nueva quedó **NO VERIFICADO** en este bloque por rate-limit de Supabase Auth (agotado por los propios intentos de smoke test, no un defecto) — ver `docs/00_VIAO_HANDOFF.md` para el detalle.
+
+**Nota de sincronización (2026-09-03/04, P14/P14.1/P14.1.1/P14.2)**: ⚠️ **colisión de numeración, no un error de este documento** — la sesión que ejecutó estos bloques usó "P14" para referirse a **Partner Login** (`/partner/login`, nuevo, `LoginForm` compartido con `/login`), sin relación con la sección **P14 — QA / E2E** de este mismo roadmap (ver más abajo, sin cambios de numeración por no reescribir el documento entero). Para evitar confusión: "Partner Login + Access Recovery" queda documentado aquí como **P10.2** (mismo criterio de numeración hermana ya usado para P10.1), no como P14. Resumen: **P10.2 — Partner Login + Access Recovery** (nueva, ver abajo) commiteada y desplegada (`29e0632`), QA de producción parcialmente verificado — ver `docs/00_VIAO_HANDOFF.md` §2 para el detalle exacto y el estado abierto de la vinculación de cuenta. **P14.2 — Partner Product Audit** (solo auditoría, sin código propio en este roadmap) corrigió una premisa incorrecta: Experiences/Promotions **no existen** como funcionalidad Partner — ver P11/P12 corregidos abajo, y nueva sección **P11.1 — Activity Verification**.
 
 ---
 
@@ -428,22 +430,45 @@ Más `send-partner-emails.test.ts`/`templates/partner-emails.test.ts` (`lib/emai
 
 ---
 
+## P10.2 — Partner Login + Access Recovery
+**Objetivo**: puerta de entrada propia del Partner Portal, y un fallback manual al email de aprobación automático.
+**Estado actual**: 🟢 **COMPLETE en código, desplegado.** Commit `29e0632` ("feat: complete partner access and onboarding"), pusheado a `origin/main`, Vercel Ready.
+**Qué existe**: `/partner/login` (`app/partner/login/page.tsx`, `CommerceChrome` + `LoginForm` compartido con `/login`, extraído a `components/auth/login-form.tsx` — misma sesión Supabase Auth, sin sistema de auth separado, redirige a `/partners/dashboard` por defecto en vez de `/`) + `resendPartnerAccessAction()`/"Reenviar acceso" en `/admin/partners` (fallback manual al mismo email/plantilla de aprobación ya usado por el webhook — `access_token` nunca sale de `resendPartnerAccess()`, resultado siempre `{outcome:"sent"|"not_sent"}`) + corrección del copy impreciso del EmptyState de `/partners/dashboard` (decía que el enlace llega "al darse de alta"; llega al aprobarse).
+**Seguridad**: sin cambios de arquitectura — mismo `owner_id`/RLS/RPCs de siempre (`resolvePartnerAccess`, `link_partner_owner`, `set_partner_status` sin tocar).
+**QA de producción**: 🟡 **parcial, no PASS completo** — verificado con evidencia real: Partner de prueba visible en Admin, email real recibido, enlace carga el Dashboard correcto con `LinkAccountWidget`. **Sin confirmar**: el paso de vinculación de cuenta y `/partner/login` con la cuenta ya vinculada — ver `docs/00_VIAO_HANDOFF.md` §2 para el detalle exacto, no repetido aquí.
+**Archivos**: `app/partner/login/page.tsx`, `components/auth/login-form.tsx`, `lib/auth/resolve-login-redirect.ts`, `lib/partners/resend-partner-access.ts`, `app/partners/admin-actions.ts`, `app/partners/dashboard/page.tsx`, `components/layout/app-shell.tsx`.
+**Tests**: 21 nuevos (`resolve-login-redirect.test.ts` 11, `resend-partner-access.test.ts` 10), 0 regresiones sobre la suite existente (922/918/0/4 en la última corrida completa).
+**Checklist**: [x] Auditoría previa (arquitectura de auth, sin proponer un sistema nuevo), [x] Implementación, [x] Tests, [x] Commit/push/deploy, [ ] QA de producción completo (vinculación de cuenta sin confirmar).
+
+---
+
 ## P11 — Partner Value Loop
 **Objetivo**: que el Partner entienda y reciba valor real de VIAO.
-**Estado actual**: 🔵 Datos existen (Dashboard), narrativa no.
+**Estado actual**: 🔵 Datos existen (Dashboard), narrativa no. **Confirmado en P14.2 (auditoría de producto, 2026-09-04)**: el Dashboard real hoy es exactamente Visibilidad (`profileViews`) → Clientes (nuevos/recurrentes) → Ventas (declaradas/confirmadas) → Actividad reciente — ninguna cifra tiene contexto ("¿esto es bueno?") ni serie temporal (solo acumulado histórico total, nunca por periodo).
 ```text
 Partner → Visibilidad (Discovery) → Clientes (Actividad registrada) → [Rewards es del Usuario, no del Partner directamente] → Repetición (clientesRecurrentes, ya calculado) → Valor del Partner
 ```
-**Qué falta**: ninguna funcionalidad nueva necesariamente — principalmente comunicación/copy en el Dashboard ya existente. Separar: **existente** (todas las métricas), **MVP necesario** (una frase de contexto por métrica), **futuro** (informes/tendencias).
-**Checklist**: [ ] Decisión de qué narrativa añadir, [ ] Implementación (probablemente parte de P9/UX Pro Max, no un bloque nuevo).
+**Qué falta**: ninguna funcionalidad nueva necesariamente — principalmente comunicación/copy en el Dashboard ya existente, más una serie temporal simple sobre datos que ya existen. Separar: **existente** (todas las métricas), **MVP necesario** (una frase de contexto por métrica + tendencia simple), **futuro** (informes/comparativas).
+**⚠️ No confundir con Experiences/Promotions**: P14.2 confirmó que ninguna de las dos existe como funcionalidad Partner (ni tabla, ni CRUD, ni UI) — "experience" es solo una de las 6 categorías fijas de negocio. Cualquier documento o bloque que las dé por existentes está equivocado; corregir contra este mismo párrafo.
+**Checklist**: [ ] Decisión de qué narrativa/tendencia añadir — **depende de validación con Partners piloto reales (P14.2, Route A)**, [ ] Implementación (no antes de esa validación).
+
+---
+
+## P11.1 — Activity Verification (needs pilot evidence)
+**Objetivo**: que una Actividad registrada en Ops refleje algo que realmente ocurrió, no solo lo que el propio Partner escribió.
+**Estado actual**: 🔴 **No existe.** Confirmado en código (P14.2, 2026-09-04): `/partners/ops/[accessToken]` tiene dos botones, "QR" y "Reserva" — **ninguno de los dos hace nada distinto de un formulario de importe manual**. "QR" no genera ni escanea ningún QR. "Reserva" acepta una `reservationReference` de **texto libre, sin FK, puramente informativo** (ya documentado así en el propio código, `register-partner-activity.ts`). La única diferencia real entre ambos flujos es la tasa de Points (`declared` 1pt/€ vía QR, `confirmed_by_reservation` 2pt/€ vía Reserva) — un nombre que sugiere una confianza que el sistema no respalda.
+**Salvaguardas que SÍ existen** (a nivel de volumen, no de veracidad): límite diario de Actividades, pool mensual de 3.000 Points, `attempt_id` único (idempotencia), `access_token` como única vía de autorización (un Partner no puede registrar Actividad para otro).
+**Qué falta si se decide construir**: algún mecanismo que involucre al usuario, no solo al Partner — QR real (estático o dinámico), código corto introducido por el usuario, o confirmación cruzada. Ver comparativa de opciones en el informe de P14.2 (no repetida aquí).
+**Dependencias**: **validación con 2-3 Partners piloto reales** sobre si este es realmente el problema que más les importa (frente a P11, métricas/narrativa) — sin esa evidencia, no se elige mecanismo.
+**Checklist**: [ ] Validación de necesidad real con Partners piloto, [ ] Elección de mecanismo (solo tras validación), [ ] Diseño de seguridad del mecanismo elegido, [ ] Implementación — **ninguno de estos pasos autorizado todavía**.
 
 ---
 
 ## P12 — Analytics
 **Objetivo**: medir el funnel completo de Partners.
-**Estado actual**: 🟡 Parcial — `partner_profile_viewed` ya existe y se agrega en el Dashboard (`profileViews`). Nada más se mide: solicitudes, aprobaciones, Partners activos en el tiempo, % de perfil completado, clics, conversión.
+**Estado actual**: 🟡 Parcial — `partner_profile_viewed` ya existe y se agrega en el Dashboard (`profileViews`). Nada más se mide: solicitudes, aprobaciones, Partners activos en el tiempo, % de perfil completado, clics, conversión. **P14.2 confirma que no hay ninguna serie temporal** — todas las métricas del Dashboard son acumulado histórico total, nunca por periodo/mes.
 **Dependencias**: ninguna técnica — es agregación sobre datos que ya existen (`partners.status`, `partners.created_at`, `partner_activities`).
-**Checklist**: [ ] Decisión de qué métricas priorizar, [ ] Implementación (probablemente consultas nuevas, sin tabla nueva).
+**Checklist**: [ ] Decisión de qué métricas priorizar — **depende de la misma validación de Partners piloto que P11/P11.1**, [ ] Implementación (probablemente consultas nuevas, sin tabla nueva).
 
 ---
 
@@ -464,6 +489,7 @@ Partner → Visibilidad (Discovery) → Clientes (Actividad registrada) → [Rew
 ---
 
 ## P14 — QA / E2E
+**⚠️ Nota de numeración (2026-09-04)**: sin relación con "P14/P14.1/P14.1.1" tal como se nombraron en la sesión que ejecutó Partner Login — ver P10.2 arriba y `docs/00_VIAO_HANDOFF.md` §2. Esta sección conserva su numeración original de este roadmap, sin cambios.
 **Objetivo**: validar el recorrido completo real.
 **Estado actual**: 🟡 Cada tramo probado por separado (147 tests) + `e2e-integration.test.ts` conecta PB2/PB4/PB6. **P2 ya tiene su propio E2E real confirmado en producción** (ver evidencia en la sección P2 de este documento) — pero **ningún test conecta Registration→Approval→Identity→Dashboard como un único flujo real de principio a fin**, y P9 (Bloque B) tampoco tiene su validación visual E2E confirmada todavía (ver P9).
 **Qué falta**: un test/checklist E2E manual (navegador real) que recorra los 15 pasos completos del ciclo de vida (sección 4 de este documento) como un único recorrido, y la validación visual pendiente de P9.

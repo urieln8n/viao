@@ -17,6 +17,10 @@ LAST REVIEWED: 2026-09-02 (sincronización documental post-RELEASE CLOSURE P10+P
 > **Actualizado 2026-09-01 (PARTNER APPROVAL V1, ver `VIAO_PARTNERS_CONTINUITY_MASTER.md` §19 para la evidencia completa)**: la aprobación **ya NO es manual vía Supabase Studio** — ese camino está bloqueado a propósito por el trigger de protección, para cualquier rol. El mecanismo real hoy es el RPC `set_partner_status()`, commiteado, desplegado y **validado con un E2E real en producción** (transición `pending→active` disparada de verdad, Database Webhook confirmado hasta `pg_net`, `HTTP 200`). El comercio recibe comunicación automática por email en 3 momentos (solicitud recibida, aprobado, rechazado vía `pending→inactive`), y el `access_token` se entrega automáticamente en el email de aprobación — sujeto a la misma limitación ya documentada de Resend sin dominio propio verificado (ver §11.2). Andrés recibe aviso de cada solicitud nueva vía `PARTNER_NOTIFICATION_EMAIL` (Partner Application Notification V1, commiteado `14365ae`). Sin deduplicación ni estado `rejected` — decisión deliberada, no un bug.
 >
 > **Actualizado 2026-09-02 (RELEASE CLOSURE, ver §11.4)**: **ya existe un panel interno** — `/admin/partners` (P10 — Admin Partners V1, commiteado `e1794e6`, desplegado, guard verificado en producción). Localizar/revisar el contenido de una solicitud sigue en Supabase Studio; solo el paso de EJECUTAR la aprobación cambió de mecanismo. `contact_email` es ahora obligatorio al solicitar (P10.1). **Nota crítica no relacionada con Partners específicamente, pero que afecta a la sección de seguridad de este documento**: P13 (Security Hardening/GRANT audit) también se cerró en este release — corregido y validado en el Postgres **local**, pero su aplicación al Postgres de **producción** sigue pendiente de una acción manual del propietario (ningún mecanismo automático la aplica al hacer deploy) — ver §11.4.
+>
+> **Actualizado 2026-09-03/04 (P14/P14.1/P14.1.1, commiteado y desplegado `29e0632`)**: además del acceso vía `access_token` en la URL, ahora existe `/partner/login` — puerta de entrada dedicada, misma identidad Supabase Auth que `/login`, redirige a `/partners/dashboard` (Camino B, `owner_id`). Y además del email automático de aprobación (webhook), `/admin/partners` tiene ahora un botón **"Reenviar acceso"** (`resendPartnerAccessAction()`) como fallback manual — reutiliza el mismo email/plantilla, nunca expone `access_token` al cliente. **QA de producción end-to-end (P14.1.5) sigue ABIERTO**: verificado con evidencia real hasta "el email de aprobación llega y su enlace carga el Dashboard correcto" (Partner de prueba `viao-test-partner-access`, creado vía INSERT administrativo autorizado en P14.1.4) — el paso de vinculación de cuenta (`LinkAccountWidget` → `link_partner_owner()` → `/partner/login` → Dashboard ya vinculado) quedó pendiente de confirmación del propietario, sin evidencia todavía. **No declarar P14.1.5 cerrado hasta que exista esa confirmación.**
+>
+> **Actualizado 2026-09-04 (P14.2 — Partner Product Audit, solo auditoría, sin código)**: auditado el Partner como producto B2B, no solo como acceso. Hallazgo que corrige una premisa que circulaba en el propio encargo de ese bloque: **VIAO no tiene hoy Experiences ni Promotions como funcionalidades Partner** — ni tabla, ni CRUD, ni UI. "Experience" existe únicamente como una de las 6 categorías fijas de negocio (`restaurant/experience/barbershop/gym/shop/service`). El producto Partner real hoy es: acceso + Dashboard (Visibilidad/Clientes/Ventas/Actividad reciente) + "Mi comercio" (perfil editable) + registro de Actividad en Ops (dos flujos etiquetados "QR" y "Reserva", **ninguno de los dos verifica nada real** — es autodeclaración pura del propio Partner, con dos tasas de Points distintas). QR real, verificación externa, confirmación cruzada del usuario, series temporales de métricas y monetización: **ninguno construido, ninguno aprobado para construir todavía** — ver `VIAO_PARTNERS_MASTER_ROADMAP.md` para el detalle y la matriz de priorización.
 
 ---
 
@@ -36,13 +40,61 @@ Es un mapa: dice **dónde está cada cosa y qué estado tiene**, no decide nada 
 
 ## 2. Current project state
 
-- **Fase/bloque actual**: ninguna en curso. El último bloque cerrado es **RELEASE CLOSURE — P10 + P10.1 + UX-AUTH-1 + P13** (`VIAO_PARTNERS_CONTINUITY_MASTER.md` §20, `VIAO_PARTNERS_MASTER_ROADMAP.md` — este último es ahora la fuente detallada del estado P0-P15, no este HANDOFF).
-- **Último bloque cerrado (código)**: commit único `e1794e6` — Admin Partners V1 (P10), Partner Onboarding Hardening (P10.1), Auth/Onboarding UX (UX-AUTH-1) y Security Hardening (P13, código) — pusheado a `origin/main` y desplegado en producción (Vercel `dpl_GqVULGsD1anZWbTEEosM6Uia9kgJ`, ● Ready).
-- **Último bloque cerrado (producción)**: deploy automático del commit anterior, verificado. Smoke test parcial: login/register/recover/partners/join/`/admin/partners` (guard) confirmados en `https://viao.vercel.app`; el circuito Register→Onboarding→Home con sesión nueva **no se pudo verificar** en este bloque (rate-limit de Supabase Auth agotado por los propios intentos del smoke test — ver §11.4). **La migración de P13 (GRANT hardening) NO se ha aplicado al Postgres de producción** — sigue siendo una acción manual pendiente del propietario, exactamente como todas las migraciones anteriores de este proyecto (ningún mecanismo automatiza esto al hacer deploy).
-- **Siguiente bloque autorizado**: **ninguno todavía**. P10, P10.1, UX-AUTH-1 y P13 (código) ya no son "próximo bloque" — están cerrados. Pendiente real, no de código: que el propietario aplique la migración de P13 a producción. Pendiente de decisión: cierre formal de V2, y después **P16.0 — Product + Architecture Audit**.
-- **Decisión explícita de este bloque (histórica, V2 Release Checkpoint)**: se auditó si el ciclo de solicitudes Partner necesitaba un panel administrativo nuevo. Conclusión de entonces: no en ese release. Esa decisión se reabrió en la auditoría de P10 y, en este bloque, **se construyó** (`/admin/partners`) — no hay contradicción, son turnos distintos con alcance distinto.
-- **Estado documental**: sincronizado en este bloque (2026-09-02) contra código/Git/producción real — ver `VIAO_PARTNERS_MASTER_ROADMAP.md` y `VIAO_PARTNERS_CONTINUITY_MASTER.md` §20 para el detalle que este HANDOFF no repite.
-- **Estado técnico**: Rewards V1, Goals V1, Missions V1, Partners (Foundation + V2 + Commerce Identity + Partner Auth Entry + Partner Discovery CTA + Partner Approval V1 + **Admin Partners V1 + Onboarding Hardening, en producción**), Auth/Onboarding de Usuario (**UX-AUTH-1, en producción**) implementados y probados en código — ver sección 5-7.
+# CURRENT VIAO STATE
+
+```text
+CURRENT PHASE:
+P14.2 completed — Partner Product Audit (audit only, no code)
+
+P14 / P14.1 / P14.1.1:
+Partner Access + Onboarding — CODE CLOSED, DEPLOYED (29e0632)
+Production E2E QA (P14.1.5): OPEN — account linking step unconfirmed
+
+P14.2:
+Partner Product Audit — AUDITED (no implementation)
+
+PRODUCTION:
+Partner login/access flow operational (/login, /partner/login,
+/partners/dashboard, /admin/partners all verified live)
+
+PARTNER PRODUCT (real, code-verified):
+Dashboard + Profile ("Mi comercio") + Activity (self-declared,
+Ops "QR"/"Reserva" flows) + Metrics (profileViews, clientesNuevos/
+Recurrentes, ventasDeclaradas/Confirmadas, Actividad reciente)
+
+EXPERIENCES:
+NOT IMPLEMENTED (no table, no CRUD, no UI — "experience" is only
+a fixed Partner category value, not a content entity)
+
+PROMOTIONS:
+NOT IMPLEMENTED
+
+REAL QR:
+NOT IMPLEMENTED (the "QR" button in Ops is a manual amount-entry
+form, not an actual QR code/scan)
+
+VERIFICATION:
+NOT IMPLEMENTED (Activity is 100% Partner self-declared; only
+volume/rate safeguards exist — daily limit, monthly pool, attempt_id
+idempotency — none confirm the transaction itself happened)
+
+CURRENT GATE:
+Pilot validation with 2-3 real Partners
+
+NEXT DECISION:
+Metrics/value (Route A) vs. activity verification (Route B) —
+see VIAO_PARTNERS_MASTER_ROADMAP.md, not decided yet
+
+NEXT IMPLEMENTATION:
+NOT YET DECIDED — depends on pilot evidence
+```
+
+- **Fase/bloque actual**: ninguna en curso de implementación. Último bloque de CÓDIGO cerrado y desplegado: **P14 + P14.1 + P14.1.1 — Partner Login + Onboarding Audit + Access Recovery**, commit `29e0632` (`feat: complete partner access and onboarding`), pusheado a `origin/main`, desplegado en producción (Vercel, ● Ready, verificado con navegador real). Último bloque de AUDITORÍA (sin código): **P14.2 — Partner Product Audit**.
+- **QA de producción (P14.1.5)**: **OPEN, no PASS** — verificado con evidencia real: Partner de prueba visible en Admin, "Reenviar acceso" funcional, email real recibido (contenido correcto), enlace del email carga el Dashboard correcto con `LinkAccountWidget` visible. **Sin confirmar todavía**: que la vinculación de cuenta (paso siguiente, en curso al momento de escribir esto) complete correctamente y que `/partner/login` funcione después con la cuenta ya vinculada. No declarar este bloque cerrado hasta esa confirmación.
+- **Siguiente bloque autorizado**: **ninguno todavía**. Dos caminos abiertos, sin decidir: (1) cerrar el QA de P14.1.5 (falta solo la confirmación del paso de vinculación); (2) validación con Partners piloto reales antes de construir cualquiera de Activity Verification / QR / Metrics avanzadas / Experiences / Promotions — ver `VIAO_PARTNERS_MASTER_ROADMAP.md` para la matriz de priorización completa de P14.2.
+- **Pendiente real, no de código**: la migración de P13 (GRANT hardening) sigue sin aplicarse al Postgres de producción — sin cambios desde el release anterior, acción manual pendiente del propietario.
+- **Estado documental**: sincronizado en este bloque (P14.2 — Documentation & Roadmap Sync) contra código/Git/producción real. Revisados por contradicciones `VIAO_PARTNERS_CONTINUITY_MASTER.md`, `VIAO_PARTNERS_MASTER_ROADMAP.md`, `VIAO_FUTURE_BACKLOG.md` — ninguno afirmaba que Experiences/Promotions/QR real ya existieran (ya estaban correctamente marcados como futuro/parked); no fue necesario corregir ninguna afirmación falsa, solo añadir el estado que faltaba.
+- **Estado técnico**: Rewards V1, Goals V1, Missions V1, Partners (Foundation + V2 + Commerce Identity + Partner Auth Entry + Partner Discovery CTA + Partner Approval V1 + Admin Partners V1 + Onboarding Hardening + **Partner Login (P14) + Access Recovery (P14.1.1), en producción**), Auth/Onboarding de Usuario (UX-AUTH-1, en producción) implementados y probados en código — ver sección 5-7.
 
 ---
 
@@ -91,6 +143,9 @@ Es un mapa: dice **dónde está cada cosa y qué estado tiene**, no decide nada 
 | Partners — Onboarding Hardening (P10.1) | ✅ COMPLETADO, `contact_email` obligatorio verificado en producción | `VIAO_PARTNERS_CONTINUITY_MASTER.md` §20.2 | Ninguna pendiente |
 | Auth/Onboarding de Usuario (UX-AUTH-1) | ✅ COMPLETADO en código/producción; circuito completo con sesión nueva NO verificado en este bloque | §11.4 | Reintentar smoke test cuando el rate-limit de Supabase Auth se libere (no urgente) |
 | Security Hardening (P13) | 🟡 COMPLETADO en código/local; **PENDIENTE aplicar a Postgres de producción** | `VIAO_PARTNERS_MASTER_ROADMAP.md` (sección P13), §11.4 | Acción manual del propietario: aplicar `20260902100000_p13_grant_security_hardening.sql` a producción |
+| Partners — Login + Access Recovery (P14 / P14.1 / P14.1.1) | ✅ COMPLETADO en código, commiteado y **desplegado** (`29e0632`); QA de producción **🟡 OPEN** — ver P14.1.5 abajo | `VIAO_PARTNERS_CONTINUITY_MASTER.md`, este HANDOFF §2 | Confirmar el paso de vinculación de cuenta pendiente (P14.1.5) |
+| Partners — Producción E2E QA (P14.1.5) | 🟡 OPEN — email/enlace/Dashboard verificados con evidencia real; vinculación de cuenta sin confirmar | Este HANDOFF §2 | Confirmación del propietario del resultado de vincular la cuenta de prueba |
+| Partners — Product Audit (P14.2) | ✅ AUDITADO (sin código) — corrige la premisa de que Experiences/Promotions ya existen (no existen) | `VIAO_PARTNERS_MASTER_ROADMAP.md` | Validación con Partners piloto reales antes de decidir próxima implementación |
 | Travel | ❄️ FROZEN / legacy purgado de navegación y Core, código congelado en el repo | `VIAO_MASTER_CONTEXT_V1.md` §11-13, `HOTELBEDS_CERTIFICATION_STATUS.md` | Ninguna — depende de decisión estratégica explícita futura |
 | Vision | ❄️ FROZEN, funcional, desacoplado de Missions (recomendado DECOUPLE, no ejecutado formalmente) | `VIAO_MASTER_CONTEXT_V1.md` §9 | Ninguna |
 | Release Baseline | ✅ COMPLETADO | Ver §11 | Verificación E2E de Partners en producción — **ya no bloqueada**: P2 (Approval) tiene E2E real confirmado (ver §19 de la Continuity Master); Dashboard/Self-Service en producción con sesión real siguen sin re-verificar en este bloque, ver §8 |
@@ -457,6 +512,10 @@ Ninguna contradicción se corrige automáticamente en ningún bloque, nunca.
 | 2026-09-01 | **E2E real de producción (PARTNER APPROVAL V1)** — Partner de test dedicado (`is_test=true`, `contact_email=null`) llevado de `pending→active` vía `set_partner_status()`; cadena automática completa confirmada (trigger → Database Webhook → `pg_net` → `/api/webhooks/partner-status` → `HTTP 200` → `{"handled":"approved"}`), verificado independientemente en `net._http_response` de Supabase. Un segundo Partner, `elkin` (real, no test), completó el mismo `pending→active`, siendo hoy el primer Partner `active` genuino del proyecto. Sin email real enviado (`contact_email` vacío) | **Cerrado, PASS** — ver `VIAO_PARTNERS_CONTINUITY_MASTER.md` §19.3 | Ninguno (solo datos vía RPC autenticado, sin migraciones/código) | — (mismo deploy) | P10 — Admin Partners V1 (auditado, READY, no autorizado) |
 | 2026-09-01 | Sincronización documental post-P2 (este bloque) — `VIAO_PARTNERS_MASTER_ROADMAP.md`, `VIAO_PARTNERS_CONTINUITY_MASTER.md` (§19 nueva), este HANDOFF actualizados contra código/Git/producción real; ninguna afirmación obsoleta de "P2/P9 sin commitear/desplegar" queda sin corregir | Cerrado — puramente documental, sin código/SQL/RPC/Supabase/Vercel modificados | Sin commitear (no autorizado en este bloque) | — | Ninguno autorizado |
 | 2026-09-02 | **RELEASE CLOSURE — P10 (Admin Partners V1) + P10.1 (Partner Onboarding Hardening) + UX-AUTH-1 (Auth/Onboarding UX) + P13 (Security Hardening, código/local)** — cada bloque ya auditado/implementado en turnos anteriores de esta sesión; documentación sincronizada contra código/Git real antes del commit (este HANDOFF, Continuity Master §20, Master Roadmap); tests/tsc/lint/build en frío (895/891/0/4), commit único (separar en 4 habría exigido staging parcial de `lib/i18n/*` compartidos), push, deploy automático Vercel, smoke test de producción parcial | **Cerrado, PASS CON CONDICIONES** — código y local, PASS completo; producción, PASS parcial: guard de `/admin/partners` y validaciones de `/partners/join` confirmados, circuito Onboarding con sesión nueva NO verificado (rate-limit de Supabase Auth agotado por el propio smoke test); **la migración de P13 sigue SIN aplicarse al Postgres de producción** (acción manual pendiente del propietario) — ver §11.4 | `e1794e6` | Vercel `dpl_GqVULGsD1anZWbTEEosM6Uia9kgJ`, ● Ready, `https://viao.vercel.app` | Acción manual: aplicar la migración de P13 a producción. Decisión: cierre formal de V2 y, después, P16.0 — Product + Architecture Audit |
+| 2026-09-03 | **P14 — Partner Login**: `/partner/login` nuevo (misma Supabase Auth, `LoginForm` compartido extraído de `/login`), redirige a `/partners/dashboard`. **P14.1 — Onboarding Audit**: confirmado que el email de aprobación (webhook) ya existía y funcionaba; corregido un copy impreciso en el EmptyState del Dashboard (decía que el enlace llega "al darse de alta", en realidad llega al aprobarse). **P14.1.1 — Access Recovery**: `resendPartnerAccessAction()`/"Reenviar acceso" en `/admin/partners`, fallback manual al mismo email, `access_token` nunca expuesto (resultado siempre `{outcome}`). Diff aislado a nivel de hunk de trabajo previo no relacionado (`app-shell.tsx`, `lib/i18n/*` compartidos con Share Profile) — restauración verificada por hash de blob idéntico | **Cerrado en código, PASS** — tsc/lint/build limpios, 922/918/0/4 (última corrida completa; Docker local intermitente en corridas posteriores, sin relación con el código) | `29e0632` | Vercel Ready, `https://viao.vercel.app` — `/partner/login`, `/partners/dashboard`, `/admin/partners` verificados con navegador real tras el deploy | QA de producción end-to-end (P14.1.2 → P14.1.5) |
+| 2026-09-03/04 | **QA de producción (P14.1.2 → P14.1.5)** — verificación real, no simulada: Partner de prueba (`is_test=true`, `viao-test-partner-access`) creado mediante INSERT administrativo revisado y ejecutado por el propietario (P14.1.4, tras auditar que no existía mecanismo automático seguro para producción); "Reenviar acceso" pulsado una vez por el propietario; email real recibido en `fa.andres18@hotmail.com` (contenido/CTA correctos); enlace del email verificado — carga el Dashboard del Partner de prueba correcto, con `LinkAccountWidget` visible | **🟡 OPEN, no PASS** — el paso de vinculación de cuenta quedó pendiente de confirmación del propietario al iniciarse P14.2; no se ha declarado PASS sin esa evidencia | Ninguno (solo lectura/verificación; un script de diagnóstico temporal por turno, creado y eliminado cada vez, nunca comiteado) | Sin cambios de deploy | Confirmación del propietario del resultado de la vinculación, luego reanudar Fases 6-9 de P14.1.5 |
+| 2026-09-04 | **P14.2 — Partner Product Audit** (solo auditoría) — corrige la premisa de que Experiences/Promotions ya existen como funcionalidad Partner (no existen: ni tabla, ni CRUD, ni UI; "experience" es solo una categoría fija). Documenta el producto Partner real (Dashboard/Perfil/Actividad/Métricas), el modelo de Actividad actual (100% autodeclarado, sin verificación externa — los flujos "QR"/"Reserva" de Ops no verifican nada real, son formularios de importe manual), matriz de priorización, y dos rutas abiertas sin decidir (valor/métricas vs. verificación de actividad) | **Cerrado, auditoría sin código** | Ninguno | Sin cambios | Validación con 2-3 Partners piloto reales antes de decidir la siguiente implementación |
+| 2026-09-04 | **P14.2 — Documentation & Roadmap Sync** (este bloque) — este HANDOFF (§2 con snapshot `CURRENT VIAO STATE`, §5 con 3 filas nuevas, RECORDATORIO Partners actualizado) y `VIAO_PARTNERS_MASTER_ROADMAP.md` sincronizados contra código/Git/producción real; P14.1.5 registrado explícitamente como OPEN, no PASS, sin evidencia inventada. Revisados `VIAO_PARTNERS_CONTINUITY_MASTER.md`/`VIAO_FUTURE_BACKLOG.md` por contradicciones — ninguna encontrada (ya framed correctamente como futuro/parked) | Cerrado — puramente documental | Sin commitear (no autorizado en este bloque) | Sin cambios | Ninguno autorizado — esperar instrucciones |
 
 ---
 
