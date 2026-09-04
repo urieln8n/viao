@@ -2,15 +2,15 @@
 STATUS: CURRENT
 ERA: Partners Two-Sided Ecosystem
 DOMAIN: Producto + Datos (Home, Goal, Missions, Wallet, Rewards, Partners)
-AUTHORITY: Registro de cierre de P14.4-F (auditoría + F1-F4) y de su despliegue a producción. F4 (Goal Completion) está commiteado y desplegado en código pero **BLOQUEADO en producción** hasta aplicar manualmente su migración — ver "POST-DEPLOY VERIFICATION" al final.
+AUTHORITY: Registro de cierre de P14.4-F (auditoría + F1-F4), de su despliegue a producción y de la verificación final de F4. **P14.4-F — FULLY CLOSED.**
 SUPERSEDES: —
 SUPERSEDED BY: —
-LAST REVIEWED: 2026-09-04 (commit c02c5e9 pusheado y desplegado; BLOCKER encontrado — migración `20260904110000` no aplicada a producción)
+LAST REVIEWED: 2026-09-04 (F4 PRODUCTION VERIFICATION, turno posterior — migración `20260904110000` confirmada aplicada por el propietario; RPC/trigger/functional test/idempotencia verificados en producción real, PASS. BLOCKER anterior: RESOLVED / VERIFIED)
 ---
 
 # VIAO — P14.4-F CLOSURE RECORD
 
-**Fecha**: 2026-09-04. **Estado en código**: **P14.4-F F3 + F4 — PASS. F4 SECURITY — PASS.** Commiteado (`c02c5e9`) y pusheado/desplegado a producción. **Estado real en producción**: F1/F2/F3/P0-1/P0-2 operativos; **F4 (Goal Completion) BLOQUEADO** — ver sección final.
+**Fecha**: 2026-09-04. **Estado**: **P14.4-F — FULLY CLOSED.** F3 + F4 — PASS. F4 SECURITY — PASS. F4 PRODUCTION — VERIFIED. Commiteado (`c02c5e9`, `1c64c6a`), pusheado y desplegado a producción, con F4 confirmado funcionando end-to-end contra datos reales — ver "F4 PRODUCTION VERIFICATION (post-migration)" al final.
 
 ## Resumen de la secuencia completa de P14.4-F
 
@@ -132,8 +132,30 @@ Confirmado por `git diff --stat` idéntico en todos los turnos de P14.4-F — lo
 
 **Smoke test de escritura en producción (crear/completar/limpiar un Goal real de prueba) no se ejecutó**: bloqueado por el propio sistema de permisos del entorno antes de cualquier escritura (ninguna fila se llegó a crear); dado que la verificación de solo lectura ya encontró el BLOCKER real (RPC ausente), no era necesario insistir — el resultado habría sido el mismo error.
 
-**Acción pendiente, manual, del propietario**: aplicar `supabase/migrations/20260904110000_add_complete_goal_if_threshold_met_rpc.sql` al Postgres de producción (mismo procedimiento manual ya usado para las migraciones anteriores de P13/P0-2 — ver `docs/00_VIAO_HANDOFF.md`). Hasta entonces, F4 (Goal Completion) permanece BLOQUEADO en producción aunque el código ya está desplegado. Registrado también en `VIAO_FUTURE_BACKLOG.md` (sección NOW).
+**Acción pendiente, manual, del propietario**: ~~aplicar `supabase/migrations/20260904110000_add_complete_goal_if_threshold_met_rpc.sql` al Postgres de producción~~ — **RESUELTA**: el propietario confirmó haberla aplicado manualmente. Ver verificación posterior abajo.
+
+## F4 PRODUCTION VERIFICATION (post-migration) — 2026-09-04, turno posterior
+
+**Estado del BLOCKER anterior**: **RESOLVED / VERIFIED.** El propietario aplicó manualmente la migración `20260904110000_add_complete_goal_if_threshold_met_rpc.sql` al Postgres de producción. Verificado de forma independiente (sin confiar solo en el reporte) mediante lectura + una prueba funcional controlada, real, contra producción — ver detalle completo:
+
+**A. RPC en producción** — confirmado alcanzable vía `service_role`: una llamada con IDs inexistentes devuelve `{goal_status:"not_found", just_completed:false}` (ya no el error "function not found" del turno anterior). Permisos verificados con llamadas reales: `anon` → `permission denied for function complete_goal_if_threshold_met (code 42501)`; `authenticated` (sesión real de un usuario de prueba, no solo `anon`) → mismo `42501`. `service_role` es el único rol que ejecuta con éxito — coincide exactamente con el `revoke`/`grant` de la migración.
+
+**B. Trigger en producción** — no hay acceso a SQL crudo contra producción (sin conexión Postgres directa, solo PostgREST; el CLI de Supabase autenticado en este entorno no tiene este proyecto entre los suyos), así que la versión del trigger se verificó **por comportamiento real**, no leyendo su código fuente: (1) un `UPDATE` directo del cliente (`sessionClient.from("goals").update({status:"completed"})`) fue **rechazado** con `goal_invalid_status_transition` — el trigger sigue protegiendo la transición; (2) el propio RPC, en el mismo test, **sí** logró transicionar `active→completed` — solo posible si el trigger desplegado incluye la excepción de la señal transaccional (P14.4-F). Ambos resultados juntos confirman que la versión desplegada es la correcta (no la anterior a F4, que habría bloqueado también al RPC).
+
+**C. Functional test** (usuario de prueba real, creado y eliminado en este mismo turno): Goal creado (`points_at_goal_creation=100`, saldo real de registro) con `target_points=150` → RPC antes del umbral: `active/false` (correcto, 100<150) → Mission `goal_created` otorga 50 Points reales (mismo RPC `complete_mission` que usa la app) → RPC de nuevo: **`goal_status:"completed", just_completed:true`** → fila releída directamente: `status:"completed"`, `completed_at` no nulo.
+
+**D. Idempotencia**: una tercera llamada al RPC sobre el mismo Goal ya completado devuelve `just_completed:false`; la fila releída tiene el **mismo `completed_at`** exacto que tras la primera transición (sin drift, sin segunda escritura).
+
+**E. Concurrencia**: no repetida en producción (no necesario) — ya validada empíricamente en el Security Audit local (5 llamadas paralelas reales → exactamente 1 `just_completed:true`), y la migración desplegada es idéntica a la auditada entonces.
+
+**F. Modelo de progreso**: confirmado por el propio resultado del test (C) — la condición de completion se cumplió exactamente cuando `points_at_goal_creation + Points ganados después de la creación (excluyendo redemption_refund) >= target_points`, nunca por el saldo de Wallet (el RPC ni siquiera lee `rewards_wallets`). Sin cambios de código para confirmarlo.
+
+**G. Production smoke**: Home/Login/Wallet(`/rewards`)/Partners → `200 OK`, título `VIAO` real, sin marcador de error.
+
+**H. Cleanup**: goal/rewards_transactions/mission_completions/rewards_wallets del usuario de prueba y el propio usuario de Auth, todos eliminados por el propio script y **reverificados de forma independiente después** (consultas separadas confirmando 0 filas restantes y `auth.admin.getUserById` → "User not found"). Ningún dato de prueba permanece en producción.
+
+**I. Git**: sin cambios de código durante esta verificación — `git status` idéntico al estado post-deploy (únicamente el trabajo preexistente/P14.3-A ya conocido y deliberadamente sin commitear).
 
 ## Recommended Next Step
 
-P14.4-F (F1-F4) queda **CERRADO — PASS** en código, **commiteado y desplegado** (`c02c5e9`). Pendiente real, no de código: aplicar la migración de F4 a producción (BLOCKER de arriba) antes de que Goal Completion funcione para usuarios reales. Ningún otro trabajo autorizado en este bloque — no F5-F8, no P14.5, no Partners.
+**P14.4-F — FULLY CLOSED.** F1-F4 en código, commiteados y desplegados (`c02c5e9`, `1c64c6a`); F4 verificado funcionando end-to-end en producción real. Ningún otro trabajo autorizado en este bloque — no F5-F8, no P14.5, no Partners.
