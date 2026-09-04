@@ -128,8 +128,15 @@ export const es = {
   "profile.localeEnglishOption": "English",
   "profile.referralCodeLabel": "Código de referido",
   "profile.referralCodeCopyCta": "Copiar código de referido",
+  // P14.4-F (F1) — el copy anterior describía `VALID_REFERRAL_ACTION_TRIGGER`
+  // ("primera reserva"), un mecanismo inerte desde el Core Reset (Booking
+  // sin entrada de navegación, nunca se dispara hoy). El mecanismo
+  // REALMENTE activo es `PARTNER_ACTIVITY_REFERRAL_TRIGGER`
+  // (lib/referrals/rules.ts): 2 Partner activities del referido, sin
+  // distinguir Partner. Cifras reales (lib/referrals/rules.ts):
+  // `REFERRER_REWARD_POINTS_PROVISIONAL`=100, `REFERRED_REWARD_POINTS_PROVISIONAL`=50.
   "profile.referralCodeExplainer":
-    "Comparte tu código. Cuando la persona invitada complete su primera reserva, los dos ganáis Points.",
+    "Comparte tu código. Cuando la persona invitada registre actividad en 2 comercios Partner, tú ganas 100 Points y ella gana 50.",
   "profile.saveButton": "Guardar cambios",
   "profile.saveButtonLoading": "Guardando...",
   "profile.saveSuccessMessage": "Perfil actualizado correctamente.",
@@ -234,8 +241,14 @@ export const es = {
   "rewards.pageTitle": "Wallet",
   "rewards.balanceLabel": "Saldo actual",
   "rewards.pointsUnit": "Points",
+  // P14.4-F (F2) — añade la única fuente de Points que nunca se explicaba
+  // en ningún string (`registration`, `REGISTRATION_REWARD_POINTS_PROVISIONAL`
+  // = 100, lib/rewards/rules.ts, concedida una única vez por
+  // `handle_new_user()`): el usuario veía "100 Points" en su historial sin
+  // ningún contexto de por qué los tenía. Sin inventar condiciones,
+  // caducidad ni límites que no existan en el código.
   "rewards.pointsExplainer":
-    "Ganas Points visitando tus comercios Partner, completando Missions o invitando a otras personas. Los usas para conseguir Rewards dentro de VIAO.",
+    "Ganas Points visitando tus comercios Partner, completando Missions o invitando a otras personas — y recibiste 100 Points solo por registrarte. Los usas para conseguir Rewards dentro de VIAO.",
   "rewards.provisionalNote":
     "Los Points son de VIAO, no dinero: no se retiran ni se transfieren a ninguna cuenta bancaria.",
   "rewards.historyTitle": "Historial de transacciones",
@@ -306,6 +319,14 @@ export const es = {
   "goals.cancelBackCta": "Volver",
   "goals.cancelling": "Cancelando…",
   "goals.cancelError": "No se pudo cancelar el objetivo. Inténtalo de nuevo.",
+  // P14.4-F (F3) — motivo mostrado en el toast "+N Points" tras crear un
+  // Goal (Mission "goal_created", 50 Points, lib/missions/rules.ts).
+  "goals.pointsEarnedToastLabel": "Objetivo creado",
+  // P14.4-F (F4) — celebración de Goal completado. Reutiliza el mismo
+  // Card ya existente de ActiveGoalCard, nunca una pantalla nueva.
+  "goals.completedTitle": "¡Objetivo conseguido!",
+  "goals.completedMessage": "Reuniste todos los Points que necesitabas para este objetivo.",
+  "goals.completedNewGoalCta": "Crear nuevo objetivo",
   // Micro-bloque 2 (Home Beta) — línea corta bajo el progreso: solo copy,
   // no participa en ningún cálculo (progressPercent no cambia).
   "goals.progressMotivation": "Cada Point que ganas te acerca a este objetivo.",

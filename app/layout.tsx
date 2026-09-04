@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/components/layout/app-shell";
 import { PostHogProvider } from "@/components/analytics/posthog-provider";
+import { PointsToastHost } from "@/components/state/points-toast";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -51,6 +52,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <PostHogProvider>
           <AppShell>{children}</AppShell>
+          {/* P14.4-F (F3) — un único host global para el toast de "+N
+              Points"; cualquier Client Component lo dispara con
+              `announcePointsEarned()` sin necesitar montar nada propio. */}
+          <PointsToastHost />
         </PostHogProvider>
       </body>
     </html>

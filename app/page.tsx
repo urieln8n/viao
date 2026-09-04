@@ -107,7 +107,14 @@ export default async function Home() {
             `GoalCard`, mismo `activeGoal`/`balance`. */}
         {balance !== undefined && (
           <div id="goal">
-            <GoalCard goal={activeGoal} walletBalance={balance} />
+            {/* P14.4-E — `GoalCard` ya no necesita `walletBalance`: el
+                progreso del Goal se calcula ahora a partir de
+                `activeGoal.earnedPoints` (Points acumulados ganados
+                hacia ESTE Goal, `lib/goals/get-earned-points.ts`), nunca
+                del saldo de Wallet. `balance` sigue usándose más abajo
+                (línea de Points del Hero, teaser de Wallet) — sin
+                cambios en esos puntos. */}
+            <GoalCard goal={activeGoal} />
           </div>
         )}
 

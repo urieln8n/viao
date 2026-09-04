@@ -1,5 +1,5 @@
 import { createClient as createSessionClient } from "../supabase/server";
-import { completeMission } from "../missions/complete-mission";
+import { completeMissionIfFresh } from "../missions/complete-mission-if-fresh";
 
 // Bloque 1 (VIAO_V1_LOOP_DECISION.md) — creación de un Goal. Cliente de
 // SESIÓN (Patrón A, igual que `trips`): el usuario inserta directamente
@@ -37,7 +37,7 @@ export interface CreateGoalInput {
 }
 
 export type CreateGoalResult =
-  | { outcome: "success"; goalId: string }
+  | { outcome: "success"; goalId: string; pointsEarned?: number }
   | { outcome: "already_has_active_goal" }
   | { outcome: "invalid_input"; message: string }
   | { outcome: "error"; message: string };
@@ -105,11 +105,20 @@ export async function createGoal(input: CreateGoalInput): Promise<CreateGoalResu
   // permite una fila para siempre, sin importar cuántos Goals cree o
   // cancele este usuario después. Best-effort: un fallo aquí nunca debe
   // impedir que el Goal ya creado se devuelva como éxito.
+  //
+  // P14.4-F (F3) — `pointsEarned` en el resultado SOLO se rellena la
+  // primera vez real que esta Mission se completa (para que el toast de
+  // feedback nunca afirme "+50 Points" en el segundo/tercer Goal que
+  // este usuario cree, cuando `complete_mission()` ya no otorga nada
+  // nuevo — es `lifetime`, idempotente). Ver `completeMissionIfFresh()`
+  // (lib/missions/complete-mission-if-fresh.ts) para el porqué exacto y
+  // los tests dedicados.
+  let pointsEarned: number | undefined;
   try {
-    await completeMission(user.id, "goal_created");
+    pointsEarned = await completeMissionIfFresh(sessionClient, user.id, "goal_created", "lifetime");
   } catch (error) {
     console.error('[missions] No se pudo completar la Mission "goal_created":', error);
   }
 
-  return { outcome: "success", goalId: data.id as string };
+  return { outcome: "success", goalId: data.id as string, pointsEarned };
 }

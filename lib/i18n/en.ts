@@ -110,8 +110,12 @@ export const en = {
   "profile.localeEnglishOption": "English",
   "profile.referralCodeLabel": "Referral code",
   "profile.referralCodeCopyCta": "Copy referral code",
+  // P14.4-F (F1) — see es.ts for the full rationale: the previous copy
+  // described an inert mechanism (`VALID_REFERRAL_ACTION_TRIGGER`,
+  // "first booking"); the real one is `PARTNER_ACTIVITY_REFERRAL_TRIGGER`
+  // (2 Partner activities from the invited person, either Partner).
   "profile.referralCodeExplainer":
-    "Share your code. When the person you invite completes their first booking, you both earn Points.",
+    "Share your code. When the person you invite registers activity at 2 Partner businesses, you earn 100 Points and they earn 50.",
   "profile.saveButton": "Save changes",
   "profile.saveButtonLoading": "Saving...",
   "profile.saveSuccessMessage": "Profile updated successfully.",
@@ -206,8 +210,11 @@ export const en = {
   "rewards.pageTitle": "Wallet",
   "rewards.balanceLabel": "Current balance",
   "rewards.pointsUnit": "Points",
+  // P14.4-F (F2) — see es.ts for the full rationale: adds the one earning
+  // source that was never explained anywhere (the one-time 100-Point
+  // registration bonus).
   "rewards.pointsExplainer":
-    "You earn Points by visiting Partner businesses, completing Missions, or inviting others. Use them to unlock Rewards within VIAO.",
+    "You earn Points by visiting Partner businesses, completing Missions, or inviting others — and you already got 100 Points just for signing up. Use them to unlock Rewards within VIAO.",
   "rewards.provisionalNote":
     "Points are VIAO's own currency, not real money — they can't be withdrawn or transferred to a bank account.",
   "rewards.historyTitle": "Transaction history",
@@ -275,6 +282,11 @@ export const en = {
   "goals.cancelBackCta": "Back",
   "goals.cancelling": "Cancelling…",
   "goals.cancelError": "The goal could not be cancelled. Please try again.",
+  // P14.4-F — see es.ts for the full rationale.
+  "goals.pointsEarnedToastLabel": "Goal created",
+  "goals.completedTitle": "Goal achieved!",
+  "goals.completedMessage": "You gathered all the Points you needed for this goal.",
+  "goals.completedNewGoalCta": "Create new goal",
   // Micro-bloque 2 (Home Beta) — short line under the progress bar: copy
   // only, no calculation changes (progressPercent stays the same).
   "goals.progressMotivation": "Every Point you earn brings you closer to this goal.",

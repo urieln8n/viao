@@ -3,35 +3,39 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { CheckCircle2 } from "lucide-react";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ErrorState } from "@/components/state/error-state";
+import { announcePointsEarned } from "@/components/state/points-toast";
 import { t } from "@/lib/i18n";
 
 import { createGoalAction, cancelGoalAction } from "./goals/actions";
 import type { ActiveGoal } from "../lib/goals/get-goal";
 import { calculateGoalProgressPercent } from "../lib/goals/calculate-progress";
 
-// Bloque Goals V1 (VIAO_GOALS_V1_DECISION_LOCK.md, GOAL_PROGRESS_MODEL=
-// WALLET_BALANCE) — sección mínima de Goal en Home. Una única cifra de
-// progreso: `walletBalance` (Points disponibles ahora) sobre
-// `goal.targetPoints` — ya NO se muestran dos cifras separadas ("Ganado
-// para tu objetivo" vs "Disponible ahora"), porque bajo este modelo son
-// literalmente el mismo número. Canjear un Reward SÍ reduce visiblemente
-// este progreso (consecuencia real de la bifurcación GUARDAR/REDEEM del
-// loop V1); un refund lo devuelve, sin ningún caso especial.
+// P14.4-E (Decision Lock OPCIÓN B) — sección mínima de Goal en Home. La
+// cifra de progreso es `goal.earnedPoints` ("Points acumulados ganados
+// hacia este Goal desde su creación", `lib/goals/get-earned-points.ts`)
+// sobre `goal.targetPoints` — YA NO es el saldo de Wallet: canjear un
+// Reward no reduce este progreso, un refund no lo infla (excluido
+// explícitamente). `walletBalance` deja de ser una prop de este
+// componente: `ActiveGoalCard` ya no necesita ningún dato de Wallet para
+// mostrar el progreso del Goal (Wallet sigue existiendo y mostrando su
+// propio saldo disponible, solo que en su propia pantalla/línea de Home,
+// no aquí).
 interface GoalCardProps {
   goal: ActiveGoal | undefined;
-  walletBalance: number;
 }
 
-export function GoalCard({ goal, walletBalance }: GoalCardProps) {
+export function GoalCard({ goal }: GoalCardProps) {
   const router = useRouter();
 
   if (goal) {
-    return <ActiveGoalCard goal={goal} walletBalance={walletBalance} onCancelled={() => router.refresh()} />;
+    return <ActiveGoalCard goal={goal} onCancelled={() => router.refresh()} />;
   }
 
   return <CreateGoalForm onCreated={() => router.refresh()} />;
@@ -45,18 +49,26 @@ export function GoalCard({ goal, walletBalance }: GoalCardProps) {
 // autoridad, solo dispara la acción ya validada server-side.
 function ActiveGoalCard({
   goal,
-  walletBalance,
   onCancelled,
 }: {
   goal: ActiveGoal;
-  walletBalance: number;
   onCancelled: () => void;
 }) {
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
-  const progressPercent = calculateGoalProgressPercent(walletBalance, goal.targetPoints);
+  const progressPercent = calculateGoalProgressPercent(goal.earnedPoints, goal.targetPoints);
+
+  // P14.4-F (F4) — `goal.justCompleted` es `true` únicamente en la
+  // petición exacta donde este Goal transicionó a 'completed' (garantía
+  // del RPC `complete_goal_if_threshold_met()`, no de este componente).
+  // Nunca vuelve a ser `true` para el mismo Goal en ninguna carga
+  // posterior — ver el comentario de `ActiveGoal.justCompleted`
+  // (lib/goals/get-goal.ts) para el porqué exacto.
+  if (goal.justCompleted) {
+    return <GoalCompletedCard title={goal.title} />;
+  }
 
   async function handleCancel() {
     setIsCancelling(true);
@@ -92,9 +104,17 @@ function ActiveGoalCard({
 
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">{t("goals.availableLabel")}</span>
+            {/* P14.4-E — `goals.availableLabel` ("Disponible ahora") ya
+                no describe correctamente esta cifra (ahora es "lo
+                ganado hacia este objetivo", no "lo disponible para
+                gastar" — ese dato vive en Wallet). Se usa
+                `goals.earnedLabel` ("Ganado para tu objetivo"), clave
+                que ya existía en el i18n desde el modelo híbrido
+                original y había quedado sin usar — ver
+                VIAO_P14_4_E_P0_IMPLEMENTATION.md. */}
+            <span className="text-muted-foreground">{t("goals.earnedLabel")}</span>
             <span className="font-medium text-success">
-              {walletBalance} / {goal.targetPoints} {t("rewards.pointsUnit")}
+              {goal.earnedPoints} / {goal.targetPoints} {t("rewards.pointsUnit")}
             </span>
           </div>
           {/* Bloque Premium Design System V1 (Fase B) — sustituye el
@@ -157,6 +177,38 @@ function ActiveGoalCard({
             {t("goals.cancelCta")}
           </Button>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// P14.4-F (F4) — celebración de Goal completado. Reutiliza el lenguaje
+// visual/técnico ya establecido para el único otro "momento celebrate"
+// del sistema (`motion-safe:animate-celebrate`, `CheckCircle2`, colores
+// `success` — mismo tratamiento que `app/rewards/reward-catalog.tsx` al
+// canjear un Reward). Mismo `Card` que `ActiveGoalCard`/`CreateGoalForm`
+// (misma posición en Home, sin pantalla nueva). Sin CTA que reactive
+// nada: "Crear nuevo objetivo" solo refresca la ruta — en la siguiente
+// carga, `getActiveGoal()` ya no encuentra ningún Goal 'active' (este ya
+// es 'completed') y `GoalCard` renderiza `CreateGoalForm` de forma
+// natural, sin ningún estado nuevo que gestionar aquí.
+function GoalCompletedCard({ title }: { title: string }) {
+  const router = useRouter();
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <div className="motion-safe:animate-celebrate flex flex-col items-center gap-2 rounded-lg border border-success/20 bg-success/5 p-5 text-center">
+          <CheckCircle2 className="size-8 text-success" aria-hidden="true" />
+          <p className="text-lg font-semibold">{t("goals.completedTitle")}</p>
+          <p className="text-sm text-muted-foreground">{t("goals.completedMessage")}</p>
+        </div>
+        <Button variant="outline" onClick={() => router.refresh()}>
+          {t("goals.completedNewGoalCta")}
+        </Button>
       </CardContent>
     </Card>
   );
@@ -226,6 +278,13 @@ export function GoalForm({ onCreated, submitLabel }: { onCreated: () => void; su
         targetDate: targetDate || undefined,
       });
       if (result.outcome === "success") {
+        // P14.4-F (F3) — `pointsEarned` solo viene relleno la primera vez
+        // real que este usuario completa "goal_created" (ver el
+        // comentario de create-goal.ts) — nunca en el segundo/tercer
+        // Goal que cree.
+        if (result.pointsEarned) {
+          announcePointsEarned(result.pointsEarned, "goals.pointsEarnedToastLabel");
+        }
         onCreated();
       } else if (result.outcome === "already_has_active_goal") {
         setError(t("goals.alreadyHasActiveGoal"));
