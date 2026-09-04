@@ -137,7 +137,7 @@ export function MyBusinessForm({ accessToken, profile }: MyBusinessFormProps) {
 
           {status === "error" && errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
           {status === "saved" && (
-            <p className="text-sm font-medium text-success">{t("partnerDashboard.myBusinessSuccessMessage")}</p>
+            <p className="text-sm font-medium text-info">{t("partnerDashboard.myBusinessSuccessMessage")}</p>
           )}
 
           <Button type="submit" disabled={isSaving}>

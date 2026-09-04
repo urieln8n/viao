@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Hotel, Camera, Heart, Eye, Lightbulb, MapPin, TrainFront, Plane, Gift } from "lucide-react";
+import { Hotel, Camera, Car, Heart, Eye, Lightbulb, MapPin, TrainFront, Plane, Gift } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -298,8 +298,9 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
                           href={buildGoogleMapsUrl(booking.latitude, booking.longitude)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-fit text-xs text-primary underline-offset-4 hover:underline"
+                          className="inline-flex w-fit items-center gap-1 text-xs text-primary underline-offset-4 hover:underline"
                         >
+                          <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
                           {t("trips.locationCta")}
                         </a>
                         <a
@@ -310,8 +311,9 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
                           )}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-fit text-xs text-viao-orange underline-offset-4 hover:underline"
+                          className="inline-flex w-fit items-center gap-1 text-xs text-viao-orange underline-offset-4 hover:underline"
                         >
+                          <Car className="size-3.5 shrink-0" aria-hidden="true" />
                           {t("trips.uberCta")}
                         </a>
                       </span>

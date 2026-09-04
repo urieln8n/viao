@@ -11,8 +11,13 @@ interface StatCardProps {
    * (`--success`) al valor, para cifras que representan un beneficio real
    * (p. ej. un saldo de Points ya obtenido). No es un color decorativo:
    * se omite deliberadamente cuando no hay nada que celebrar (sin sesión,
-   * saldo desconocido) — el propio consumidor decide cuándo aplica. */
-  tone?: "default" | "positive";
+   * saldo desconocido) — el propio consumidor decide cuándo aplica.
+   *
+   * VIS-01 (Visual Identity System) — "info" es para cifras operativas
+   * positivas que NO son Points/Reward/Progress (p. ej. ventas en EUR de
+   * un Partner). Mantiene la distinción semántica: "positive" = ganaste/
+   * avanzaste, "info" = una operación/estado del negocio es saludable. */
+  tone?: "default" | "positive" | "info";
   className?: string;
 }
 
@@ -47,6 +52,7 @@ export function StatCard({
           // que es el sitio de mayor impacto para este tratamiento.
           "font-mono text-3xl font-semibold tabular-nums",
           tone === "positive" && "text-success",
+          tone === "info" && "text-info",
         )}
       >
         {value}

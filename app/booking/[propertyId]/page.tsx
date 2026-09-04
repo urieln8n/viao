@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Gift } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -158,7 +159,10 @@ export default async function BookingPage({
         {previewPoints !== undefined && previewPoints > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>{t("booking.pointsPreviewTitle")}</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Gift className="size-4 shrink-0 text-success" aria-hidden="true" />
+                {t("booking.pointsPreviewTitle")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-1">
               <p className="text-2xl font-semibold text-success">

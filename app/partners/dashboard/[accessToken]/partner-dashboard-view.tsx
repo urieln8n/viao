@@ -56,7 +56,7 @@ export function PartnerDashboardView({
           <CardDescription>{t("partnerDashboard.subtitle")}</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-between gap-3">
-          <Badge variant={dashboard.partnerActivo ? "success" : "outline"}>
+          <Badge variant={dashboard.partnerActivo ? "info" : "outline"}>
             {dashboard.partnerActivo ? t("partnerDashboard.statusActive") : t("partnerDashboard.statusInactive")}
           </Badge>
           <Link href={`/partners/ops/${accessToken}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
@@ -70,7 +70,7 @@ export function PartnerDashboardView({
           es NULL, "ya vinculado" en cuanto exista. El access_token de la
           URL sigue funcionando igual en ambos casos. */}
       {ownerLinked ? (
-        <Badge variant="success" className="w-fit">
+        <Badge variant="info" className="w-fit">
           {t("partnerDashboard.accountLinkedLabel")}
         </Badge>
       ) : (
@@ -116,12 +116,12 @@ export function PartnerDashboardView({
           <StatCard
             label={t("partnerDashboard.declaredSalesLabel")}
             value={formatEur(dashboard.ventasDeclaradasEur)}
-            tone="positive"
+            tone="info"
           />
           <StatCard
             label={t("partnerDashboard.confirmedSalesLabel")}
             value={formatEur(dashboard.ventasConfirmadasReservaEur)}
-            tone="positive"
+            tone="info"
           />
         </div>
       </div>

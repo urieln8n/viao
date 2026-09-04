@@ -160,7 +160,7 @@ export function AdminPartnersView({ partners }: AdminPartnersViewProps) {
         const isLoading = rowState.phase === "loading";
         const actions = getAvailableActions(partner.status);
         const statusLabelKey = STATUS_LABEL_KEY[partner.status];
-        const statusVariant = partner.status === "active" ? "success" : partner.status === "inactive" ? "outline" : "secondary";
+        const statusVariant = partner.status === "active" ? "info" : partner.status === "inactive" ? "outline" : "secondary";
 
         return (
           <Card key={partner.id}>

@@ -3,7 +3,7 @@
 import { useEffect, useId, useState, type FormEvent } from "react";
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Gift } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -411,7 +411,7 @@ export default function ProfilePage() {
                     aria-label={t("profile.referralCodeCopyCta", activeLocale)}
                   >
                     {referralCodeCopied ? (
-                      <Check className="text-success" aria-hidden="true" />
+                      <Check className="text-info" aria-hidden="true" />
                     ) : (
                       <Copy aria-hidden="true" />
                     )}
@@ -438,7 +438,8 @@ export default function ProfilePage() {
               huérfanas en lib/i18n (no se tocan en este bloque). */}
           {sessionStatus === "signed-in" && profileStatus === "ready" && (
             <div className="flex flex-col gap-2 border-t border-border pt-4">
-              <span className="text-sm font-medium">
+              <span className="flex items-center gap-1.5 text-sm font-medium">
+                <Gift className="size-4 shrink-0 text-success" aria-hidden="true" />
                 {t("profile.rewardsTitle", activeLocale)}
               </span>
               {rewardsBalance !== undefined && (

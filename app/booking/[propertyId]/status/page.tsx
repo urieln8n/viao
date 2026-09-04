@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CircleCheck, CircleX, Clock } from "lucide-react";
+import { CircleCheck, CircleX, Clock, Gift } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -183,7 +183,8 @@ export default async function BookingStatusPage({
         {booking.rewardPoints !== undefined && booking.rewardPoints > 0 && (
           <Card>
             <CardContent className="flex flex-col gap-1">
-              <p className="text-2xl font-semibold text-success">
+              <p className="flex items-center gap-2 text-2xl font-semibold text-success">
+                <Gift className="size-5 shrink-0" aria-hidden="true" />
                 {t("bookingStatus.pointsGrantedTitlePrefix")} {booking.rewardPoints}{" "}
                 {t("rewards.pointsUnit")}
               </p>

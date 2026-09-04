@@ -144,9 +144,9 @@ export const es = {
   "profile.errorUnexpected":
     "No se ha podido guardar el perfil. Inténtalo de nuevo.",
   "profile.emailLabel": "Email",
-  "profile.rewardsTitle": "💜 VIAO Rewards",
+  "profile.rewardsTitle": "VIAO Rewards",
   "profile.viewRewardsCta": "Ver Rewards",
-  "profile.tripsTitle": "🧳 Mis viajes",
+  "profile.tripsTitle": "Mis viajes",
   "profile.viewTripsCta": "Ver mis viajes",
   "profile.accountTitle": "Cuenta",
   // UX-16.3 (Commerce Identity) — entrada visible solo si la sesión tiene
@@ -213,7 +213,7 @@ export const es = {
     "El número de huéspedes debe ser al menos 1.",
   "booking.validationRoomsMin":
     "El número de habitaciones debe ser al menos 1.",
-  "booking.pointsPreviewTitle": "💜 Ganas con esta reserva",
+  "booking.pointsPreviewTitle": "Ganas con esta reserva",
   "booking.pointsPreviewDisclaimer":
     "Estos Points podrán utilizarse en futuras compras elegibles dentro de VIAO.",
   "bookingStatus.pageTitle": "Estado de tu reserva",
@@ -236,7 +236,7 @@ export const es = {
   "bookingStatus.unauthenticatedMessage":
     "Necesitas iniciar sesión para consultar el estado de esta reserva.",
   "bookingStatus.loginCta": "Iniciar sesión",
-  "bookingStatus.pointsGrantedTitlePrefix": "🎉 Has ganado",
+  "bookingStatus.pointsGrantedTitlePrefix": "Has ganado",
   "bookingStatus.pointsGrantedValueSuffix": "de valor para tu próximo viaje",
   "rewards.pageTitle": "Wallet",
   "rewards.balanceLabel": "Saldo actual",
@@ -399,7 +399,7 @@ export const es = {
   "vision.tripSelectNoneOption": "Sin viaje asociado",
   "vision.tripSelectEmptyState":
     "Todavía no tienes ningún viaje. Crea uno en Mi viaje para poder asociar tus escaneos.",
-  "vision.openCameraButton": "📷 Abrir cámara",
+  "vision.openCameraButton": "Abrir cámara",
   "vision.chooseGalleryButton": "Elegir una foto",
   "vision.retakeButton": "Repetir foto",
   "vision.scanAgainButton": "Escanear otra foto",
@@ -442,10 +442,10 @@ export const es = {
   "trips.associateBookingEmpty": "No tienes ninguna reserva todavía.",
   "trips.associateButton": "Asociar",
   "trips.associatedLabel": "Ya asociada a este viaje",
-  "trips.locationCta": "📍 Ver ubicación",
-  "trips.uberCta": "🚕 Ir en Uber",
+  "trips.locationCta": "Ver ubicación",
+  "trips.uberCta": "Ir en Uber",
   "trips.photosTitle": "Tus recuerdos",
-  "trips.photosEmptyTitle": "📸 Todavía no tienes fotos en este viaje.",
+  "trips.photosEmptyTitle": "Todavía no tienes fotos en este viaje.",
   "trips.photosEmptyMessage": "Guarda tus momentos y crea tus recuerdos de viaje.",
   "trips.addPhotoLabel": "Añadir una foto",
   "trips.addPhotoButton": "Guardar foto",
