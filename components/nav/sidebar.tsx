@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Target, ListChecks, Wallet, User } from "lucide-react";
+import { Home, Target, ListChecks, Wallet, Store, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -22,16 +22,28 @@ import { isNavItemActive } from "./main-nav";
 // retira el grupo SECONDARY_NAV_ITEMS que FASE J-B1 había introducido
 // (Explorar/#search, Mi viaje/#trips): Travel deja de tener cualquier
 // punto de entrada en la navegación principal, no solo un menor peso
-// visual. Solo queda MAIN_NAV_ITEMS (Inicio, Mi objetivo, Missions,
-// Wallet) + ACCOUNT_ITEM (Perfil) — mismo set que ya usaba `MainNav`
-// (mobile), ahora también en desktop. `/trips`, `/search`, `/properties`,
-// `/booking`, `/vision` NO se tocan ni se eliminan: siguen existiendo
-// como rutas completas, simplemente sin entrada en el Sidebar.
+// visual. `/trips`, `/search`, `/properties`, `/booking`, `/vision` NO se
+// tocan ni se eliminan: siguen existiendo como rutas completas,
+// simplemente sin entrada en el Sidebar.
+//
+// P14.3-A (Partners Discovery + Navigation) — hallazgo de la auditoría
+// P14.3: `/partners` (Discovery) no tenía ninguna entrada persistente en
+// la navegación principal, en ningún tamaño de pantalla — confirmado en
+// código y en producción real. Se añade aquí como quinto item de
+// MAIN_NAV_ITEMS, no como sustituto de ninguno de los 4 existentes (todos
+// siguen siendo parte del bucle Goal→Missions→Wallet ya validado, y
+// ninguno es un candidato razonable a perder su slot). Icono `Store`
+// (Lucide) — deliberadamente NO `Compass`/`MapPin` (lenguaje de
+// exploración/viajes que este mismo bloque pide evitar): un comercio
+// local, no un destino. Posición: entre Wallet y Perfil — cierra el
+// bucle real (ganas Points → los usas en un Partner) justo antes del
+// item de cuenta, mismo orden en `MainNav` (mobile), ver ese archivo.
 const MAIN_NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/#goal", label: "Mi objetivo", icon: Target },
   { href: "/#missions", label: "Missions", icon: ListChecks },
   { href: "/rewards", label: "Wallet", icon: Wallet },
+  { href: "/partners", label: "Partners", icon: Store },
 ];
 
 const ACCOUNT_ITEM: { href: string; label: string; icon: LucideIcon } = {
