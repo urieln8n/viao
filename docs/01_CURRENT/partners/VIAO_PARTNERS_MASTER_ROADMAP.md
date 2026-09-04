@@ -5,7 +5,7 @@ DOMAIN: Partners
 AUTHORITY: Contrato operativo para ejecutar Partners fase por fase. No sustituye al código — ante cualquier contradicción futura, gana el código real (ver `docs/00_GOVERNANCE.md`). Complementa, no sustituye, a `VIAO_PARTNERS_CONTINUITY_MASTER.md` (ese documento es el diario cronológico bloque-a-bloque; este es el mapa operativo por fases, reconstruido desde cero contra el código real en esta auditoría).
 SUPERSEDES: —
 SUPERSEDED BY: —
-LAST REVIEWED: 2026-09-04 (sincronización documental post-P14.3-A — nueva sección P14.3-A entre P10.2 y P11; ver también la sincronización anterior post-P10.2/P14.2 — nueva sección P10.2, P11/P12 corregidos, nueva sección P11.1, nota de numeración en P14 — notas de actualización tras la sección 0)
+LAST REVIEWED: 2026-09-04 (P9.1 — Correcciones UX Partner: sección P9 actualizada con la validación visual real (6 rutas, navegador real) y los 3 hallazgos corregidos. Sincronización anterior: post-P14.3-A — nueva sección P14.3-A entre P10.2 y P11; ver también la sincronización anterior post-P10.2/P14.2 — nueva sección P10.2, P11/P12 corregidos, nueva sección P11.1, nota de numeración en P14 — notas de actualización tras la sección 0)
 ---
 
 # VIAO — PARTNERS MASTER ROADMAP
@@ -410,11 +410,22 @@ Más `send-partner-emails.test.ts`/`templates/partner-emails.test.ts` (`lib/emai
 
 ## P9 — User → Partner Experience
 **Objetivo**: experiencia completa del usuario (Discover → View → Understand → Interact).
-**Estado actual**: 🟡 **Bloque B (UX Pro Max V2) commiteado y desplegado (`18867a2`)** — ya no está pendiente de implementación. Lo único que falta es una validación visual real en navegador tras el deploy (no ejecutada todavía en ninguna sesión confirmada). P1/P2 de esa auditoría (chrome de Auth, safe-area) no son específicos de Partners; el resto de hallazgos de UX de Partners de ese bloque siguen aplicando aquí sin repetirlos.
-**Qué falta**: Browser QA / validación visual post-deploy — confirmar en un navegador real que el chrome de Auth, el safe-area, los estados localizados y el catálogo de Rewards responsive se ven correctamente en producción. No ejecutada en este bloque de sincronización documental (fuera de su alcance).
+**Estado actual**: 🟡 **Bloque B (UX Pro Max V2) commiteado y desplegado (`18867a2`)** — ya no está pendiente de implementación. P1/P2 de esa auditoría (chrome de Auth, safe-area) no son específicos de Partners; el resto de hallazgos de UX de Partners de ese bloque siguen aplicando aquí sin repetirlos.
+**Qué falta**: ~~Browser QA / validación visual post-deploy~~ — **ejecutada 2026-09-04**, ver abajo.
 **Dependencias**: ninguna nueva.
-**Criterio DONE**: 🟡 código cumplido; validación visual pendiente.
-**Checklist**: [x] Commit/push/deploy, [ ] Validación visual real en producción — ver el informe de UX Pro Max V2 ya entregado para el detalle de los hallazgos, no se repite aquí.
+**Criterio DONE**: 🟡 código cumplido y validación visual ejecutada; 3 hallazgos de esa validación ya corregidos (P9.1), el resto queda documentado como mejora futura (no bloqueante).
+**Checklist**: [x] Commit/push/deploy, [x] Validación visual real en producción (2026-09-04, navegador real, 6 rutas: `/login`, `/partner/login`, `/partners`, `/partners/[slug]`, `/partners/dashboard`, `/partners/ops/[accessToken]`), [x] Corrección de los 3 hallazgos confirmados (P9.1) — ver abajo.
+
+**P9 — Validación Visual Real (2026-09-04)**: auditoría con navegador real (Chromium headless) contra producción, desktop+mobile, 6 rutas. Veredicto: 🟡 PASS WITH CONDITIONS — cero hallazgos 🔴 Critical, 1 🟠 High, 3 🟡 Medium, 2 🔵/⚪ Low/nice-to-have. Confirmó además, con evidencia visual real, que P14.3-A (nav Partners) y P0-1/P13 funcionan correctamente en producción.
+
+**P9.1 — Correcciones UX Partner (2026-09-04, mismo día, turno posterior)**: implementados los 3 hallazgos confirmados de la validación visual, alcance mínimo y acotado, sin tocar Supabase/Auth/RLS/backend de Partners:
+- **`/login`** (🟠 High): el acceso Partner era casi invisible (solo un texto plano de menor jerarquía). Ahora hay una sección secundaria clara bajo el formulario, con 2 botones diferenciados: "Ya soy Partner, iniciar sesión" (→ `/partner/login`) y "Únete a VIAO como Partner" (→ `/partners/join`, sin cambios). `components/auth/login-form.tsx`.
+- **`/partner/login`** (🟡 Medium): "Regístrate" llevaba a `/register` (alta de Usuario) en vez de `/partners/join` (solicitar ser Partner). Corregido reutilizando la misma variante ya distinguida por `showJoinTeaser` — sin tocar el flujo de registro de Usuario. Mismo archivo.
+- **`/partners/[slug]`** (🟡 Medium): "Cómo ganar Points aquí" tenía apariencia de link (color, tamaño) pero era un `<p>` sin acción real. Convertido en un `Link` real a `/#missions` (ancla ya existente, misma que usa Sidebar/MainNav — sin ruta nueva). `app/partners/[slug]/page.tsx`.
+
+Los hallazgos 🔵 Low/⚪ nice-to-have (falta de imágenes reales en Discovery, Dashboard con métricas en cero, mucho scroll sin navegación interna) quedan sin tocar — son huecos de contenido/producto, no bugs de UI, y ya están cubiertos conceptualmente por P7/P11 en otras secciones de este documento.
+
+**Validación de P9.1**: 938 tests / 934 pass / 0 fail / 4 skipped (árbol aislado, mismo baseline que bloques anteriores), tsc/lint/build PASS.
 
 ---
 

@@ -563,6 +563,8 @@ export const en = {
   "partners.card.viewCta": "View Partner",
   "partners.joinTeaser": "Have a business?",
   "partners.joinTeaserCta": "Join VIAO as a Partner",
+  // P9.1 — see es.ts for the full rationale.
+  "partners.existingPartnerLoginCta": "Already a Partner? Sign in",
   "partners.category.restaurant": "Restaurant",
   "partners.category.experience": "Experience",
   "partners.category.barbershop": "Barbershop",

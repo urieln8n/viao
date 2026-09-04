@@ -92,7 +92,20 @@ export default async function PartnerProfilePage({
                 </span>
               </div>
             )}
-            <p className="text-xs font-medium text-success">{t("partnerProfile.pointsHintCta")}</p>
+            {/* P9.1 — hallazgo de la auditoría visual: este texto tenía
+                tratamiento visual de enlace (color, tamaño) pero era un
+                <p> sin acción real — falsa affordance. /#missions ya es
+                la ruta real usada para "Missions" en Sidebar/MainNav
+                (mismo ancla, sin ruta nueva) — el Mission mostrado justo
+                arriba (partner_activity_registered) es una de las 4 que
+                se listan ahí, así que es un destino coherente con el
+                propio texto ("cómo ganar Points"), no arbitrario. */}
+            <Link
+              href="/#missions"
+              className="text-xs font-medium text-success underline-offset-4 hover:underline"
+            >
+              {t("partnerProfile.pointsHintCta")}
+            </Link>
           </CardContent>
         </Card>
 

@@ -656,6 +656,12 @@ export const es = {
   "partners.card.viewCta": "Ver Partner",
   "partners.joinTeaser": "¿Tienes un negocio?",
   "partners.joinTeaserCta": "Únete a VIAO como Partner",
+  // P9.1 — CTA secundario en /login para un Partner que YA tiene cuenta
+  // (antes solo existía el CTA de arriba, "conviértete en Partner" — sin
+  // ningún acceso visible para quien ya lo es). Reutiliza el mismo label
+  // "partners.joinTeaser" de arriba como encabezado compartido de la
+  // sección, junto a este botón nuevo.
+  "partners.existingPartnerLoginCta": "Ya soy Partner, iniciar sesión",
   "partners.category.restaurant": "Restaurante",
   "partners.category.experience": "Experiencia",
   "partners.category.barbershop": "Barbería",

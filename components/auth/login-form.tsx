@@ -15,7 +15,7 @@ import { Suspense, useEffect, useId, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState } from "@/components/state/error-state";
 import { Input } from "@/components/ui/input";
@@ -66,6 +66,15 @@ function LoginFormContent({ defaultRedirect, title, subtitle, showJoinTeaser }: 
   // estado/localStorage/cookies). Sanitizado antes de cualquier uso.
   const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
   const redirectTarget = resolveLoginRedirectTarget({ partnerAccessToken, returnTo, defaultRedirect });
+
+  // P9.1 — hallazgo de la auditoría visual: en la variante Partner
+  // (showJoinTeaser=false, /partner/login) este mismo enlace llevaba a
+  // /register (alta de Usuario) en vez de /partners/join (solicitar ser
+  // Partner) — showJoinTeaser ya distingue exactamente esta misma
+  // variante en el resto del formulario (línea de abajo), así que se
+  // reutiliza aquí en vez de añadir un prop nuevo solo para esto. El
+  // flujo de registro de Usuario en sí (/register) no se toca.
+  const registerHref = showJoinTeaser ? "/register" : "/partners/join";
 
   const emailId = useId();
   const passwordId = useId();
@@ -234,7 +243,7 @@ function LoginFormContent({ defaultRedirect, title, subtitle, showJoinTeaser }: 
               <div className="flex flex-col items-center gap-1 text-sm">
                 <p className="text-muted-foreground">
                   {t("login.registerPromptText")}{" "}
-                  <Link href="/register" className="text-primary underline-offset-4 hover:underline">
+                  <Link href={registerHref} className="text-primary underline-offset-4 hover:underline">
                     {t("login.registerPromptLink")}
                   </Link>
                 </p>
@@ -253,17 +262,35 @@ function LoginFormContent({ defaultRedirect, title, subtitle, showJoinTeaser }: 
           )}
           {submitError && <ErrorState message={submitError} />}
 
-          {/* UX-17.2 — CTA secundario/discreto, oculto tanto cuando llega vía
-              invitación Partner (partnerAccessToken) como en la propia
-              variante Partner (showJoinTeaser=false): quien ya está en el
-              Partner Portal ya sabe que tiene un negocio. */}
+          {/* UX-17.2, extendido en P9.1 — sección secundaria de Partners,
+              oculta tanto cuando llega vía invitación Partner
+              (partnerAccessToken) como en la propia variante Partner
+              (showJoinTeaser=false): quien ya está en el Partner Portal ya
+              sabe que tiene un negocio. Hallazgo de la auditoría visual
+              P9: antes solo existía el enlace de "conviértete en Partner"
+              (texto plano, jerarquía mínima) — sin ningún acceso visible
+              para quien YA es Partner y solo quiere iniciar sesión. Ahora
+              son 2 botones secundarios (outline, mismo patrón que
+              LinkAccountWidget) bajo un único encabezado compartido,
+              diferenciando explícitamente las 2 situaciones posibles. */}
           {showJoinTeaser && !partnerAccessToken && (
-            <p className="text-center text-sm text-muted-foreground">
-              {t("partners.joinTeaser")}{" "}
-              <Link href="/partners/join" className="text-primary underline-offset-4 hover:underline">
-                {t("partners.joinTeaserCta")}
-              </Link>
-            </p>
+            <div className="flex flex-col items-center gap-2 border-t pt-4 text-center">
+              <p className="text-sm text-muted-foreground">{t("partners.joinTeaser")}</p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Link
+                  href="/partner/login"
+                  className={buttonVariants({ variant: "outline", className: "w-full sm:w-fit" })}
+                >
+                  {t("partners.existingPartnerLoginCta")}
+                </Link>
+                <Link
+                  href="/partners/join"
+                  className={buttonVariants({ variant: "outline", className: "w-full sm:w-fit" })}
+                >
+                  {t("partners.joinTeaserCta")}
+                </Link>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
