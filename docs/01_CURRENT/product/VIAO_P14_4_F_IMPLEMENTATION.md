@@ -2,15 +2,15 @@
 STATUS: CURRENT
 ERA: Partners Two-Sided Ecosystem
 DOMAIN: Producto + Datos (Home, Goal, Missions, Wallet, Rewards, Partners)
-AUTHORITY: Registro de cierre de P14.4-F (auditoría + F1-F4). Validado con ejecución real y auditoría de seguridad independiente. No autoriza su propio despliegue a producción — eso requiere un turno explícito posterior.
+AUTHORITY: Registro de cierre de P14.4-F (auditoría + F1-F4) y de su despliegue a producción. F4 (Goal Completion) está commiteado y desplegado en código pero **BLOQUEADO en producción** hasta aplicar manualmente su migración — ver "POST-DEPLOY VERIFICATION" al final.
 SUPERSEDES: —
 SUPERSEDED BY: —
-LAST REVIEWED: 2026-09-04 (creación — cierre de P14.4-F)
+LAST REVIEWED: 2026-09-04 (commit c02c5e9 pusheado y desplegado; BLOCKER encontrado — migración `20260904110000` no aplicada a producción)
 ---
 
 # VIAO — P14.4-F CLOSURE RECORD
 
-**Fecha**: 2026-09-04. **Estado**: **P14.4-F F3 + F4 — PASS. F4 SECURITY — PASS.** Código local, **NO desplegado, NO commiteado**.
+**Fecha**: 2026-09-04. **Estado en código**: **P14.4-F F3 + F4 — PASS. F4 SECURITY — PASS.** Commiteado (`c02c5e9`) y pusheado/desplegado a producción. **Estado real en producción**: F1/F2/F3/P0-1/P0-2 operativos; **F4 (Goal Completion) BLOQUEADO** — ver sección final.
 
 ## Resumen de la secuencia completa de P14.4-F
 
@@ -115,6 +115,25 @@ Confirmado por `git diff --stat` idéntico en todos los turnos de P14.4-F — lo
 - `docs/00_VIAO_HANDOFF.md` (§2, §5, §21)
 - `docs/01_CURRENT/product/VIAO_FUTURE_BACKLOG.md` (sección de cierre de P14.4-F, G1 registrado como FUTURE)
 
+## POST-DEPLOY VERIFICATION (2026-09-04, turno posterior — COMMIT → PUSH → DEPLOY → PRODUCTION VERIFY)
+
+**Commit**: `c02c5e9` ("feat: close P14.4-F core experience (Goal completion + Points feedback)"), pusheado a `origin/main`. **Deploy**: Vercel auto-deploy on push (mecanismo ya establecido, sin cambios de configuración) — `dpl_8WHbYcMpvCaYUxbM7eUdMU7qfDGG`, ● Ready, alias `https://viao.vercel.app` confirmado apuntando a este deployment.
+
+**Verificado en producción (solo lectura — Home/Login/Wallet-gate/Partners)**: las 4 rutas responden `200 OK` con contenido real (título `VIAO`, sin marcador de error real; el falso positivo inicial de "This page could not..." resultó ser metadata RSC normal de Next.js del boundary `not-found`, no un error real).
+
+**🔴 BLOCKER encontrado — migración de F4 NO aplicada a producción**: verificación de solo lectura contra el schema real de producción (Supabase, vía `service_role`, sin escritura) confirma:
+- `rewards_catalog.partner_id` (P0-2, migración `20260904100000`) — **presente** en producción. ✅
+- `goals.points_at_goal_creation` (preexistente) — **presente**. ✅
+- RPC `complete_goal_if_threshold_met` (F4, migración `20260904110000_add_complete_goal_if_threshold_met_rpc.sql`) — **AUSENTE**. PostgREST responde `Could not find the function public.complete_goal_if_threshold_met(p_goal_id, p_user_id) in the schema cache`.
+
+**Impacto real, rastreado en el código ya desplegado** (`lib/goals/get-goal.ts`, `lib/goals/complete-goal-if-threshold-met.ts`): cuando `earnedPoints >= targetPoints`, `getActiveGoal()` llama al RPC; al fallar (función inexistente), `completeGoalIfThresholdMet()` devuelve `{goalStatus:"not_found", justCompleted:false}` (fail-closed) y `getActiveGoal()` interpreta `goalStatus !== "active"` como "ya no hay Goal que mostrar", devolviendo `undefined`. **Efecto visible para cualquier usuario real que alcance el objetivo de su Goal ahora mismo**: el Goal desaparece de Home por completo (Home vuelve a mostrar el formulario "crear objetivo") en vez de completarse — **una regresión de UX peor que el estado anterior a este release** (antes, un Goal que alcanzaba el 100% simplemente seguía mostrando la barra llena, sin desaparecer). F1/F2/F3/P0-1/P0-2 no dependen de esta migración y no están afectados.
+
+**Por qué no se aplicó automáticamente**: instrucción explícita del propietario para este mismo turno — "No ejecutes migraciones nuevas... si encuentras que una migración necesaria para este release NO está aplicada en producción, repórtalo como BLOCKER y detente. NO LA APLIQUES AUTOMÁTICAMENTE."
+
+**Smoke test de escritura en producción (crear/completar/limpiar un Goal real de prueba) no se ejecutó**: bloqueado por el propio sistema de permisos del entorno antes de cualquier escritura (ninguna fila se llegó a crear); dado que la verificación de solo lectura ya encontró el BLOCKER real (RPC ausente), no era necesario insistir — el resultado habría sido el mismo error.
+
+**Acción pendiente, manual, del propietario**: aplicar `supabase/migrations/20260904110000_add_complete_goal_if_threshold_met_rpc.sql` al Postgres de producción (mismo procedimiento manual ya usado para las migraciones anteriores de P13/P0-2 — ver `docs/00_VIAO_HANDOFF.md`). Hasta entonces, F4 (Goal Completion) permanece BLOQUEADO en producción aunque el código ya está desplegado. Registrado también en `VIAO_FUTURE_BACKLOG.md` (sección NOW).
+
 ## Recommended Next Step
 
-P14.4-F (F1-F4) queda **CERRADO — PASS**, en código local, sin desplegar. El siguiente paso (Browser QA real, decisión sobre G1, commit/push, despliegue) requiere una decisión explícita y un turno propio del propietario — ninguno autorizado ni ejecutado en este bloque.
+P14.4-F (F1-F4) queda **CERRADO — PASS** en código, **commiteado y desplegado** (`c02c5e9`). Pendiente real, no de código: aplicar la migración de F4 a producción (BLOCKER de arriba) antes de que Goal Completion funcione para usuarios reales. Ningún otro trabajo autorizado en este bloque — no F5-F8, no P14.5, no Partners.
