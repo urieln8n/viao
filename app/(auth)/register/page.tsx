@@ -4,7 +4,7 @@ import { Suspense, useId, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState } from "@/components/state/error-state";
 import { Input } from "@/components/ui/input";
@@ -267,16 +267,33 @@ function RegisterPageContent() {
           {status === "error" && submitError && <ErrorState message={submitError} />}
 
           {/* UX-17.2 — mismo criterio exacto que login/page.tsx: CTA
-              secundario/discreto reutilizando partners.joinTeaser/
-              joinTeaserCta, oculto cuando partnerAccessToken existe (ya está
-              en el flujo de invitación de UX-17.1, no necesita descubrirlo). */}
+              secundario reutilizando partners.joinTeaser/joinTeaserCta,
+              oculto cuando partnerAccessToken existe (ya está en el flujo
+              de invitación de UX-17.1, no necesita descubrirlo).
+              VIS-01 (Visual Identity Transformation) — mismo patrón
+              exacto ya validado en components/auth/login-form.tsx
+              (P9.1/P9.2): 2 botones outline de ancho completo, en vez del
+              enlace de texto plano que dejaba esta pantalla con una
+              jerarquía distinta a /login para la misma decisión
+              ("¿tienes un negocio?"). Ningún texto/destino nuevo. */}
           {!partnerAccessToken && (
-            <p className="text-center text-sm text-muted-foreground">
-              {t("partners.joinTeaser")}{" "}
-              <Link href="/partners/join" className="text-primary underline-offset-4 hover:underline">
-                {t("partners.joinTeaserCta")}
-              </Link>
-            </p>
+            <div className="flex flex-col items-center gap-2 border-t pt-4 text-center">
+              <p className="text-sm text-muted-foreground">{t("partners.joinTeaser")}</p>
+              <div className="flex w-full flex-col gap-2">
+                <Link
+                  href="/partner/login"
+                  className={buttonVariants({ variant: "outline", className: "w-full" })}
+                >
+                  {t("partners.existingPartnerLoginCta")}
+                </Link>
+                <Link
+                  href="/partners/join"
+                  className={buttonVariants({ variant: "outline", className: "w-full" })}
+                >
+                  {t("partners.joinTeaserCta")}
+                </Link>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

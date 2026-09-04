@@ -363,6 +363,19 @@ export default function ProfilePage() {
                     htmlFor={option.id}
                     className="flex min-h-11 items-center gap-2 text-sm"
                   >
+                    {/* VIS-01 (Visual Identity Transformation) — hallazgo de
+                        la auditoría visual: sin `accent-color`, este radio
+                        nativo renderiza con el azul por defecto del
+                        navegador, el único control de toda la app fuera
+                        del lenguaje de color de VIAO. `accent-color` es
+                        una propiedad CSS nativa (soportada por todos los
+                        navegadores modernos) que re-colorea el control sin
+                        reimplementarlo — mismo elemento `<input
+                        type="radio">`, mismo comportamiento nativo de
+                        teclado/foco/lector de pantalla, cero HTML/JS
+                        nuevo. Naranja porque esto es exactamente el
+                        estado "seleccionado" que la sección 6.3 de VIS-01
+                        ya reserva para el acento de marca. */}
                     <input
                       type="radio"
                       id={option.id}
@@ -371,7 +384,7 @@ export default function ProfilePage() {
                       checked={locale === option.value}
                       onChange={() => setLocale(option.value)}
                       disabled={isSaving}
-                      className="size-4"
+                      className="size-4 accent-viao-orange"
                     />
                     {option.value === "es"
                       ? t("profile.localeSpanishOption", activeLocale)
@@ -510,15 +523,30 @@ export default function ProfilePage() {
               solo cuando hasOwnedCommerce es explícitamente false (nunca
               mientras está undefined/sin comprobar todavía, mismo criterio
               que el resto de esta pantalla). Reutiliza las mismas claves
-              i18n que login/register.tsx y app/partners/page.tsx. */}
+              i18n que login/register.tsx y app/partners/page.tsx.
+              VIS-01 (Visual Identity Transformation) — mismo patrón ya
+              validado en components/auth/login-form.tsx (P9.1/P9.2) y en
+              /register: 2 botones outline de ancho completo en vez del
+              enlace de texto plano, para que las 3 superficies que hacen
+              la misma pregunta ("¿tienes un negocio?") compartan la misma
+              jerarquía visual. Ningún texto/destino nuevo. */}
           {sessionStatus === "signed-in" && profileStatus === "ready" && hasOwnedCommerce === false && (
-            <div className="flex flex-col gap-2 border-t border-border pt-4">
-              <p className="text-sm text-muted-foreground">
-                {t("partners.joinTeaser", activeLocale)}{" "}
-                <Link href="/partners/join" className="text-primary underline-offset-4 hover:underline">
+            <div className="flex flex-col items-center gap-2 border-t border-border pt-4 text-center">
+              <p className="text-sm text-muted-foreground">{t("partners.joinTeaser", activeLocale)}</p>
+              <div className="flex w-full flex-col gap-2">
+                <Link
+                  href="/partner/login"
+                  className={buttonVariants({ variant: "outline", className: "w-full" })}
+                >
+                  {t("partners.existingPartnerLoginCta", activeLocale)}
+                </Link>
+                <Link
+                  href="/partners/join"
+                  className={buttonVariants({ variant: "outline", className: "w-full" })}
+                >
                   {t("partners.joinTeaserCta", activeLocale)}
                 </Link>
-              </p>
+              </div>
             </div>
           )}
 
